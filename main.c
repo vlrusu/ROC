@@ -405,7 +405,8 @@ int main()
 				}else if (commandID == WHOAREYOU){
 
 					outBuffer[bufcount++] = WHOAREYOU;
-					outBuffer[bufcount++] = 10;
+					outBuffer[bufcount++] = 1;
+					outBuffer[bufcount++] = 0;
 
 					UART_send(&g_uart, outBuffer ,bufcount );
 
