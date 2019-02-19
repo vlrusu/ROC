@@ -276,7 +276,7 @@ int main()
 					if (channel >= 96){
 
 						LTC2634_write(strawsHV[channel - 96]._ltc,strawsHV[channel - 96]._gain,value);
-						default_gains_hv[channel] = value;
+						default_gains_hv[channel-96] = value;
 						//						sprintf(outBuffer,"Set channel %d HV gain to %d\n",channel,value);
 					}
 					outBuffer[bufcount++] = SETPREAMPGAIN;
@@ -303,7 +303,7 @@ int main()
 
 						LTC2634_write(strawsHV[channel - 96]._ltc,strawsHV[channel - 96]._thresh,value);
 						//						sprintf(outBuffer,"Set channel %d HV threshold to %d\n",channel,value);
-						default_threshs_hv[channel] = value;
+						default_threshs_hv[channel-96] = value;
 					}
 
 					outBuffer[bufcount++] = SETPREAMPTHRESHOLD;
