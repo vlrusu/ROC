@@ -54,3 +54,4 @@ dkms.conf
 *.mk
 Release/makefile
 Debug/makefile
+*.xml
