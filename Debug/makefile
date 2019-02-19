@@ -36,38 +36,38 @@ endif
 
 # Add inputs and outputs from these tool invocations to the build variables 
 SECONDARY_FLASH += \
-MyProj.hex \
+myproj.hex \
 
 SECONDARY_SIZE += \
-MyProj.siz \
+myproj.siz \
 
 
 # All Target
-all: MyProj.elf secondary-outputs
+all: myproj.elf secondary-outputs
 
 # Tool invocations
-MyProj.elf: $(OBJS) $(USER_OBJS)
+myproj.elf: $(OBJS) $(USER_OBJS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: GNU ARM Cross C Linker'
-	arm-none-eabi-gcc -mcpu=cortex-m1 -mthumb -O0 -fmessage-length=0 -fsigned-char -ffunction-sections -fdata-sections  -g3 -T "C:\Users\vrusu\Desktop\DRAC2FW\FW-01-2019\ROC_1-8-19\SoftConsole\MyProj\blinky.ld" -Xlinker --gc-sections -Wl,-Map,"MyProj.map" -o "MyProj.elf" $(OBJS) $(USER_OBJS) $(LIBS)
+	arm-none-eabi-gcc -mcpu=cortex-m1 -mthumb -O0 -fmessage-length=0 -fsigned-char -ffunction-sections -fdata-sections  -g3 -T "E:\UM-research\SoftConsole\ROC_02-18-19\SoftConsole\myproj\blinky.ld" -Xlinker --gc-sections -Wl,-Map,"myproj.map" -o "myproj.elf" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
-MyProj.hex: MyProj.elf
+myproj.hex: myproj.elf
 	@echo 'Invoking: GNU ARM Cross Create Flash Image'
-	arm-none-eabi-objcopy -O ihex "MyProj.elf"  "MyProj.hex"
+	arm-none-eabi-objcopy -O ihex "myproj.elf"  "myproj.hex"
 	@echo 'Finished building: $@'
 	@echo ' '
 
-MyProj.siz: MyProj.elf
+myproj.siz: myproj.elf
 	@echo 'Invoking: GNU ARM Cross Print Size'
-	arm-none-eabi-size --format=berkeley "MyProj.elf"
+	arm-none-eabi-size --format=berkeley "myproj.elf"
 	@echo 'Finished building: $@'
 	@echo ' '
 
 # Other Targets
 clean:
-	-$(RM) $(OBJS)$(SECONDARY_FLASH)$(SECONDARY_SIZE)$(ASM_DEPS)$(S_UPPER_DEPS)$(C_DEPS) MyProj.elf
+	-$(RM) $(OBJS)$(SECONDARY_FLASH)$(SECONDARY_SIZE)$(ASM_DEPS)$(S_UPPER_DEPS)$(C_DEPS) myproj.elf
 	-@echo ' '
 
 secondary-outputs: $(SECONDARY_FLASH) $(SECONDARY_SIZE)

@@ -43,7 +43,7 @@
 #define TESTDDR 14
 #define RESETROC 15
 
-#define MAXCOM_MON 100 //100 monitoring commands ,rest reserved for future
+//#define MAXCOM_MON 100 //100 monitoring commands ,rest reserved for future
 
 enum MCPs{MCPCAL0, MCPCAL1, MCPCALIB, MCPCAL2, MCPCAL3, MCPHV0, MCPHV1, MCPHV2, MCPHV3};
 
@@ -57,7 +57,7 @@ extern const int default_caldac[8]; // calibration dac setting in dac counts
 extern const int calpulse_chanmap[8]; //mapping between physical premap position and calibration channels as set by the MCP chip
 
 
-extern const int channel_map[20];
+//extern const int channel_map[48];
 
 int current_gains[16];
 int current_thresholds[16];

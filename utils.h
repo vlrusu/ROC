@@ -39,7 +39,7 @@
 #define EMPTY                       0xfffc//begin of data buffer, but it is empty
 #define ENDOFDATA                   0xfffb//end of data stream
 
-extern int channel_map[48];
+//extern const int channel_map[48];
 extern int adc_map[6];
 
 uint16_t bufcount;
