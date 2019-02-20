@@ -43,7 +43,7 @@
 #define TESTDDR 14
 #define RESETROC 15
 
-//#define MAXCOM_MON 100 //100 monitoring commands ,rest reserved for future
+//#define MAXCOM_MON 200 //200 monitoring commands ,rest reserved for future
 
 enum MCPs{MCPCAL0, MCPCAL1, MCPCALIB, MCPCAL2, MCPCAL3, MCPHV0, MCPHV1, MCPHV2, MCPHV3};
 

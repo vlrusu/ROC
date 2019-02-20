@@ -13,7 +13,6 @@
 
 #define IS_CAL 1
 
-#define REGISTERBASEADDR          0x00042000UL
 
 #define ADC_RAMP 4
 #define ADC_SYNC 2
