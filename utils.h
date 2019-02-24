@@ -59,7 +59,7 @@ uint32_t GPIO_read(uint8_t pin);
 
 extern int adc_phases[6];
 
-extern uint32_t *register_base_addr;
+
 
 void reset_fabric();
 

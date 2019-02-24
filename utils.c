@@ -28,7 +28,7 @@ int adc_map[6] = {0,1,2,3,4,5};
 
 int adc_phases[6] = {0,0,0,0,0,0};
 
-uint32_t *register_base_addr =  (uint32_t *)  REGISTERBASEADDR ;
+
 char outBuffer[2000]; // buffer for printing to serial port
 char dataBuffer[2000];
 char init_buff[16];// buffer for storing adc_init returns
@@ -143,10 +143,10 @@ uint32_t GPIO_read(uint8_t pin)
 
 void digi_write(uint8_t address, uint16_t data)
 {
-	volatile uint32_t *busy_p       = register_base_addr+0x61;
-	uint32_t *data_p     = register_base_addr+0x63;
-	uint32_t *address_p = register_base_addr+0x62;
-	uint32_t *init_p     = register_base_addr+0x60;
+	volatile uint32_t *busy_p       = registers_0_addr+0x61;
+	volatile uint32_t *data_p     = registers_0_addr+0x63;
+	volatile uint32_t *address_p = registers_0_addr+0x62;
+	volatile uint32_t *init_p     = registers_0_addr+0x60;
 
 	*(data_p) = data;
 	*(address_p) = address;
@@ -157,10 +157,10 @@ void digi_write(uint8_t address, uint16_t data)
 uint16_t digi_read(uint8_t address)
 {
 
-	volatile uint32_t *busy_p       = register_base_addr+0x61;
-	volatile uint32_t *data_p     = register_base_addr+0x63;
-	uint32_t *address_p = register_base_addr+0x62;
-	uint32_t *init_p     = register_base_addr+0x60;
+	volatile uint32_t *busy_p       = registers_0_addr+0x61;
+	volatile uint32_t *data_p     = registers_0_addr+0x63;
+	volatile uint32_t *address_p = registers_0_addr+0x62;
+	volatile uint32_t *init_p     = registers_0_addr+0x60;
 
 	*(address_p) = (0x1<<8) | address;
 	*(init_p) = 1;
@@ -347,7 +347,7 @@ void read_data(int *delay_count, int *trigger_count)
 	while (1){
 
 		if (memlevel < readout_wordsPerTrigger){
-			volatile uint32_t fifoinfo = *(register_base_addr + 0x13);
+			volatile uint32_t fifoinfo = *(registers_0_addr + 0x13);
 			memlevel = fifoinfo & 0x7FFF;
 			if (memlevel < readout_wordsPerTrigger){
 				(*delay_count)++;
@@ -388,8 +388,8 @@ void read_data(int *delay_count, int *trigger_count)
 			}
 
 			uint16_t digioutput;
-			*(register_base_addr + 0x11) = 1;
-			digioutput = *(register_base_addr + 0x12);
+			*(registers_0_addr + 0x11) = 1;
+			digioutput = *(registers_0_addr + 0x12);
 			memlevel -= 1;
 			//sprintf(&dataBuffer[readout_obloc],"%04x ",digioutput);
 			dataBuffer[readout_obloc++] = digioutput & 0xff;
@@ -418,7 +418,7 @@ void read_data2(int *delay_count, int *trigger_count, uint16_t *lasthit)
 	uint16_t memlevel = 0;
 	while (1){
 		if (memlevel < readout_wordsPerTrigger){
-			volatile uint32_t fifoinfo = *(register_base_addr + 0x45);
+			volatile uint32_t fifoinfo = *(registers_0_addr + 0x45);
 			memlevel = fifoinfo & 0x7FFF;
 			if (memlevel < readout_wordsPerTrigger){
 				(*delay_count)++;
@@ -432,8 +432,8 @@ void read_data2(int *delay_count, int *trigger_count, uint16_t *lasthit)
 		// have enough data, see if can read
 		for (int j=0;j<readout_wordsPerTrigger;j++){
 			uint16_t digioutput;
-			*(register_base_addr + 0x40) = 1;
-			digioutput = *(register_base_addr + 0x41);
+			*(registers_0_addr + 0x40) = 1;
+			digioutput = *(registers_0_addr + 0x41);
 			memlevel -= 1;
 			lasthit[j] = digioutput;
 		}
@@ -461,14 +461,14 @@ void get_rates(uint32_t channel_mask1, uint32_t channel_mask2, uint32_t channel_
 		total_coinc[k] = 0;
 	}
 
-	volatile uint32_t *gt0 = (register_base_addr + 0x16);
-	volatile uint32_t *gt1 = (register_base_addr + 0x17);
-	volatile uint32_t *gt2 = (register_base_addr + 0x18);
-	volatile uint32_t *gt3 = (register_base_addr + 0x19);
-	volatile uint32_t *hv = (register_base_addr + 0x1A);
-	volatile uint32_t *cal = (register_base_addr + 0x1B);
-	volatile uint32_t *coinc = (register_base_addr + 0x1C);
-	volatile uint32_t *latch = (register_base_addr + 0x1D);
+	volatile uint32_t *gt0 = (registers_0_addr + 0x16);
+	volatile uint32_t *gt1 = (registers_0_addr + 0x17);
+	volatile uint32_t *gt2 = (registers_0_addr + 0x18);
+	volatile uint32_t *gt3 = (registers_0_addr + 0x19);
+	volatile uint32_t *hv = (registers_0_addr + 0x1A);
+	volatile uint32_t *cal = (registers_0_addr + 0x1B);
+	volatile uint32_t *coinc = (registers_0_addr + 0x1C);
+	volatile uint32_t *latch = (registers_0_addr + 0x1D);
 
 	*(latch) = 1;
 	uint64_t start_global_time = ((uint64_t)*(gt0)<<48) | ((uint64_t)*(gt1)<<32) | ((uint64_t)*(gt2)<<16) | ((uint64_t)*(gt3)<<0);
@@ -487,7 +487,7 @@ void get_rates(uint32_t channel_mask1, uint32_t channel_mask2, uint32_t channel_
 			if ((k<32 && ((0x1<<k) & mapped_channel_mask1)) || (k>=32 && ((0x1<<(k-32)) & mapped_channel_mask2))){
 				int straw_num = channel_map[k];
 
-				*(register_base_addr + 0x15) = k;
+				*(registers_0_addr + 0x15) = k;
 				delayUs(1);
 				uint32_t end_hv = *(hv);
 				uint32_t end_cal = *(cal);
