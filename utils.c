@@ -3,7 +3,7 @@
 #include "./CMSIS/system_cortexm1_cfg.h"
 #include "hw_platform.h"
 
-uint8_t outBuffer[2000]; // buffer for printing to serial port
+uint8_t outBuffer[1000]; // buffer for printing to serial port
 uint8_t rx_buff[100];
 uint8_t buffer[256]; // buffer for reading from serial port
 uint32_t writePtr;

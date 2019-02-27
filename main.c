@@ -12,7 +12,7 @@
 
 
 #include "setup.h"
-#include "Commands.h"
+
 
 #include "utils.h"
 #include "version.h"
@@ -25,9 +25,9 @@ uint16_t default_threshs_hv[96] = {322,284,329,317,325,321,340,347,351,339,348,3
 
 
 
-const int default_caldac[8] = {1000,1000,1000,1000,1000,1000,1000,1000};
+const uint16_t default_caldac[8] = {1000,1000,1000,1000,1000,1000,1000,1000};
 
-const int calpulse_chanmap[8]={9,1,10,2,11,3,12,4};
+const uint8_t calpulse_chanmap[8]={9,1,10,2,11,3,12,4};
 
 const int default_delay = 200;
 
@@ -86,7 +86,7 @@ int main()
 
 
 	//setup MCPs
-	for (int imcp = MCPCAL0; imcp<=MCPHV3; imcp++){
+	for (uint8_t imcp = MCPCAL0; imcp<=MCPHV3; imcp++){
 		if (imcp < MCPHV0)
 			MCP_setup(&preampMCP[imcp], g_spi[3], 0 , 0x20 + imcp);
 		else
@@ -96,13 +96,13 @@ int main()
 
 	// outputs for calpulse enable
 
-	for (int imcp = 0; imcp < 8; imcp++){
+	for (uint8_t imcp = 0; imcp < 8; imcp++){
 		MCP_pinMode(&preampMCP[MCPCALIB], MCPCALIBCHAN[imcp], MCP_OUTPUT);
 	}
 
 
 	//setup LTC2634, preamp DACs
-	for (int idac = 0 ; idac < 96; idac++){
+	for (uint8_t idac = 0 ; idac < 96; idac++){
 		if (idac<14)
 			LTC2634_setup(&dacs[idac],&preampMCP[MCPCAL0],idac+3,&preampMCP[MCPCAL0],2,&preampMCP[MCPCAL0],1);
 		else if (idac<24)
@@ -123,7 +123,7 @@ int main()
 
 
 	// Set default thresholds and gains
-	for (int i = 0 ; i < 96 ; i++){
+	for (uint8_t i = 0 ; i < 96 ; i++){
 		strawsCal[i]._ltc = &dacs[i/2];
 		strawsHV[i]._ltc = &dacs[48+i/2];
 		if (i%2 == 0){
@@ -261,8 +261,8 @@ int main()
 				uint8_t commandID = (uint8_t) buffer[3];
 				uint16_t bufcount = 0;
 
-				if (commandID < MAXCOM_MON)
-					UART_polled_tx_string( &g_uart, "monitoring\n" );
+//				if (commandID < MAXCOM_MON)
+
 
 				if (commandID == SETPREAMPGAIN){
 					uint16_t channel = readU16fromBytes(&buffer[4]);
@@ -285,6 +285,7 @@ int main()
 					outBuffer[bufcount++] = channel >> 8;
 					outBuffer[bufcount++] = value & 0xff;
 					outBuffer[bufcount++] = value >> 8;
+					UART_polled_tx_string( &g_uart, "monitoring\n" );
 					UART_send(&g_uart, outBuffer ,bufcount );
 
 
@@ -312,6 +313,7 @@ int main()
 					outBuffer[bufcount++] = channel >> 8;
 					outBuffer[bufcount++] = value & 0xff;
 					outBuffer[bufcount++] = value >> 8;
+					UART_polled_tx_string( &g_uart, "monitoring\n" );
 					UART_send(&g_uart, outBuffer ,bufcount );
 
 
@@ -330,6 +332,7 @@ int main()
 					outBuffer[bufcount++] = chan_mask;
 					outBuffer[bufcount++] = value & 0xff;
 					outBuffer[bufcount++] = value >> 8;
+					UART_polled_tx_string( &g_uart, "monitoring\n" );
 					UART_send(&g_uart, outBuffer ,bufcount );
 
 
@@ -390,7 +393,7 @@ int main()
 					outBuffer[bufcount++] = (pulserDelay>>8) & 0xff;
 					outBuffer[bufcount++] = (pulserDelay>>16) & 0xff;
 					outBuffer[bufcount++] = (pulserDelay>>24) & 0xff;
-
+					UART_polled_tx_string( &g_uart, "monitoring\n" );
 					UART_send(&g_uart, outBuffer ,bufcount );
 
 
@@ -399,7 +402,7 @@ int main()
 					PWM_disable(&g_pwm,PWM_1);
 					outBuffer[bufcount++] = SETPULSEROFF;
 					outBuffer[bufcount++] = 0;
-
+					UART_polled_tx_string( &g_uart, "monitoring\n" );
 					UART_send(&g_uart, outBuffer ,bufcount );
 
 				}else if (commandID == WHOAREYOU){
@@ -407,7 +410,7 @@ int main()
 					outBuffer[bufcount++] = WHOAREYOU;
 					outBuffer[bufcount++] = 1;
 					outBuffer[bufcount++] = 0;
-
+					UART_polled_tx_string( &g_uart, "monitoring\n" );
 					UART_send(&g_uart, outBuffer ,bufcount );
 
 				}else if (commandID == RESETROC){
@@ -417,45 +420,45 @@ int main()
 					outBuffer[bufcount++] = 1;
 
 
-
+					UART_polled_tx_string( &g_uart, "monitoring\n" );
 					UART_send(&g_uart, outBuffer ,bufcount );
-				}else if (commandID == TESTDDR){
-					uint8_t ddrcs = (uint8_t) buffer[4];
-					uint8_t ddrwen = (uint8_t) buffer[5];
-					uint8_t ddrren = (uint8_t) buffer[6];
-					uint8_t ddrdmaen = (uint8_t) buffer[7];
-					uint8_t ddrnhits = (uint8_t) buffer[8];
-					uint16_t ddrraddr = readU16fromBytes(&buffer[9]);
-					uint32_t retv = 0xF;
-
-					*(registers_0_addr + 0x20) = ddrnhits;
-					*(registers_0_addr + 0x21) = 0;
-					*(registers_0_addr + 0x22) = ddrcs;
-					*(registers_0_addr + 0x23) = ddrwen;
-					*(registers_0_addr + 0x24) = ddrren;
-					*(registers_0_addr + 0x25) = ddrdmaen;
-					*(registers_0_addr + 0x27) = ddrraddr;
-					retv = *(registers_0_addr + 0x26);
-					uint32_t dataddr = *(registers_0_addr + 0x28);
-					outBuffer[bufcount++] = TESTDDR;
-					outBuffer[bufcount++] = 15;
-					outBuffer[bufcount++] = ddrnhits;
-					outBuffer[bufcount++] = ddrcs;
-					outBuffer[bufcount++] = ddrwen;
-					outBuffer[bufcount++] = ddrren;
-					outBuffer[bufcount++] = ddrdmaen;
-					outBuffer[bufcount++] = retv & 0xFF;
-					outBuffer[bufcount++] = (retv>>8) & 0xFF;
-					outBuffer[bufcount++] = (retv>>16) & 0xFF;
-					outBuffer[bufcount++] = (retv>>24) & 0xFF;
-					outBuffer[bufcount++] = ddrraddr & 0xFF;
-					outBuffer[bufcount++] = (ddrraddr>>8) & 0xFF;
-					outBuffer[bufcount++] =  dataddr& 0xFF;
-					outBuffer[bufcount++] = (dataddr>>8) & 0xFF;
-					outBuffer[bufcount++] = (dataddr>>16) & 0xFF;
-					outBuffer[bufcount++] = (dataddr>>24) & 0xFF;
-
-					UART_send(&g_uart, outBuffer ,bufcount );
+//				}else if (commandID == TESTDDR){
+//					uint8_t ddrcs = (uint8_t) buffer[4];
+//					uint8_t ddrwen = (uint8_t) buffer[5];
+//					uint8_t ddrren = (uint8_t) buffer[6];
+//					uint8_t ddrdmaen = (uint8_t) buffer[7];
+//					uint8_t ddrnhits = (uint8_t) buffer[8];
+//					uint16_t ddrraddr = readU16fromBytes(&buffer[9]);
+//					uint32_t retv = 0xF;
+//
+//					*(registers_0_addr + 0x20) = ddrnhits;
+//					*(registers_0_addr + 0x21) = 0;
+//					*(registers_0_addr + 0x22) = ddrcs;
+//					*(registers_0_addr + 0x23) = ddrwen;
+//					*(registers_0_addr + 0x24) = ddrren;
+//					*(registers_0_addr + 0x25) = ddrdmaen;
+//					*(registers_0_addr + 0x27) = ddrraddr;
+//					retv = *(registers_0_addr + 0x26);
+//					uint32_t dataddr = *(registers_0_addr + 0x28);
+//					outBuffer[bufcount++] = TESTDDR;
+//					outBuffer[bufcount++] = 15;
+//					outBuffer[bufcount++] = ddrnhits;
+//					outBuffer[bufcount++] = ddrcs;
+//					outBuffer[bufcount++] = ddrwen;
+//					outBuffer[bufcount++] = ddrren;
+//					outBuffer[bufcount++] = ddrdmaen;
+//					outBuffer[bufcount++] = retv & 0xFF;
+//					outBuffer[bufcount++] = (retv>>8) & 0xFF;
+//					outBuffer[bufcount++] = (retv>>16) & 0xFF;
+//					outBuffer[bufcount++] = (retv>>24) & 0xFF;
+//					outBuffer[bufcount++] = ddrraddr & 0xFF;
+//					outBuffer[bufcount++] = (ddrraddr>>8) & 0xFF;
+//					outBuffer[bufcount++] =  dataddr& 0xFF;
+//					outBuffer[bufcount++] = (dataddr>>8) & 0xFF;
+//					outBuffer[bufcount++] = (dataddr>>16) & 0xFF;
+//					outBuffer[bufcount++] = (dataddr>>24) & 0xFF;
+//UART_polled_tx_string( &g_uart, "monitoring\n" );
+//					UART_send(&g_uart, outBuffer ,bufcount );
 
 
 				}else if (commandID == DUMPSETTINGS){
@@ -489,6 +492,7 @@ int main()
 							outBuffer[bufcount++] = default_threshs_cal[ic] >> 8;
 						}
 					}
+					UART_polled_tx_string( &g_uart, "monitoring\n" );
 					UART_send(&g_uart, outBuffer ,bufcount );
 
 
@@ -520,7 +524,7 @@ int main()
 						outBuffer[bufcount++] = (rx0 >> 8) & 0x0F;
 					}
 
-
+					UART_polled_tx_string( &g_uart, "monitoring\n" );
 					UART_send(&g_uart, outBuffer ,bufcount );
 //				}else if (commandID == MCPWRITEPIN){
 //
@@ -552,57 +556,58 @@ int main()
 					outBuffer[bufcount++] = 16;
 					for (int i = 0 ; i < 16; i++)
 						outBuffer[bufcount++] = data_buffer[i];
+					UART_polled_tx_string( &g_uart, "monitoring\n" );
 					UART_send(&g_uart, outBuffer ,bufcount );
 
 
 
-//				}else if (commandID == READBMES){
-//
-//					outBuffer[bufcount++] = READBMES;
-//					outBuffer[bufcount++] = 24;
-//					rslt = bme280_set_sensor_mode(BME280_FORCED_MODE, &ptscal);
-//					ptscal.delay_ms(40);
-//					rslt = bme280_get_sensor_data(BME280_ALL, &comp_data, &ptscal);
-//					outBuffer[bufcount++] = comp_data.temperature & 0xFF;
-//					outBuffer[bufcount++] = (comp_data.temperature >> 8) & 0xFF;
-//					outBuffer[bufcount++] = (comp_data.temperature >> 16) & 0xFF;
-//					outBuffer[bufcount++] = (comp_data.temperature >> 24) & 0xFF;
-//
-//					outBuffer[bufcount++] = comp_data.pressure & 0xFF;
-//					outBuffer[bufcount++] = (comp_data.pressure >> 8) & 0xFF;
-//					outBuffer[bufcount++] = (comp_data.pressure >> 16) & 0xFF;
-//					outBuffer[bufcount++] = (comp_data.pressure >> 24) & 0xFF;
-//
-//					outBuffer[bufcount++] = comp_data.humidity & 0xFF;
-//					outBuffer[bufcount++] = (comp_data.humidity >> 8) & 0xFF;
-//					outBuffer[bufcount++] = (comp_data.humidity >> 16) & 0xFF;
-//					outBuffer[bufcount++] = (comp_data.humidity >> 24) & 0xFF;
-//
-//
-//					//					sprintf(outBuffer,"CAL %d %d %d\n",comp_data.temperature, comp_data.pressure, comp_data.humidity);
-//					//					MSS_UART_polled_tx( &g_mss_uart1, outBuffer, strlen(outBuffer) );
-//					rslt = bme280_set_sensor_mode(BME280_FORCED_MODE, &ptshv);
-//					ptshv.delay_ms(40);
-//					rslt = bme280_get_sensor_data(BME280_ALL, &comp_data, &ptshv);
-//					outBuffer[bufcount++] = comp_data.temperature & 0xFF;
-//					outBuffer[bufcount++] = (comp_data.temperature >> 8) & 0xFF;
-//					outBuffer[bufcount++] = (comp_data.temperature >> 16) & 0xFF;
-//					outBuffer[bufcount++] = (comp_data.temperature >> 24) & 0xFF;
-//
-//					outBuffer[bufcount++] = comp_data.pressure & 0xFF;
-//					outBuffer[bufcount++] = (comp_data.pressure >> 8) & 0xFF;
-//					outBuffer[bufcount++] = (comp_data.pressure >> 16) & 0xFF;
-//					outBuffer[bufcount++] = (comp_data.pressure >> 24) & 0xFF;
-//
-//					outBuffer[bufcount++] = comp_data.humidity & 0xFF;
-//					outBuffer[bufcount++] = (comp_data.humidity >> 8) & 0xFF;
-//					outBuffer[bufcount++] = (comp_data.humidity >> 16) & 0xFF;
-//					outBuffer[bufcount++] = (comp_data.humidity >> 24) & 0xFF;
-//					//					sprintf(outBuffer,"HV %d %d %d\n",comp_data.temperature, comp_data.pressure, comp_data.humidity);
-//					//					MSS_UART_polled_tx( &g_mss_uart1, outBuffer, strlen(outBuffer) );
-//
-//
-//					UART_send(&g_uart, outBuffer ,bufcount );
+				}else if (commandID == READBMES){
+
+					outBuffer[bufcount++] = READBMES;
+					outBuffer[bufcount++] = 24;
+					rslt = bme280_set_sensor_mode(BME280_FORCED_MODE, &ptscal);
+					ptscal.delay_ms(40);
+					rslt = bme280_get_sensor_data(BME280_ALL, &comp_data, &ptscal);
+					outBuffer[bufcount++] = comp_data.temperature & 0xFF;
+					outBuffer[bufcount++] = (comp_data.temperature >> 8) & 0xFF;
+					outBuffer[bufcount++] = (comp_data.temperature >> 16) & 0xFF;
+					outBuffer[bufcount++] = (comp_data.temperature >> 24) & 0xFF;
+
+					outBuffer[bufcount++] = comp_data.pressure & 0xFF;
+					outBuffer[bufcount++] = (comp_data.pressure >> 8) & 0xFF;
+					outBuffer[bufcount++] = (comp_data.pressure >> 16) & 0xFF;
+					outBuffer[bufcount++] = (comp_data.pressure >> 24) & 0xFF;
+
+					outBuffer[bufcount++] = comp_data.humidity & 0xFF;
+					outBuffer[bufcount++] = (comp_data.humidity >> 8) & 0xFF;
+					outBuffer[bufcount++] = (comp_data.humidity >> 16) & 0xFF;
+					outBuffer[bufcount++] = (comp_data.humidity >> 24) & 0xFF;
+
+
+					//					sprintf(outBuffer,"CAL %d %d %d\n",comp_data.temperature, comp_data.pressure, comp_data.humidity);
+					//					MSS_UART_polled_tx( &g_mss_uart1, outBuffer, strlen(outBuffer) );
+					rslt = bme280_set_sensor_mode(BME280_FORCED_MODE, &ptshv);
+					ptshv.delay_ms(40);
+					rslt = bme280_get_sensor_data(BME280_ALL, &comp_data, &ptshv);
+					outBuffer[bufcount++] = comp_data.temperature & 0xFF;
+					outBuffer[bufcount++] = (comp_data.temperature >> 8) & 0xFF;
+					outBuffer[bufcount++] = (comp_data.temperature >> 16) & 0xFF;
+					outBuffer[bufcount++] = (comp_data.temperature >> 24) & 0xFF;
+
+					outBuffer[bufcount++] = comp_data.pressure & 0xFF;
+					outBuffer[bufcount++] = (comp_data.pressure >> 8) & 0xFF;
+					outBuffer[bufcount++] = (comp_data.pressure >> 16) & 0xFF;
+					outBuffer[bufcount++] = (comp_data.pressure >> 24) & 0xFF;
+
+					outBuffer[bufcount++] = comp_data.humidity & 0xFF;
+					outBuffer[bufcount++] = (comp_data.humidity >> 8) & 0xFF;
+					outBuffer[bufcount++] = (comp_data.humidity >> 16) & 0xFF;
+					outBuffer[bufcount++] = (comp_data.humidity >> 24) & 0xFF;
+					//					sprintf(outBuffer,"HV %d %d %d\n",comp_data.temperature, comp_data.pressure, comp_data.humidity);
+					//					MSS_UART_polled_tx( &g_mss_uart1, outBuffer, strlen(outBuffer) );
+
+					UART_polled_tx_string( &g_uart, "monitoring\n" );
+					UART_send(&g_uart, outBuffer ,bufcount );
 
 				}
 
