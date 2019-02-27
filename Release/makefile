@@ -61,7 +61,7 @@ ROC.hex: ROC.elf
 
 ROC.siz: ROC.elf
 	@echo 'Invoking: GNU ARM Cross Print Size'
-	arm-none-eabi-size --format=sysv --totals "ROC.elf"
+	arm-none-eabi-size --format=berkeley --totals "ROC.elf"
 	@echo 'Finished building: $@'
 	@echo ' '
 

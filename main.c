@@ -29,7 +29,6 @@ const uint16_t default_caldac[8] = {1000,1000,1000,1000,1000,1000,1000,1000};
 
 const uint8_t calpulse_chanmap[8]={9,1,10,2,11,3,12,4};
 
-const int default_delay = 200;
 
 #define BAUD_RATE                  57600
 
@@ -216,7 +215,7 @@ int main()
 	//		UART_polled_tx_string( &g_uart, outBuffer );
 	//
 	*(registers_0_addr+12) = 1;
-	for (int i=0;i<8;i++)
+	for (uint8_t i=0;i<8;i++)
 		AD5318_write(g_spi[3],1,i,default_caldac[i]);
 	*(registers_0_addr+12) = 0;
 
@@ -322,7 +321,7 @@ int main()
 					uint8_t chan_mask = (uint8_t) buffer[4];
 					uint16_t value = readU16fromBytes(&buffer[5]);
 					*(registers_0_addr+0x11) = 1;
-					for (int i=0;i<8;i++){
+					for (uint8_t i=0;i<8;i++){
 						if (chan_mask & (0x1<<i))
 							AD5318_write(g_spi[3],1, i,value);
 					}
@@ -362,12 +361,12 @@ int main()
 				}else if (commandID == SETPULSERON){
 
 
-					for (int i = 0; i < 16; i++){
+					for (uint8_t i = 0; i < 16; i++){
 						MCP_pinWrite(&preampMCP[MCPCALIB],i+1,0);
 					}
 					uint8_t chan_mask = (uint8_t) buffer[4];
 					pulserOdd = (uint8_t) buffer[5];
-					for (int i=0;i<8;i++){
+					for (uint8_t i=0;i<8;i++){
 						if ((0x1<<i) & chan_mask){
 							MCP_pinWrite(&preampMCP[MCPCALIB],calpulse_chanmap[i],1);
 						}
@@ -481,7 +480,7 @@ int main()
 
 					else{
 						outBuffer[bufcount++] = 255;
-						for (int ic = 0; ic < 96; ic++){
+						for (uint8_t ic = 0; ic < 96; ic++){
 							outBuffer[bufcount++] = default_gains_hv[ic] & 0xff;
 							outBuffer[bufcount++] = default_gains_hv[ic] >> 8;
 							outBuffer[bufcount++] = default_threshs_hv[ic] & 0xff;
@@ -504,7 +503,7 @@ int main()
 
 					outBuffer[bufcount++] = READMONADCS;
 					outBuffer[bufcount++] = 32;
-					for (int i = 0 ; i < 8; i++){
+					for (uint8_t i = 0 ; i < 8; i++){
 						SPI_set_slave_select( &g_spi[0] , (i<4?SPI_SLAVE_0:SPI_SLAVE_1));
 						uint16_t addr = (i%4 <<11 );
 						SPI_transfer_frame( &g_spi[0], addr);
@@ -514,7 +513,7 @@ int main()
 						outBuffer[bufcount++] = (rx0 >> 8) & 0x0F;
 					}
 
-					for (int i = 0 ; i < 8; i++){
+					for (uint8_t i = 0 ; i < 8; i++){
 						SPI_set_slave_select( &g_spi[1] , (i<4?SPI_SLAVE_0:SPI_SLAVE_1));
 						uint16_t addr = (i%4 <<11 );
 						SPI_transfer_frame( &g_spi[1], addr);
@@ -554,7 +553,7 @@ int main()
 					status = SYS_get_serial_number(data_buffer, 0);
 					outBuffer[bufcount++] = GETDEVICEID;
 					outBuffer[bufcount++] = 16;
-					for (int i = 0 ; i < 16; i++)
+					for (uint8_t i = 0 ; i < 16; i++)
 						outBuffer[bufcount++] = data_buffer[i];
 					UART_polled_tx_string( &g_uart, "monitoring\n" );
 					UART_send(&g_uart, outBuffer ,bufcount );
@@ -584,8 +583,6 @@ int main()
 					outBuffer[bufcount++] = (comp_data.humidity >> 24) & 0xFF;
 
 
-					//					sprintf(outBuffer,"CAL %d %d %d\n",comp_data.temperature, comp_data.pressure, comp_data.humidity);
-					//					MSS_UART_polled_tx( &g_mss_uart1, outBuffer, strlen(outBuffer) );
 					rslt = bme280_set_sensor_mode(BME280_FORCED_MODE, &ptshv);
 					ptshv.delay_ms(40);
 					rslt = bme280_get_sensor_data(BME280_ALL, &comp_data, &ptshv);
@@ -603,8 +600,6 @@ int main()
 					outBuffer[bufcount++] = (comp_data.humidity >> 8) & 0xFF;
 					outBuffer[bufcount++] = (comp_data.humidity >> 16) & 0xFF;
 					outBuffer[bufcount++] = (comp_data.humidity >> 24) & 0xFF;
-					//					sprintf(outBuffer,"HV %d %d %d\n",comp_data.temperature, comp_data.pressure, comp_data.humidity);
-					//					MSS_UART_polled_tx( &g_mss_uart1, outBuffer, strlen(outBuffer) );
 
 					UART_polled_tx_string( &g_uart, "monitoring\n" );
 					UART_send(&g_uart, outBuffer ,bufcount );

@@ -46,12 +46,12 @@ __DYNAMIC  =  0;
  *******************************************************************************/
 MEMORY
 {
-    ram (rwx) : ORIGIN = 0x00000000, LENGTH = 60k    
+    ram (rwx) : ORIGIN = 0x00000000, LENGTH = 48k    
 }
 
 
 RAM_START_ADDRESS = 0x00000000;  /* Must be the same value MEMORY region ram ORIGIN above. */
-RAM_SIZE            = 60k;       /* Must be the same value MEMORY region ram LENGTH above. */
+RAM_SIZE            = 48k;       /* Must be the same value MEMORY region ram LENGTH above. */
 MAIN_STACK_SIZE     = 4k;        /* Cortex main stack size. */
 PROCESS_STACK_SIZE  = 2k;        /* Cortex process stack size (only available with OS extensions).*/
 MIN_SIZE_HEAP       = 4k;        /* needs to be calculated for your application */
