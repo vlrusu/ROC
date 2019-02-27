@@ -296,7 +296,7 @@ int main()
 			uint32_t numBytes = buffer[2];
 			if (writePtr >= numBytes){
 				uint8_t commandID = (uint8_t) buffer[3];
-				uint16_t bufcount = 0;
+				bufcount = 0;
 
 				//	    if (commandID < MAXCOM_MON)
 				//	      UART_polled_tx_string( &g_uart, "monitoring\n" );
@@ -450,7 +450,7 @@ int main()
 				}else if (commandID == WHOAREYOU){
 
 					outBuffer[bufcount++] = WHOAREYOU;
-					outBuffer[bufcount++] = 1;
+					outBuffer[bufcount++] = 0;
 					outBuffer[bufcount++] = 0;
 					UART_polled_tx_string( &g_uart, "monitoring\n" );
 					UART_send(&g_uart, outBuffer ,bufcount );
@@ -459,7 +459,7 @@ int main()
 					*(registers_0_addr + 0x10) = 0;
 					*(registers_0_addr + 0x10) = 1;
 					outBuffer[bufcount++] = RESETROC;
-					outBuffer[bufcount++] = 1;
+					outBuffer[bufcount++] = 0;
 					outBuffer[bufcount++] = 0;
 
 
@@ -941,10 +941,16 @@ int main()
 					for (ichan=0;ichan<48;ichan++){
 						uint8_t adc_number = adc_map[ichan/8];
 						uint64_t thischanmask = (((uint64_t) 0x1)<<ichan);
-						if ((thischanmask & all_channel_mask) == 0x0)
+						if ((thischanmask & all_channel_mask) == 0x0){
+							outBuffer[bufcount] = outBuffer[bufcount] & (~((uint8_t)( 1 << (ichan % 8))));
+							if (((ichan+1)%8)==0) bufcount++;
 							continue;
-						if (((0x1<<(adc_number)) & ENABLED_ADCS) == 0x0)
+						}
+						if (((0x1<<(adc_number)) & ENABLED_ADCS) == 0x0){
+							outBuffer[bufcount] = outBuffer[bufcount] & (~((uint8_t)( 1 << (ichan % 8))));
+							if (((ichan+1)%8)==0) bufcount++;
 							continue;
+						}
 						digi_write(0xb,0x0);
 						digi_write(0xe,0x0);
 						digi_write(0xd,0x0);
@@ -1022,7 +1028,7 @@ int main()
 
 					if (ichan<48){
 						for (int i=ichan; i<48; i++) {
-							outBuffer[bufcount] = outBuffer[bufcount] & (~((uint8_t)( 1 << (ichan % 8))));
+							outBuffer[bufcount] = outBuffer[bufcount] & (~((uint8_t)( 1 << (i % 8))));
 							if (((i+1)%8)==0) bufcount++;
 						}
 					} //match the format if break in between
