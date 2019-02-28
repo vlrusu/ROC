@@ -449,7 +449,7 @@ void get_rates(uint32_t channel_mask1, uint32_t channel_mask2, uint32_t channel_
 	uint32_t mapped_channel_mask2 = 0x0;
 	get_mapped_channels(&channel_mask1,&channel_mask2,&channel_mask3,&mapped_channel_mask1,&mapped_channel_mask2);
 
-	double total_global_time = 0;
+	//double total_global_time = 0;
 	uint32_t total_time_counts = 0;
 	uint32_t total_hv[96];
 	uint32_t total_cal[96];
@@ -480,7 +480,7 @@ void get_rates(uint32_t channel_mask1, uint32_t channel_mask2, uint32_t channel_
 		*(latch) = 1;
 		uint64_t end_global_time = ((uint64_t)*(gt0)<<48) | ((uint64_t)*(gt1)<<32) | ((uint64_t)*(gt2)<<16) | ((uint64_t)*(gt3)<<0);
 
-		total_global_time += (end_global_time-start_global_time) * 20e-9;
+		//total_global_time += (end_global_time-start_global_time) * 20e-9;
 		total_time_counts += (uint32_t) (end_global_time - start_global_time);
 
 		for (int k=0;k<48;k++){
