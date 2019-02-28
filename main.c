@@ -657,10 +657,9 @@ int main()
 					//
 					//					UART_send(&g_uart, outBuffer ,bufcount );
 
-				}
 
 				//begin of control_digi commands
-				if (commandID == ADCRWCMDID){
+				}else if (commandID == ADCRWCMDID){
 					// adc read/write
 					uint8_t adc_num = (uint8_t) buffer[4];
 					uint8_t rw = (uint8_t) buffer[5];

@@ -43,31 +43,31 @@ MyProj.siz \
 
 
 # All Target
-all: MyProj.elf secondary-outputs
+all: ROC.elf secondary-outputs
 
 # Tool invocations
-MyProj.elf: $(OBJS) $(USER_OBJS)
+ROC.elf: $(OBJS) $(USER_OBJS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: GNU ARM Cross C Linker'
-	arm-none-eabi-gcc -mcpu=cortex-m1 -mthumb -Os -fmessage-length=0 -fsigned-char -ffunction-sections -fdata-sections -fno-builtin  -g -T "E:\UM-research\SoftConsole\ROCDIGI_02_25_19\SoftConsole\MyProj\blinky.ld" -Xlinker --gc-sections -Wl,-Map,"MyProj.map" -Xlinker --print-map --specs=nano.specs -v -o "MyProj.elf" $(OBJS) $(USER_OBJS) $(LIBS)
+	arm-none-eabi-gcc -mcpu=cortex-m1 -mthumb -Os -fmessage-length=0 -fsigned-char -ffunction-sections -fdata-sections -fno-builtin  -g -T "C:\Users\vrusu\Documents\GitHub\ARMCode\ROC\blinky.ld" -Xlinker --gc-sections -Wl,-Map,"ROC.map" -Xlinker --print-map --specs=nano.specs -v -o "ROC.elf" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
-MyProj.hex: MyProj.elf
+ROC.hex: ROC.elf
 	@echo 'Invoking: GNU ARM Cross Create Flash Image'
-	arm-none-eabi-objcopy -O ihex "MyProj.elf"  "MyProj.hex"
+	arm-none-eabi-objcopy -O ihex "ROC.elf"  "ROC.hex"
 	@echo 'Finished building: $@'
 	@echo ' '
 
-MyProj.siz: MyProj.elf
+ROC.siz: ROC.elf
 	@echo 'Invoking: GNU ARM Cross Print Size'
-	arm-none-eabi-size --format=sysv --totals "MyProj.elf"
+	arm-none-eabi-size --format=berkeley --totals "ROC.elf"
 	@echo 'Finished building: $@'
 	@echo ' '
 
 # Other Targets
 clean:
-	-$(RM) $(OBJS)$(SECONDARY_FLASH)$(SECONDARY_SIZE)$(ASM_DEPS)$(S_UPPER_DEPS)$(C_DEPS) MyProj.elf
+	-$(RM) $(OBJS)$(SECONDARY_FLASH)$(SECONDARY_SIZE)$(ASM_DEPS)$(S_UPPER_DEPS)$(C_DEPS) ROC.elf
 	-@echo ' '
 
 secondary-outputs: $(SECONDARY_FLASH) $(SECONDARY_SIZE)
