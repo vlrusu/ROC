@@ -52,8 +52,8 @@ extern const uint8_t MCPCALIBCHAN[8];
 
 extern const int default_delay; // delay between calibration pulses in us (add 20 us for pulse time)
 
-extern const int default_caldac[8]; // calibration dac setting in dac counts
-extern const int calpulse_chanmap[8]; //mapping between physical premap position and calibration channels as set by the MCP chip
+extern const uint16_t default_caldac[8]; // calibration dac setting in dac counts
+extern const uint8_t calpulse_chanmap[8]; //mapping between physical premap position and calibration channels as set by the MCP chip
 
 
 //extern const int channel_map[20];
