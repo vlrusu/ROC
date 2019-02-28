@@ -607,58 +607,48 @@ int main()
 					UART_polled_tx_string( &g_uart, "monitoring\n" );
 					UART_send(&g_uart, outBuffer ,bufcount );
 
+				}else if (commandID == READBMES){
 
+					outBuffer[bufcount++] = READBMES;
+					outBuffer[bufcount++] = 24;
+					rslt = bme280_set_sensor_mode(BME280_FORCED_MODE, &ptscal);
+					ptscal.delay_ms(40);
+					rslt = bme280_get_sensor_data(BME280_ALL, &comp_data, &ptscal);
+					outBuffer[bufcount++] = comp_data.temperature & 0xFF;
+					outBuffer[bufcount++] = (comp_data.temperature >> 8) & 0xFF;
+					outBuffer[bufcount++] = (comp_data.temperature >> 16) & 0xFF;
+					outBuffer[bufcount++] = (comp_data.temperature >> 24) & 0xFF;
+					outBuffer[bufcount++] = comp_data.pressure & 0xFF;
+					outBuffer[bufcount++] = (comp_data.pressure >> 8) & 0xFF;
+					outBuffer[bufcount++] = (comp_data.pressure >> 16) & 0xFF;
+					outBuffer[bufcount++] = (comp_data.pressure >> 24) & 0xFF;
+					outBuffer[bufcount++] = comp_data.humidity & 0xFF;
+					outBuffer[bufcount++] = (comp_data.humidity >> 8) & 0xFF;
+					outBuffer[bufcount++] = (comp_data.humidity >> 16) & 0xFF;
+					outBuffer[bufcount++] = (comp_data.humidity >> 24) & 0xFF;
+					//					sprintf(outBuffer,"CAL %d %d %d\n",comp_data.temperature, comp_data.pressure, comp_data.humidity);
+					//					MSS_UART_polled_tx( &g_mss_uart1, outBuffer, strlen(outBuffer) );
+					rslt = bme280_set_sensor_mode(BME280_FORCED_MODE, &ptshv);
+					ptshv.delay_ms(40);
+					rslt = bme280_get_sensor_data(BME280_ALL, &comp_data, &ptshv);
+					outBuffer[bufcount++] = comp_data.temperature & 0xFF;
+					outBuffer[bufcount++] = (comp_data.temperature >> 8) & 0xFF;
+					outBuffer[bufcount++] = (comp_data.temperature >> 16) & 0xFF;
+					outBuffer[bufcount++] = (comp_data.temperature >> 24) & 0xFF;
+					outBuffer[bufcount++] = comp_data.pressure & 0xFF;
+					outBuffer[bufcount++] = (comp_data.pressure >> 8) & 0xFF;
+					outBuffer[bufcount++] = (comp_data.pressure >> 16) & 0xFF;
+					outBuffer[bufcount++] = (comp_data.pressure >> 24) & 0xFF;
+					outBuffer[bufcount++] = comp_data.humidity & 0xFF;
+					outBuffer[bufcount++] = (comp_data.humidity >> 8) & 0xFF;
+					outBuffer[bufcount++] = (comp_data.humidity >> 16) & 0xFF;
+					outBuffer[bufcount++] = (comp_data.humidity >> 24) & 0xFF;
+					//					sprintf(outBuffer,"HV %d %d %d\n",comp_data.temperature, comp_data.pressure, comp_data.humidity);
+					//					MSS_UART_polled_tx( &g_mss_uart1, outBuffer, strlen(outBuffer) );
+					UART_polled_tx_string( &g_uart, "monitoring\n" );
+					UART_send(&g_uart, outBuffer ,bufcount );
 
-					//				}else if (commandID == READBMES){
-					//
-					//					outBuffer[bufcount++] = READBMES;
-					//					outBuffer[bufcount++] = 24;
-					//					rslt = bme280_set_sensor_mode(BME280_FORCED_MODE, &ptscal);
-					//					ptscal.delay_ms(40);
-					//					rslt = bme280_get_sensor_data(BME280_ALL, &comp_data, &ptscal);
-					//					outBuffer[bufcount++] = comp_data.temperature & 0xFF;
-					//					outBuffer[bufcount++] = (comp_data.temperature >> 8) & 0xFF;
-					//					outBuffer[bufcount++] = (comp_data.temperature >> 16) & 0xFF;
-					//					outBuffer[bufcount++] = (comp_data.temperature >> 24) & 0xFF;
-					//
-					//					outBuffer[bufcount++] = comp_data.pressure & 0xFF;
-					//					outBuffer[bufcount++] = (comp_data.pressure >> 8) & 0xFF;
-					//					outBuffer[bufcount++] = (comp_data.pressure >> 16) & 0xFF;
-					//					outBuffer[bufcount++] = (comp_data.pressure >> 24) & 0xFF;
-					//
-					//					outBuffer[bufcount++] = comp_data.humidity & 0xFF;
-					//					outBuffer[bufcount++] = (comp_data.humidity >> 8) & 0xFF;
-					//					outBuffer[bufcount++] = (comp_data.humidity >> 16) & 0xFF;
-					//					outBuffer[bufcount++] = (comp_data.humidity >> 24) & 0xFF;
-					//
-					//
-					//					//					sprintf(outBuffer,"CAL %d %d %d\n",comp_data.temperature, comp_data.pressure, comp_data.humidity);
-					//					//					MSS_UART_polled_tx( &g_mss_uart1, outBuffer, strlen(outBuffer) );
-					//					rslt = bme280_set_sensor_mode(BME280_FORCED_MODE, &ptshv);
-					//					ptshv.delay_ms(40);
-					//					rslt = bme280_get_sensor_data(BME280_ALL, &comp_data, &ptshv);
-					//					outBuffer[bufcount++] = comp_data.temperature & 0xFF;
-					//					outBuffer[bufcount++] = (comp_data.temperature >> 8) & 0xFF;
-					//					outBuffer[bufcount++] = (comp_data.temperature >> 16) & 0xFF;
-					//					outBuffer[bufcount++] = (comp_data.temperature >> 24) & 0xFF;
-					//
-					//					outBuffer[bufcount++] = comp_data.pressure & 0xFF;
-					//					outBuffer[bufcount++] = (comp_data.pressure >> 8) & 0xFF;
-					//					outBuffer[bufcount++] = (comp_data.pressure >> 16) & 0xFF;
-					//					outBuffer[bufcount++] = (comp_data.pressure >> 24) & 0xFF;
-					//
-					//					outBuffer[bufcount++] = comp_data.humidity & 0xFF;
-					//					outBuffer[bufcount++] = (comp_data.humidity >> 8) & 0xFF;
-					//					outBuffer[bufcount++] = (comp_data.humidity >> 16) & 0xFF;
-					//					outBuffer[bufcount++] = (comp_data.humidity >> 24) & 0xFF;
-					//					//					sprintf(outBuffer,"HV %d %d %d\n",comp_data.temperature, comp_data.pressure, comp_data.humidity);
-					//					//					MSS_UART_polled_tx( &g_mss_uart1, outBuffer, strlen(outBuffer) );
-					//
-					//
-					//					UART_send(&g_uart, outBuffer ,bufcount );
-
-
-				//begin of control_digi commands
+					//begin of control_digi commands
 				}else if (commandID == ADCRWCMDID){
 					// adc read/write
 					uint8_t adc_num = (uint8_t) buffer[4];

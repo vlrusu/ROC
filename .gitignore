@@ -57,3 +57,5 @@ Debug/makefile
 *.xml
 Release/CMSIS/startup_gcc/subdir.mk
 Release/makefile
+Release/*
+Debug/*
