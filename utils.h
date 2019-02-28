@@ -96,11 +96,6 @@ extern int readout_numTriggers;
 extern int calibration_count[32];
 extern uint32_t calibration_done;
 
-extern UART_instance_t g_uart;
-extern spi_instance_t g_spi[4];
-extern gpio_instance_t g_gpio;
-extern pwm_instance_t g_pwm;
-
 
 
 #endif /* UTILS_H_ */

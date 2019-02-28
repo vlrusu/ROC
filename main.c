@@ -464,44 +464,44 @@ int main()
 
 					UART_polled_tx_string( &g_uart, "monitoring\n" );
 					UART_send(&g_uart, outBuffer ,bufcount );
-				}else if (commandID == TESTDDR){
-					uint8_t ddrcs = (uint8_t) buffer[4];
-					uint8_t ddrwen = (uint8_t) buffer[5];
-					uint8_t ddrren = (uint8_t) buffer[6];
-					uint8_t ddrdmaen = (uint8_t) buffer[7];
-					uint8_t ddrnhits = (uint8_t) buffer[8];
-					uint16_t ddrraddr = readU16fromBytes(&buffer[9]);
-					uint32_t retv = 0xF;
-
-					*(registers_0_addr + 0x20) = ddrnhits;
-					*(registers_0_addr + 0x21) = 0;
-					*(registers_0_addr + 0x22) = ddrcs;
-					*(registers_0_addr + 0x23) = ddrwen;
-					*(registers_0_addr + 0x24) = ddrren;
-					*(registers_0_addr + 0x25) = ddrdmaen;
-					*(registers_0_addr + 0x27) = ddrraddr;
-					retv = *(registers_0_addr + 0x26);
-					uint32_t dataddr = *(registers_0_addr + 0x28);
-					outBuffer[bufcount++] = TESTDDR;
-					outBuffer[bufcount++] = 15;
-					outBuffer[bufcount++] = 0;
-					outBuffer[bufcount++] = ddrnhits;
-					outBuffer[bufcount++] = ddrcs;
-					outBuffer[bufcount++] = ddrwen;
-					outBuffer[bufcount++] = ddrren;
-					outBuffer[bufcount++] = ddrdmaen;
-					outBuffer[bufcount++] = retv & 0xFF;
-					outBuffer[bufcount++] = (retv>>8) & 0xFF;
-					outBuffer[bufcount++] = (retv>>16) & 0xFF;
-					outBuffer[bufcount++] = (retv>>24) & 0xFF;
-					outBuffer[bufcount++] = ddrraddr & 0xFF;
-					outBuffer[bufcount++] = (ddrraddr>>8) & 0xFF;
-					outBuffer[bufcount++] =  dataddr& 0xFF;
-					outBuffer[bufcount++] = (dataddr>>8) & 0xFF;
-					outBuffer[bufcount++] = (dataddr>>16) & 0xFF;
-					outBuffer[bufcount++] = (dataddr>>24) & 0xFF;
-					UART_polled_tx_string( &g_uart, "monitoring\n" );
-					UART_send(&g_uart, outBuffer ,bufcount );
+//				}else if (commandID == TESTDDR){
+//					uint8_t ddrcs = (uint8_t) buffer[4];
+//					uint8_t ddrwen = (uint8_t) buffer[5];
+//					uint8_t ddrren = (uint8_t) buffer[6];
+//					uint8_t ddrdmaen = (uint8_t) buffer[7];
+//					uint8_t ddrnhits = (uint8_t) buffer[8];
+//					uint16_t ddrraddr = readU16fromBytes(&buffer[9]);
+//					uint32_t retv = 0xF;
+//
+//					*(registers_0_addr + 0x20) = ddrnhits;
+//					*(registers_0_addr + 0x21) = 0;
+//					*(registers_0_addr + 0x22) = ddrcs;
+//					*(registers_0_addr + 0x23) = ddrwen;
+//					*(registers_0_addr + 0x24) = ddrren;
+//					*(registers_0_addr + 0x25) = ddrdmaen;
+//					*(registers_0_addr + 0x27) = ddrraddr;
+//					retv = *(registers_0_addr + 0x26);
+//					uint32_t dataddr = *(registers_0_addr + 0x28);
+//					outBuffer[bufcount++] = TESTDDR;
+//					outBuffer[bufcount++] = 15;
+//					outBuffer[bufcount++] = 0;
+//					outBuffer[bufcount++] = ddrnhits;
+//					outBuffer[bufcount++] = ddrcs;
+//					outBuffer[bufcount++] = ddrwen;
+//					outBuffer[bufcount++] = ddrren;
+//					outBuffer[bufcount++] = ddrdmaen;
+//					outBuffer[bufcount++] = retv & 0xFF;
+//					outBuffer[bufcount++] = (retv>>8) & 0xFF;
+//					outBuffer[bufcount++] = (retv>>16) & 0xFF;
+//					outBuffer[bufcount++] = (retv>>24) & 0xFF;
+//					outBuffer[bufcount++] = ddrraddr & 0xFF;
+//					outBuffer[bufcount++] = (ddrraddr>>8) & 0xFF;
+//					outBuffer[bufcount++] =  dataddr& 0xFF;
+//					outBuffer[bufcount++] = (dataddr>>8) & 0xFF;
+//					outBuffer[bufcount++] = (dataddr>>16) & 0xFF;
+//					outBuffer[bufcount++] = (dataddr>>24) & 0xFF;
+//					UART_polled_tx_string( &g_uart, "monitoring\n" );
+//					UART_send(&g_uart, outBuffer ,bufcount );
 //				}else if (commandID == TESTDDR){
 //					uint8_t ddrcs = (uint8_t) buffer[4];
 //					uint8_t ddrwen = (uint8_t) buffer[5];
@@ -630,69 +630,68 @@ int main()
 					//					outBuffer[bufcount++] = channel >> 8;
 					//
 					//					UART_send(&g_uart, outBuffer ,bufcount );
-				}else if (commandID == GETDEVICEID){
-
-					uint8_t data_buffer[16];
-					uint8_t status;
-					status = SYS_get_serial_number(data_buffer, 0);
-					outBuffer[bufcount++] = GETDEVICEID;
-					outBuffer[bufcount++] = 16;
-					outBuffer[bufcount++] = 0;
-					for (uint8_t i = 0 ; i < 16; i++)
-						outBuffer[bufcount++] = data_buffer[i];
-					UART_polled_tx_string( &g_uart, "monitoring\n" );
-					UART_send(&g_uart, outBuffer ,bufcount );
-
-
-
-				}else if (commandID == READBMES){
-
-					outBuffer[bufcount++] = READBMES;
-					outBuffer[bufcount++] = 24;
-					rslt = bme280_set_sensor_mode(BME280_FORCED_MODE, &ptscal);
-					ptscal.delay_ms(40);
-					rslt = bme280_get_sensor_data(BME280_ALL, &comp_data, &ptscal);
-					outBuffer[bufcount++] = comp_data.temperature & 0xFF;
-					outBuffer[bufcount++] = (comp_data.temperature >> 8) & 0xFF;
-					outBuffer[bufcount++] = (comp_data.temperature >> 16) & 0xFF;
-					outBuffer[bufcount++] = (comp_data.temperature >> 24) & 0xFF;
-
-					outBuffer[bufcount++] = comp_data.pressure & 0xFF;
-					outBuffer[bufcount++] = (comp_data.pressure >> 8) & 0xFF;
-					outBuffer[bufcount++] = (comp_data.pressure >> 16) & 0xFF;
-					outBuffer[bufcount++] = (comp_data.pressure >> 24) & 0xFF;
-
-					outBuffer[bufcount++] = comp_data.humidity & 0xFF;
-					outBuffer[bufcount++] = (comp_data.humidity >> 8) & 0xFF;
-					outBuffer[bufcount++] = (comp_data.humidity >> 16) & 0xFF;
-					outBuffer[bufcount++] = (comp_data.humidity >> 24) & 0xFF;
+//				}else if (commandID == GETDEVICEID){
+//
+//					uint8_t data_buffer[16];
+//					uint8_t status;
+//					status = SYS_get_serial_number(data_buffer, 0);
+//					outBuffer[bufcount++] = GETDEVICEID;
+//					outBuffer[bufcount++] = 16;
+//					outBuffer[bufcount++] = 0;
+//					for (uint8_t i = 0 ; i < 16; i++)
+//						outBuffer[bufcount++] = data_buffer[i];
+//					UART_polled_tx_string( &g_uart, "monitoring\n" );
+//					UART_send(&g_uart, outBuffer ,bufcount );
+//
 
 
-					rslt = bme280_set_sensor_mode(BME280_FORCED_MODE, &ptshv);
-					ptshv.delay_ms(40);
-					rslt = bme280_get_sensor_data(BME280_ALL, &comp_data, &ptshv);
-					outBuffer[bufcount++] = comp_data.temperature & 0xFF;
-					outBuffer[bufcount++] = (comp_data.temperature >> 8) & 0xFF;
-					outBuffer[bufcount++] = (comp_data.temperature >> 16) & 0xFF;
-					outBuffer[bufcount++] = (comp_data.temperature >> 24) & 0xFF;
+//				}else if (commandID == READBMES){
+//
+//					outBuffer[bufcount++] = READBMES;
+//					outBuffer[bufcount++] = 24;
+//					rslt = bme280_set_sensor_mode(BME280_FORCED_MODE, &ptscal);
+//					ptscal.delay_ms(40);
+//					rslt = bme280_get_sensor_data(BME280_ALL, &comp_data, &ptscal);
+//					outBuffer[bufcount++] = comp_data.temperature & 0xFF;
+//					outBuffer[bufcount++] = (comp_data.temperature >> 8) & 0xFF;
+//					outBuffer[bufcount++] = (comp_data.temperature >> 16) & 0xFF;
+//					outBuffer[bufcount++] = (comp_data.temperature >> 24) & 0xFF;
+//
+//					outBuffer[bufcount++] = comp_data.pressure & 0xFF;
+//					outBuffer[bufcount++] = (comp_data.pressure >> 8) & 0xFF;
+//					outBuffer[bufcount++] = (comp_data.pressure >> 16) & 0xFF;
+//					outBuffer[bufcount++] = (comp_data.pressure >> 24) & 0xFF;
+//
+//					outBuffer[bufcount++] = comp_data.humidity & 0xFF;
+//					outBuffer[bufcount++] = (comp_data.humidity >> 8) & 0xFF;
+//					outBuffer[bufcount++] = (comp_data.humidity >> 16) & 0xFF;
+//					outBuffer[bufcount++] = (comp_data.humidity >> 24) & 0xFF;
+//
+//
+//					rslt = bme280_set_sensor_mode(BME280_FORCED_MODE, &ptshv);
+//					ptshv.delay_ms(40);
+//					rslt = bme280_get_sensor_data(BME280_ALL, &comp_data, &ptshv);
+//					outBuffer[bufcount++] = comp_data.temperature & 0xFF;
+//					outBuffer[bufcount++] = (comp_data.temperature >> 8) & 0xFF;
+//					outBuffer[bufcount++] = (comp_data.temperature >> 16) & 0xFF;
+//					outBuffer[bufcount++] = (comp_data.temperature >> 24) & 0xFF;
+//
+//					outBuffer[bufcount++] = comp_data.pressure & 0xFF;
+//					outBuffer[bufcount++] = (comp_data.pressure >> 8) & 0xFF;
+//					outBuffer[bufcount++] = (comp_data.pressure >> 16) & 0xFF;
+//					outBuffer[bufcount++] = (comp_data.pressure >> 24) & 0xFF;
+//
+//					outBuffer[bufcount++] = comp_data.humidity & 0xFF;
+//					outBuffer[bufcount++] = (comp_data.humidity >> 8) & 0xFF;
+//					outBuffer[bufcount++] = (comp_data.humidity >> 16) & 0xFF;
+//					outBuffer[bufcount++] = (comp_data.humidity >> 24) & 0xFF;
+//
+//					UART_polled_tx_string( &g_uart, "monitoring\n" );
+//					UART_send(&g_uart, outBuffer ,bufcount );
 
-					outBuffer[bufcount++] = comp_data.pressure & 0xFF;
-					outBuffer[bufcount++] = (comp_data.pressure >> 8) & 0xFF;
-					outBuffer[bufcount++] = (comp_data.pressure >> 16) & 0xFF;
-					outBuffer[bufcount++] = (comp_data.pressure >> 24) & 0xFF;
-
-					outBuffer[bufcount++] = comp_data.humidity & 0xFF;
-					outBuffer[bufcount++] = (comp_data.humidity >> 8) & 0xFF;
-					outBuffer[bufcount++] = (comp_data.humidity >> 16) & 0xFF;
-					outBuffer[bufcount++] = (comp_data.humidity >> 24) & 0xFF;
-
-					UART_polled_tx_string( &g_uart, "monitoring\n" );
-					UART_send(&g_uart, outBuffer ,bufcount );
-
-				}
 
 				//begin of control_digi commands
-				if (commandID == ADCRWCMDID){
+				}else if (commandID == ADCRWCMDID){
 					// adc read/write
 					uint8_t adc_num = (uint8_t) buffer[4];
 					uint8_t rw = (uint8_t) buffer[5];
