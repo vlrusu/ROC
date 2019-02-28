@@ -46,7 +46,7 @@ int readout_obloc_place_holder;
 
 extern char init_buff[16];
 extern char dataBuffer[2000];
-extern char outBuffer[2000]; // buffer for printing to serial port
+extern char outBuffer[1000]; // buffer for printing to serial port
 extern uint8_t rx_buff[100];
 extern uint8_t buffer[256]; // buffer for reading from serial port
 extern uint32_t writePtr;

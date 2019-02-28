@@ -58,8 +58,8 @@ int main()
 	//		sprintf(outBuffer,"Last git revision: %s\n",LAST_GIT_REV);
 	//			UART_polled_tx_string( &g_uart, outBuffer );
 
-	int readout_enabled = 0;
-	int calibration_enabled = 0;
+	uint8_t readout_enabled = 0;
+	uint8_t calibration_enabled = 0;
 	int readout_totalTriggers = 0;
 
 	//register address for bit banging
@@ -108,13 +108,13 @@ int main()
 
 	// outputs for calpulse enable
 
-	for (int imcp = 0; imcp < 8; imcp++){
+	for (uint8_t imcp = 0; imcp < 8; imcp++){
 		MCP_pinMode(&preampMCP[MCPCALIB], MCPCALIBCHAN[imcp], MCP_OUTPUT);
 	}
 
 
 	//setup LTC2634, preamp DACs
-	for (int idac = 0 ; idac < 96; idac++){
+	for (uint8_t idac = 0 ; idac < 96; idac++){
 		if (idac<14)
 			LTC2634_setup(&dacs[idac],&preampMCP[MCPCAL0],idac+3,&preampMCP[MCPCAL0],2,&preampMCP[MCPCAL0],1);
 		else if (idac<24)
@@ -135,7 +135,7 @@ int main()
 
 
 	// Set default thresholds and gains
-	for (int i = 0 ; i < 96 ; i++){
+	for (uint8_t i = 0 ; i < 96 ; i++){
 		strawsCal[i]._ltc = &dacs[i/2];
 		strawsHV[i]._ltc = &dacs[48+i/2];
 		if (i%2 == 0){
@@ -247,7 +247,7 @@ int main()
 	//		UART_polled_tx_string( &g_uart, outBuffer );
 	//
 	*(registers_0_addr+12) = 1;
-	for (int i=0;i<8;i++)
+	for (uint8_t i=0;i<8;i++)
 		AD5318_write(g_spi[3],1,i,default_caldac[i]);
 	*(registers_0_addr+12) = 0;
 
@@ -278,7 +278,7 @@ int main()
 
 
 		size_t rx_size =UART_get_rx(&g_uart, rx_buff, sizeof(rx_buff));
-		for (int j=0;j<rx_size;j++){
+		for (uint16_t j=0;j<rx_size;j++){
 			buffer[writePtr] = rx_buff[j];
 			writePtr++;
 		}
@@ -361,7 +361,7 @@ int main()
 					uint8_t chan_mask = (uint8_t) buffer[4];
 					uint16_t value = readU16fromBytes(&buffer[5]);
 					*(registers_0_addr+0x11) = 1;
-					for (int i=0;i<8;i++){
+					for (uint8_t i=0;i<8;i++){
 						if (chan_mask & (0x1<<i))
 							AD5318_write(g_spi[3],1, i,value);
 					}
@@ -402,12 +402,12 @@ int main()
 				}else if (commandID == SETPULSERON){
 
 
-					for (int i = 0; i < 16; i++){
+					for (uint8_t i = 0; i < 16; i++){
 						MCP_pinWrite(&preampMCP[MCPCALIB],i+1,0);
 					}
 					uint8_t chan_mask = (uint8_t) buffer[4];
 					pulserOdd = (uint8_t) buffer[5];
-					for (int i=0;i<8;i++){
+					for (uint8_t i=0;i<8;i++){
 						if ((0x1<<i) & chan_mask){
 							MCP_pinWrite(&preampMCP[MCPCALIB],calpulse_chanmap[i],1);
 						}
@@ -471,7 +471,8 @@ int main()
 					uint8_t ddrren = (uint8_t) buffer[6];
 					uint8_t ddrdmaen = (uint8_t) buffer[7];
 					uint8_t ddrnhits = (uint8_t) buffer[8];
-					uint16_t ddrraddr = readU16fromBytes(&buffer[9]);
+					uint8_t ddrpattern = (uint8_t) buffer[9];
+					uint16_t ddrraddr = readU16fromBytes(&buffer[10]);
 					uint32_t retv = 0xF;
 
 					*(registers_0_addr + 0x20) = ddrnhits;
@@ -480,17 +481,19 @@ int main()
 					*(registers_0_addr + 0x23) = ddrwen;
 					*(registers_0_addr + 0x24) = ddrren;
 					*(registers_0_addr + 0x25) = ddrdmaen;
-					*(registers_0_addr + 0x27) = ddrraddr;
+					*(registers_0_addr + 0x27) = ddrpattern;
+					*(registers_0_addr + 0x28) = ddrraddr;
 					retv = *(registers_0_addr + 0x26);
-					uint32_t dataddr = *(registers_0_addr + 0x28);
+					uint32_t dataddr = *(registers_0_addr + 0x29);
 					outBuffer[bufcount++] = TESTDDR;
-					outBuffer[bufcount++] = 15;
+					outBuffer[bufcount++] = 16;
 					outBuffer[bufcount++] = 0;
 					outBuffer[bufcount++] = ddrnhits;
 					outBuffer[bufcount++] = ddrcs;
 					outBuffer[bufcount++] = ddrwen;
 					outBuffer[bufcount++] = ddrren;
 					outBuffer[bufcount++] = ddrdmaen;
+					outBuffer[bufcount++] = ddrpattern;
 					outBuffer[bufcount++] = retv & 0xFF;
 					outBuffer[bufcount++] = (retv>>8) & 0xFF;
 					outBuffer[bufcount++] = (retv>>16) & 0xFF;
@@ -527,7 +530,7 @@ int main()
 					else{
 						outBuffer[bufcount++] = 768 & 0xff;
 						outBuffer[bufcount++] = 768 >> 8;
-						for (int ic = 0; ic < 96; ic++){
+						for (uint8_t ic = 0; ic < 96; ic++){
 							outBuffer[bufcount++] = default_gains_hv[ic] & 0xff;
 							outBuffer[bufcount++] = default_gains_hv[ic] >> 8;
 							outBuffer[bufcount++] = default_threshs_hv[ic] & 0xff;
@@ -551,7 +554,7 @@ int main()
 					outBuffer[bufcount++] = READMONADCS;
 					outBuffer[bufcount++] = 32;
 					outBuffer[bufcount++] = 0;
-					for (int i = 0 ; i < 8; i++){
+					for (uint8_t i = 0 ; i < 8; i++){
 						SPI_set_slave_select( &g_spi[0] , (i<4?SPI_SLAVE_0:SPI_SLAVE_1));
 						uint16_t addr = (i%4 <<11 );
 						SPI_transfer_frame( &g_spi[0], addr);
@@ -561,7 +564,7 @@ int main()
 						outBuffer[bufcount++] = (rx0 >> 8) & 0x0F;
 					}
 
-					for (int i = 0 ; i < 8; i++){
+					for (uint8_t i = 0 ; i < 8; i++){
 						SPI_set_slave_select( &g_spi[1] , (i<4?SPI_SLAVE_0:SPI_SLAVE_1));
 						uint16_t addr = (i%4 <<11 );
 						SPI_transfer_frame( &g_spi[1], addr);
@@ -602,7 +605,7 @@ int main()
 					outBuffer[bufcount++] = GETDEVICEID;
 					outBuffer[bufcount++] = 16;
 					outBuffer[bufcount++] = 0;
-					for (int i = 0 ; i < 16; i++)
+					for (uint8_t i = 0 ; i < 16; i++)
 						outBuffer[bufcount++] = data_buffer[i];
 					UART_polled_tx_string( &g_uart, "monitoring\n" );
 					UART_send(&g_uart, outBuffer ,bufcount );
@@ -759,7 +762,7 @@ int main()
 					uint32_t channel_mask1 = readU32fromBytes(&buffer[6]);
 					uint32_t channel_mask2 = readU32fromBytes(&buffer[10]);
 					uint32_t channel_mask3 = readU32fromBytes(&buffer[14]);
-					int adc_mode = 1;
+					int8_t adc_mode = 1;
 
 
 					uint32_t mapped_channel_mask1;
@@ -783,16 +786,16 @@ int main()
 
 					if (dophase){
 						int phases[48];
-						for (int ichan=0;ichan<48;ichan++){
+						for (uint8_t ichan=0;ichan<48;ichan++){
 							phases[ichan] = -1;
 							uint8_t adc_number = adc_map[ichan/8];
 							uint64_t thischanmask = (((uint64_t) 0x1)<<ichan);
 							if ((thischanmask & all_channel_mask) == 0x0){
-								for (int i=0; i<9;i++) outBuffer[bufcount++] = 0;
+								for (uint8_t i=0; i<9;i++) outBuffer[bufcount++] = 0;
 								continue;
 							}
 							if (((0x1<<(adc_number)) & ENABLED_ADCS) == 0x0){
-								for (int i=0; i<9;i++) outBuffer[bufcount++] = 0;
+								for (uint8_t i=0; i<9;i++) outBuffer[bufcount++] = 0;
 								continue;
 							}
 							digi_write(0xb,0x0);
@@ -806,7 +809,7 @@ int main()
 								digi_write(0xd,(uint16_t) (0x1<<(ichan-32)));
 							uint16_t results[12];
 
-							int i=0;
+							uint8_t i=0;
 							for (i=0;i<12;i++){
 								adc_write(0x16,i,(0x1<<(adc_number)));
 								adc_write(0x0D,9,(0x1<<(adc_number)));
@@ -843,22 +846,22 @@ int main()
 
 							int maxdist = 0;
 							//int bestclock = -1;
-							int bestclock = 0xff;
-							for (int i=0;i<12;i++){
+							uint8_t bestclock = 0xff;
+							for (uint8_t i=0;i<12;i++){
 								if (results[i] != 0x2AA && results[i] != 0x155){
 									continue;
 								}
 								int thisdist = 0;
-								for (int j=1;j<12;j++){
-									int i2 = (i+j) % 12;
+								for (uint8_t j=1;j<12;j++){
+									uint8_t i2 = (i+j) % 12;
 									if ((results[i2] != 0x2AA && results[i2] != 0x155) || results[i2] != results[i]){
 										break;
 									}
 									thisdist++;
 								}
 								int thisdist2 = 0;
-								for (int j=1;j<12;j++){
-									int i2 = (i-j+12) % 12;
+								for (uint8_t j=1;j<12;j++){
+									uint8_t i2 = (i-j+12) % 12;
 									if ((results[i2] != 0x2AA && results[i2] != 0x155) || results[i2] != results[i]){
 										break;
 									}
@@ -879,7 +882,7 @@ int main()
 							//if (bestclock > -1)
 							if (bestclock < 12){
 								phases[ichan] = bestclock;
-								for (int i=0; i<6;i++) outBuffer[bufcount++] = 0;
+								for (uint8_t i=0; i<6;i++) outBuffer[bufcount++] = 0;
 							}
 							else{
 								//								sprintf(outBuffer,"%d: Could not find useable clock phase %02x %02x %02x\n",ichan,results[0],results[3],results[6]);
@@ -895,14 +898,14 @@ int main()
 						}
 
 						// get best phase for each adc
-						for (int i=0;i<6;i++){
+						for (uint8_t i=0;i<6;i++){
 							int phasecount[12] = {0,0,0,0,0,0,0,0,0,0,0,0};
-							for (int j=0;j<8;j++)
+							for (uint8_t j=0;j<8;j++)
 								if (phases[i*8+j] >= 0)
 									phasecount[phases[i*8+j]]++;
 							int maxcount = 0;
 							adc_phases[adc_map[i]] = 0;
-							for (int j=0;j<12;j++){
+							for (uint8_t j=0;j<12;j++){
 								if (phasecount[j] > maxcount){
 									maxcount = phasecount[j];
 									adc_phases[adc_map[i]] = j;
@@ -910,11 +913,11 @@ int main()
 							}
 						}
 					}else{
-						for (int i=0; i<9*48;i++) outBuffer[bufcount++] = 0;
+						for (uint16_t i=0; i<9*48;i++) outBuffer[bufcount++] = 0;
 					}
 
 					// now do bitslip
-					for (int i=0;i<6;i++){
+					for (uint8_t i=0;i<6;i++){
 
 						if ((0x1<<i) & ENABLED_ADCS){
 							if (clock < 99){
@@ -926,7 +929,7 @@ int main()
 							}
 						}
 					}
-					int ichan;
+					uint8_t ichan;
 					for (ichan=0;ichan<48;ichan++){
 						uint8_t adc_number = adc_map[ichan/8];
 						uint64_t thischanmask = (((uint64_t) 0x1)<<ichan);
@@ -949,8 +952,8 @@ int main()
 							digi_write(0xe,(uint16_t) (0x1<<(ichan-16)));
 						else
 							digi_write(0xd,(uint16_t) (0x1<<(ichan-32)));
-						int success = 0;
-						for (int i=0;i<10;i++){
+						uint8_t success = 0;
+						for (uint8_t i=0;i<10;i++){
 							digi_write(0x10,0);
 							*(registers_0_addr + 0x44) = 1;
 							digi_write(0x10,1);
@@ -1016,14 +1019,14 @@ int main()
 					}
 
 					if (ichan<48){
-						for (int i=ichan; i<48; i++) {
+						for (uint8_t i=ichan; i<48; i++) {
 							outBuffer[bufcount] = outBuffer[bufcount] & (~((uint8_t)( 1 << (i % 8))));
 							if (((i+1)%8)==0) bufcount++;
 						}
 					} //match the format if break in between
 
 					// check at the end with mixed frequency ADC
-					for (int i=0;i<6;i++){
+					for (uint8_t i=0;i<6;i++){
 
 						if ((0x1<<i) & ENABLED_ADCS){
 							if (clock < 99){
@@ -1097,7 +1100,7 @@ int main()
 					}
 
 					if (ichan<48){
-						for (int i=ichan; i<48; i++) {
+						for (uint8_t i=ichan; i<48; i++) {
 							outBuffer[bufcount] = outBuffer[bufcount] & (~((uint8_t)( 1 << (ichan % 8))));
 							if (((i+1)%8)==0) bufcount++;
 						}
@@ -1149,7 +1152,7 @@ int main()
 					uint16_t max_total_delay = readU16fromBytes(&buffer[28]);
 					uint8_t mode = buffer[30];
 
-					for (int i=0;i<6;i++){
+					for (uint8_t i=0;i<6;i++){
 						if ((0x1<<i) & ENABLED_ADCS){
 							if (clock < 99){
 								adc_write(0x16,clock,(0x1<<i));
@@ -1204,7 +1207,7 @@ int main()
 					outBuffer[bufcount++] = adc_mode >> 8;
 					outBuffer[bufcount++] = tdc_mode & 0xff;
 					outBuffer[bufcount++] = tdc_mode >> 8;
-					for (int i=0; i<8; i++)
+					for (uint8_t i=0; i<8; i++)
 						outBuffer[bufcount++] = (uint8_t) tdc_string[i];
 					outBuffer[bufcount++] = clock;
 					outBuffer[bufcount++] = num_triggers & 0xff;
@@ -1314,7 +1317,7 @@ int main()
 					outBuffer[bufcount++] = ADCINITINFOCMDID;
 					outBuffer[bufcount++] = 16;
 					outBuffer[bufcount++] = 0;
-					for (int i=0; i<16; i++)
+					for (uint8_t i=0; i<16; i++)
 						outBuffer[bufcount++] = init_buff[i];
 					UART_polled_tx_string( &g_uart, "monitoring\n" );
 					UART_send(&g_uart, outBuffer ,bufcount );
@@ -1323,7 +1326,7 @@ int main()
 					outBuffer[bufcount++] = PACKAGETESTCMDID;
 					outBuffer[bufcount++] = 0xCA;
 					outBuffer[bufcount++] = 1;
-					for (int i=0; i<458; i++)
+					for (uint16_t i=0; i<458; i++)
 						outBuffer[bufcount++] = i%256;
 					UART_polled_tx_string( &g_uart, "monitoring\n" );
 					UART_send(&g_uart, outBuffer ,bufcount );
@@ -1332,7 +1335,7 @@ int main()
 
 				// If we didn't use the whole buffer, the rest must be the next command
 				//memmove(&buffer[0],&buffer[numBytes],writePtr-numBytes);
-				for (int j=0;j<writePtr-numBytes;j++){
+				for (uint16_t j=0;j<writePtr-numBytes;j++){
 					buffer[j] = buffer[j+numBytes];
 				}
 				writePtr -= numBytes;

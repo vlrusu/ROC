@@ -29,7 +29,7 @@ int adc_map[6] = {0,1,2,3,4,5};
 int adc_phases[6] = {0,0,0,0,0,0};
 
 
-char outBuffer[2000]; // buffer for printing to serial port
+char outBuffer[1000]; // buffer for printing to serial port
 char dataBuffer[2000];
 char init_buff[16];// buffer for storing adc_init returns
 uint8_t rx_buff[100];
