@@ -5,6 +5,7 @@
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
 ../AD5318.c \
+../Commands.c \
 ../DS28CM00.c \
 ../I2C.c \
 ../LTC2634.c \
@@ -16,6 +17,7 @@ C_SRCS += \
 
 OBJS += \
 ./AD5318.o \
+./Commands.o \
 ./DS28CM00.o \
 ./I2C.o \
 ./LTC2634.o \
@@ -27,6 +29,7 @@ OBJS += \
 
 C_DEPS += \
 ./AD5318.d \
+./Commands.d \
 ./DS28CM00.d \
 ./I2C.d \
 ./LTC2634.d \
