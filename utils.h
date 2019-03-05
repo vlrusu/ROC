@@ -75,6 +75,7 @@ void read_data2(int *delay_count, int *trigger_count, uint16_t *lasthit);
 void get_rates(uint32_t channel_mask1, uint32_t channel_mask2, uint32_t channel_mask3, int num_delays, int num_samples);
 void get_mapped_channels(uint32_t *channel_mask1, uint32_t *channel_mask2, uint32_t *channel_mask3, uint32_t *mapped_channel_mask1, uint32_t *mapped_channel_mask2);
 
+void outBufSend(UART_instance_t g_uart, char *outBuffer, uint16_t bufcount);
 void adc_spi(uint8_t rw, uint8_t bytes, uint16_t address, uint8_t *data, uint8_t adc_mask_r);
 void adc_write(uint16_t address, uint8_t data, uint8_t adc_mask_r);
 uint8_t adc_read(uint16_t address, uint8_t adc_num);

@@ -13,7 +13,7 @@ int channel_map[48] = {
 		43,37,31,25,19,13,7,1,
 		92,86,80,74,68,62,56,50,
 		44,38,32,26,20,14,8,2};
-int adc_map[6] = {0,1,2,3,4,5};
+
 #endif
 #if !IS_CAL
 int channel_map[48] = {
@@ -23,9 +23,10 @@ int channel_map[48] = {
 		94,88,82,76,70,64,58,52,
 		47,41,35,29,23,17,11,5,
 		95,89,83,77,71,65,59,53};
-int adc_map[6] = {0,1,2,3,4,5};
+
 #endif
 
+int adc_map[6] = {0,1,2,3,4,5};
 int adc_phases[6] = {0,0,0,0,0,0};
 
 
@@ -41,6 +42,7 @@ int readout_obloc;
 int readout_mode;
 int readout_wordsPerTrigger;
 int readout_numTriggers;
+
 
 int calibration_count[32];
 uint32_t calibration_done;
@@ -95,7 +97,7 @@ uint32_t readU32fromBytes(uint8_t data[])
 
 void delay_ms(uint32_t us)
 {
-    volatile uint32_t delay_count = SystemCoreClock / 1000. * us;
+    volatile uint32_t delay_count = SystemCoreClock / 1000 * us;
 
     while(delay_count > 0u)
     {
@@ -105,7 +107,7 @@ void delay_ms(uint32_t us)
 
 void delayUs(int us)
 {
-	volatile uint32_t delay_count = SystemCoreClock / 1000000. * us;
+	volatile uint32_t delay_count = SystemCoreClock / 1000000 * us;
 
 	while(delay_count > 0u)
 	{
@@ -650,3 +652,7 @@ void get_mapped_channels(uint32_t *channel_mask1, uint32_t *channel_mask2, uint3
 	}
 }
 
+void outBufSend(UART_instance_t g_uart, char *outBuffer, uint16_t bufcount){
+	UART_polled_tx_string( &g_uart, "monitoring\n" );
+	UART_send(&g_uart, outBuffer ,bufcount );
+}

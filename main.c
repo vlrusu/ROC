@@ -7,8 +7,8 @@
 
 #include "./CMSIS/cortexm1_cfg.h"
 #include "./CMSIS/system_cortexm1_cfg.h"
-#include <stdio.h>
-#include <string.h>
+//#include <stdio.h>
+//#include <string.h>
 
 
 #include "setup.h"
@@ -25,11 +25,11 @@ uint16_t default_threshs_hv[96] = {322,284,329,317,325,321,340,347,351,339,348,3
 
 
 
-const int default_caldac[8] = {1000,1000,1000,1000,1000,1000,1000,1000};
+const uint16_t default_caldac[8] = {1000,1000,1000,1000,1000,1000,1000,1000};
 
-const int calpulse_chanmap[8]={9,1,10,2,11,3,12,4};
+const uint8_t calpulse_chanmap[8]={9,1,10,2,11,3,12,4};
 
-const int default_delay = 200;
+const uint8_t default_delay = 200;
 
 
 
@@ -73,8 +73,8 @@ int main()
 	/*Initialize the CoreSysService_PF driver*/
 	SYS_init(CSS_PF_BASE_ADDRESS);
 
-	uint32_t loopCount = 0;
-	uint32_t ledPattern = 0x1;
+	uint16_t loopCount = 0;
+	uint8_t ledPattern = 0x1;
 	_Bool togglecal = 1;
 
 	//sPI initialization -- make sure the memory map in the smart design is contiguous and the mapping works
@@ -268,7 +268,7 @@ int main()
 
 		if (loopCount == 20000){
 			ledPattern ^= 0x1;
-			GPIO_set_output( &g_gpio, GPIO_0, ledPattern);
+			GPIO_set_output( &g_gpio, GPIO_0, (uint32_t)ledPattern);
 
 			loopCount = 0;
 		}
@@ -323,8 +323,7 @@ int main()
 					outBuffer[bufcount++] = channel >> 8;
 					outBuffer[bufcount++] = value & 0xff;
 					outBuffer[bufcount++] = value >> 8;
-					UART_polled_tx_string( &g_uart, "monitoring\n" );
-					UART_send(&g_uart, outBuffer ,bufcount );
+					outBufSend(g_uart, outBuffer, bufcount);
 
 
 					// Set preamp threshold
@@ -352,28 +351,26 @@ int main()
 					outBuffer[bufcount++] = channel >> 8;
 					outBuffer[bufcount++] = value & 0xff;
 					outBuffer[bufcount++] = value >> 8;
-					UART_polled_tx_string( &g_uart, "monitoring\n" );
-					UART_send(&g_uart, outBuffer ,bufcount );
+					outBufSend(g_uart, outBuffer, bufcount);
 
 
-				// }else if (commandID == SETCALDAC){
+				 }else if (commandID == SETCALDAC){
 
-				// 	uint8_t chan_mask = (uint8_t) buffer[4];
-				// 	uint16_t value = readU16fromBytes(&buffer[5]);
-				// 	*(registers_0_addr+0x11) = 1;
-				// 	for (uint8_t i=0;i<8;i++){
-				// 		if (chan_mask & (0x1<<i))
-				// 			AD5318_write(g_spi[3],1, i,value);
-				// 	}
-				// 	*(registers_0_addr+0x11) = 0;
-				// 	outBuffer[bufcount++] = SETCALDAC;
-				// 	outBuffer[bufcount++] = 3;
-				// 	outBuffer[bufcount++] = 0;
-				// 	outBuffer[bufcount++] = chan_mask;
-				// 	outBuffer[bufcount++] = value & 0xff;
-				// 	outBuffer[bufcount++] = value >> 8;
-				// 	UART_polled_tx_string( &g_uart, "monitoring\n" );
-				// 	UART_send(&g_uart, outBuffer ,bufcount );
+				 	uint8_t chan_mask = (uint8_t) buffer[4];
+				 	uint16_t value = readU16fromBytes(&buffer[5]);
+				 	*(registers_0_addr+0x11) = 1;
+				 	for (uint8_t i=0;i<8;i++){
+				 		if (chan_mask & (0x1<<i))
+				 			AD5318_write(g_spi[3],1, i,value);
+				 	}
+				 	*(registers_0_addr+0x11) = 0;
+				 	outBuffer[bufcount++] = SETCALDAC;
+				 	outBuffer[bufcount++] = 3;
+				 	outBuffer[bufcount++] = 0;
+				 	outBuffer[bufcount++] = chan_mask;
+				 	outBuffer[bufcount++] = value & 0xff;
+				 	outBuffer[bufcount++] = value >> 8;
+				 	outBufSend(g_uart, outBuffer, bufcount);
 
 
 					//				}else if (commandID == SENDONECALPULSE){
@@ -434,8 +431,7 @@ int main()
 					outBuffer[bufcount++] = (pulserDelay>>8) & 0xff;
 					outBuffer[bufcount++] = (pulserDelay>>16) & 0xff;
 					outBuffer[bufcount++] = (pulserDelay>>24) & 0xff;
-					UART_polled_tx_string( &g_uart, "monitoring\n" );
-					UART_send(&g_uart, outBuffer ,bufcount );
+					outBufSend(g_uart, outBuffer, bufcount);
 
 
 				}else if (commandID == SETPULSEROFF){
@@ -444,68 +440,64 @@ int main()
 					outBuffer[bufcount++] = SETPULSEROFF;
 					outBuffer[bufcount++] = 0;
 					outBuffer[bufcount++] = 0;
-					UART_polled_tx_string( &g_uart, "monitoring\n" );
-					UART_send(&g_uart, outBuffer ,bufcount );
+					outBufSend(g_uart, outBuffer, bufcount);
 
-				// }else if (commandID == WHOAREYOU){
+				 }else if (commandID == WHOAREYOU){
 
-				// 	outBuffer[bufcount++] = WHOAREYOU;
-				// 	outBuffer[bufcount++] = 0;
-				// 	outBuffer[bufcount++] = 0;
-				// 	UART_polled_tx_string( &g_uart, "monitoring\n" );
-				// 	UART_send(&g_uart, outBuffer ,bufcount );
+				 	outBuffer[bufcount++] = WHOAREYOU;
+				 	outBuffer[bufcount++] = 0;
+				 	outBuffer[bufcount++] = 0;
+				 	outBufSend(g_uart, outBuffer, bufcount);
 
-				// }else if (commandID == RESETROC){
-				// 	*(registers_0_addr + 0x10) = 0;
-				// 	*(registers_0_addr + 0x10) = 1;
-				// 	outBuffer[bufcount++] = RESETROC;
-				// 	outBuffer[bufcount++] = 0;
-				// 	outBuffer[bufcount++] = 0;
+				 }else if (commandID == RESETROC){
+				 	*(registers_0_addr + 0x10) = 0;
+				 	*(registers_0_addr + 0x10) = 1;
+				 	outBuffer[bufcount++] = RESETROC;
+				 	outBuffer[bufcount++] = 0;
+				 	outBuffer[bufcount++] = 0;
 
 
-				// 	UART_polled_tx_string( &g_uart, "monitoring\n" );
-				// 	UART_send(&g_uart, outBuffer ,bufcount );
-				// }else if (commandID == TESTDDR){
-				// 	uint8_t ddrcs = (uint8_t) buffer[4];
-				// 	uint8_t ddrwen = (uint8_t) buffer[5];
-				// 	uint8_t ddrren = (uint8_t) buffer[6];
-				// 	uint8_t ddrdmaen = (uint8_t) buffer[7];
-				// 	uint8_t ddrnhits = (uint8_t) buffer[8];
-				// 	uint8_t ddrpattern = (uint8_t) buffer[9];
-				// 	uint16_t ddrraddr = readU16fromBytes(&buffer[10]);
-				// 	uint32_t retv = 0xF;
+				 	outBufSend(g_uart, outBuffer, bufcount);
+				 }else if (commandID == TESTDDR){
+				 	uint8_t ddrcs = (uint8_t) buffer[4];
+				 	uint8_t ddrwen = (uint8_t) buffer[5];
+				 	uint8_t ddrren = (uint8_t) buffer[6];
+				 	uint8_t ddrdmaen = (uint8_t) buffer[7];
+				 	uint8_t ddrnhits = (uint8_t) buffer[8];
+				 	uint8_t ddrpattern = (uint8_t) buffer[9];
+				 	uint16_t ddrraddr = readU16fromBytes(&buffer[10]);
+				 	uint32_t retv = 0xF;
 
-				// 	*(registers_0_addr + 0x20) = ddrnhits;
-				// 	*(registers_0_addr + 0x21) = 0;
-				// 	*(registers_0_addr + 0x22) = ddrcs;
-				// 	*(registers_0_addr + 0x23) = ddrwen;
-				// 	*(registers_0_addr + 0x24) = ddrren;
-				// 	*(registers_0_addr + 0x25) = ddrdmaen;
-				// 	*(registers_0_addr + 0x27) = ddrpattern;
-				// 	*(registers_0_addr + 0x28) = ddrraddr;
-				// 	retv = *(registers_0_addr + 0x26);
-				// 	uint32_t dataddr = *(registers_0_addr + 0x29);
-				// 	outBuffer[bufcount++] = TESTDDR;
-				// 	outBuffer[bufcount++] = 16;
-				// 	outBuffer[bufcount++] = 0;
-				// 	outBuffer[bufcount++] = ddrnhits;
-				// 	outBuffer[bufcount++] = ddrcs;
-				// 	outBuffer[bufcount++] = ddrwen;
-				// 	outBuffer[bufcount++] = ddrren;
-				// 	outBuffer[bufcount++] = ddrdmaen;
-				// 	outBuffer[bufcount++] = ddrpattern;
-				// 	outBuffer[bufcount++] = retv & 0xFF;
-				// 	outBuffer[bufcount++] = (retv>>8) & 0xFF;
-				// 	outBuffer[bufcount++] = (retv>>16) & 0xFF;
-				// 	outBuffer[bufcount++] = (retv>>24) & 0xFF;
-				// 	outBuffer[bufcount++] = ddrraddr & 0xFF;
-				// 	outBuffer[bufcount++] = (ddrraddr>>8) & 0xFF;
-				// 	outBuffer[bufcount++] =  dataddr& 0xFF;
-				// 	outBuffer[bufcount++] = (dataddr>>8) & 0xFF;
-				// 	outBuffer[bufcount++] = (dataddr>>16) & 0xFF;
-				// 	outBuffer[bufcount++] = (dataddr>>24) & 0xFF;
-				// 	UART_polled_tx_string( &g_uart, "monitoring\n" );
-				// 	UART_send(&g_uart, outBuffer ,bufcount );
+				 	*(registers_0_addr + 0x20) = ddrnhits;
+				 	*(registers_0_addr + 0x21) = 0;
+				 	*(registers_0_addr + 0x22) = ddrcs;
+				 	*(registers_0_addr + 0x23) = ddrwen;
+				 	*(registers_0_addr + 0x24) = ddrren;
+				 	*(registers_0_addr + 0x25) = ddrdmaen;
+				 	*(registers_0_addr + 0x27) = ddrpattern;
+				 	*(registers_0_addr + 0x28) = ddrraddr;
+				 	retv = *(registers_0_addr + 0x26);
+				 	uint32_t dataddr = *(registers_0_addr + 0x29);
+				 	outBuffer[bufcount++] = TESTDDR;
+				 	outBuffer[bufcount++] = 16;
+				 	outBuffer[bufcount++] = 0;
+				 	outBuffer[bufcount++] = ddrnhits;
+				 	outBuffer[bufcount++] = ddrcs;
+				 	outBuffer[bufcount++] = ddrwen;
+				 	outBuffer[bufcount++] = ddrren;
+				 	outBuffer[bufcount++] = ddrdmaen;
+				 	outBuffer[bufcount++] = ddrpattern;
+				 	outBuffer[bufcount++] = retv & 0xFF;
+				 	outBuffer[bufcount++] = (retv>>8) & 0xFF;
+				 	outBuffer[bufcount++] = (retv>>16) & 0xFF;
+				 	outBuffer[bufcount++] = (retv>>24) & 0xFF;
+				 	outBuffer[bufcount++] = ddrraddr & 0xFF;
+				 	outBuffer[bufcount++] = (ddrraddr>>8) & 0xFF;
+				 	outBuffer[bufcount++] =  dataddr& 0xFF;
+				 	outBuffer[bufcount++] = (dataddr>>8) & 0xFF;
+				 	outBuffer[bufcount++] = (dataddr>>16) & 0xFF;
+				 	outBuffer[bufcount++] = (dataddr>>24) & 0xFF;
+				 	outBufSend(g_uart, outBuffer, bufcount);
 
 
 				}else if (commandID == DUMPSETTINGS){
@@ -541,41 +533,39 @@ int main()
 							outBuffer[bufcount++] = default_threshs_cal[ic] >> 8;
 						}
 					}
-					UART_polled_tx_string( &g_uart, "monitoring\n" );
-					UART_send(&g_uart, outBuffer ,bufcount );
+					outBufSend(g_uart, outBuffer, bufcount);
 
 
-				// }else if (commandID == READMONADCS){
+				 }else if (commandID == READMONADCS){
 
-				// 	//read currents
+				 	//read currents
 
-				// 	uint32_t rx0;
+				 	uint32_t rx0;
 
-				// 	outBuffer[bufcount++] = READMONADCS;
-				// 	outBuffer[bufcount++] = 32;
-				// 	outBuffer[bufcount++] = 0;
-				// 	for (uint8_t i = 0 ; i < 8; i++){
-				// 		SPI_set_slave_select( &g_spi[0] , (i<4?SPI_SLAVE_0:SPI_SLAVE_1));
-				// 		uint16_t addr = (i%4 <<11 );
-				// 		SPI_transfer_frame( &g_spi[0], addr);
-				// 		rx0 = SPI_transfer_frame( &g_spi[0], addr);
-				// 		SPI_clear_slave_select( &g_spi[0] , (i<4?SPI_SLAVE_0:SPI_SLAVE_1));
-				// 		outBuffer[bufcount++] = rx0 & 0xFF;
-				// 		outBuffer[bufcount++] = (rx0 >> 8) & 0x0F;
-				// 	}
+				 	outBuffer[bufcount++] = READMONADCS;
+				 	outBuffer[bufcount++] = 32;
+				 	outBuffer[bufcount++] = 0;
+				 	for (uint8_t i = 0 ; i < 8; i++){
+				 		SPI_set_slave_select( &g_spi[0] , (i<4?SPI_SLAVE_0:SPI_SLAVE_1));
+				 		uint16_t addr = (i%4 <<11 );
+				 		SPI_transfer_frame( &g_spi[0], addr);
+				 		rx0 = SPI_transfer_frame( &g_spi[0], addr);
+				 		SPI_clear_slave_select( &g_spi[0] , (i<4?SPI_SLAVE_0:SPI_SLAVE_1));
+				 		outBuffer[bufcount++] = rx0 & 0xFF;
+				 		outBuffer[bufcount++] = (rx0 >> 8) & 0x0F;
+				 	}
 
-				// 	for (uint8_t i = 0 ; i < 8; i++){
-				// 		SPI_set_slave_select( &g_spi[1] , (i<4?SPI_SLAVE_0:SPI_SLAVE_1));
-				// 		uint16_t addr = (i%4 <<11 );
-				// 		SPI_transfer_frame( &g_spi[1], addr);
-				// 		rx0 = SPI_transfer_frame( &g_spi[1], addr);
-				// 		SPI_clear_slave_select( &g_spi[1] , (i<4?SPI_SLAVE_0:SPI_SLAVE_1));
-				// 		outBuffer[bufcount++] = rx0 & 0xFF;
-				// 		outBuffer[bufcount++] = (rx0 >> 8) & 0x0F;
-				// 	}
+				 	for (uint8_t i = 0 ; i < 8; i++){
+				 		SPI_set_slave_select( &g_spi[1] , (i<4?SPI_SLAVE_0:SPI_SLAVE_1));
+				 		uint16_t addr = (i%4 <<11 );
+				 		SPI_transfer_frame( &g_spi[1], addr);
+				 		rx0 = SPI_transfer_frame( &g_spi[1], addr);
+				 		SPI_clear_slave_select( &g_spi[1] , (i<4?SPI_SLAVE_0:SPI_SLAVE_1));
+				 		outBuffer[bufcount++] = rx0 & 0xFF;
+				 		outBuffer[bufcount++] = (rx0 >> 8) & 0x0F;
+				 	}
 
-				// 	UART_polled_tx_string( &g_uart, "monitoring\n" );
-				// 	UART_send(&g_uart, outBuffer ,bufcount );
+				 	outBufSend(g_uart, outBuffer, bufcount);
 					//				}else if (commandID == MCPWRITEPIN){
 					//
 					//					uint16_t mcp = readU16fromBytes(&buffer[4]);;
@@ -597,59 +587,58 @@ int main()
 					//					outBuffer[bufcount++] = channel >> 8;
 					//
 					//					UART_send(&g_uart, outBuffer ,bufcount );
-				// }else if (commandID == GETDEVICEID){
+				 }else if (commandID == GETDEVICEID){
 
-				// 	uint8_t data_buffer[16];
-				// 	uint8_t status;
-				// 	status = SYS_get_serial_number(data_buffer, 0);
-				// 	outBuffer[bufcount++] = GETDEVICEID;
-				// 	outBuffer[bufcount++] = 16;
-				// 	outBuffer[bufcount++] = 0;
-				// 	for (uint8_t i = 0 ; i < 16; i++)
-				// 		outBuffer[bufcount++] = data_buffer[i];
-				// 	UART_polled_tx_string( &g_uart, "monitoring\n" );
-				// 	UART_send(&g_uart, outBuffer ,bufcount );
+				 	uint8_t data_buffer[16];
+				 	uint8_t status;
+				 	status = SYS_get_serial_number(data_buffer, 0);
+				 	outBuffer[bufcount++] = GETDEVICEID;
+				 	outBuffer[bufcount++] = 16;
+				 	outBuffer[bufcount++] = 0;
+				 	for (uint8_t i = 0 ; i < 16; i++)
+				 		outBuffer[bufcount++] = data_buffer[i];
+				 	UART_polled_tx_string( &g_uart, "monitoring\n" );
+				 	UART_send(&g_uart, outBuffer ,bufcount );
 
-				// }else if (commandID == READBMES){
+				 }else if (commandID == READBMES){
 
-				// 	outBuffer[bufcount++] = READBMES;
-				// 	outBuffer[bufcount++] = 24;
-				// 	rslt = bme280_set_sensor_mode(BME280_FORCED_MODE, &ptscal);
-				// 	ptscal.delay_ms(40);
-				// 	rslt = bme280_get_sensor_data(BME280_ALL, &comp_data, &ptscal);
-				// 	outBuffer[bufcount++] = comp_data.temperature & 0xFF;
-				// 	outBuffer[bufcount++] = (comp_data.temperature >> 8) & 0xFF;
-				// 	outBuffer[bufcount++] = (comp_data.temperature >> 16) & 0xFF;
-				// 	outBuffer[bufcount++] = (comp_data.temperature >> 24) & 0xFF;
-				// 	outBuffer[bufcount++] = comp_data.pressure & 0xFF;
-				// 	outBuffer[bufcount++] = (comp_data.pressure >> 8) & 0xFF;
-				// 	outBuffer[bufcount++] = (comp_data.pressure >> 16) & 0xFF;
-				// 	outBuffer[bufcount++] = (comp_data.pressure >> 24) & 0xFF;
-				// 	outBuffer[bufcount++] = comp_data.humidity & 0xFF;
-				// 	outBuffer[bufcount++] = (comp_data.humidity >> 8) & 0xFF;
-				// 	outBuffer[bufcount++] = (comp_data.humidity >> 16) & 0xFF;
-				// 	outBuffer[bufcount++] = (comp_data.humidity >> 24) & 0xFF;
-				// 	//					sprintf(outBuffer,"CAL %d %d %d\n",comp_data.temperature, comp_data.pressure, comp_data.humidity);
-				// 	//					MSS_UART_polled_tx( &g_mss_uart1, outBuffer, strlen(outBuffer) );
-				// 	rslt = bme280_set_sensor_mode(BME280_FORCED_MODE, &ptshv);
-				// 	ptshv.delay_ms(40);
-				// 	rslt = bme280_get_sensor_data(BME280_ALL, &comp_data, &ptshv);
-				// 	outBuffer[bufcount++] = comp_data.temperature & 0xFF;
-				// 	outBuffer[bufcount++] = (comp_data.temperature >> 8) & 0xFF;
-				// 	outBuffer[bufcount++] = (comp_data.temperature >> 16) & 0xFF;
-				// 	outBuffer[bufcount++] = (comp_data.temperature >> 24) & 0xFF;
-				// 	outBuffer[bufcount++] = comp_data.pressure & 0xFF;
-				// 	outBuffer[bufcount++] = (comp_data.pressure >> 8) & 0xFF;
-				// 	outBuffer[bufcount++] = (comp_data.pressure >> 16) & 0xFF;
-				// 	outBuffer[bufcount++] = (comp_data.pressure >> 24) & 0xFF;
-				// 	outBuffer[bufcount++] = comp_data.humidity & 0xFF;
-				// 	outBuffer[bufcount++] = (comp_data.humidity >> 8) & 0xFF;
-				// 	outBuffer[bufcount++] = (comp_data.humidity >> 16) & 0xFF;
-				// 	outBuffer[bufcount++] = (comp_data.humidity >> 24) & 0xFF;
-				// 	//					sprintf(outBuffer,"HV %d %d %d\n",comp_data.temperature, comp_data.pressure, comp_data.humidity);
-				// 	//					MSS_UART_polled_tx( &g_mss_uart1, outBuffer, strlen(outBuffer) );
-				// 	UART_polled_tx_string( &g_uart, "monitoring\n" );
-				// 	UART_send(&g_uart, outBuffer ,bufcount );
+				 	outBuffer[bufcount++] = READBMES;
+				 	outBuffer[bufcount++] = 24;
+				 	rslt = bme280_set_sensor_mode(BME280_FORCED_MODE, &ptscal);
+				 	ptscal.delay_ms(40);
+				 	rslt = bme280_get_sensor_data(BME280_ALL, &comp_data, &ptscal);
+				 	outBuffer[bufcount++] = comp_data.temperature & 0xFF;
+				 	outBuffer[bufcount++] = (comp_data.temperature >> 8) & 0xFF;
+				 	outBuffer[bufcount++] = (comp_data.temperature >> 16) & 0xFF;
+				 	outBuffer[bufcount++] = (comp_data.temperature >> 24) & 0xFF;
+				 	outBuffer[bufcount++] = comp_data.pressure & 0xFF;
+				 	outBuffer[bufcount++] = (comp_data.pressure >> 8) & 0xFF;
+				 	outBuffer[bufcount++] = (comp_data.pressure >> 16) & 0xFF;
+				 	outBuffer[bufcount++] = (comp_data.pressure >> 24) & 0xFF;
+				 	outBuffer[bufcount++] = comp_data.humidity & 0xFF;
+				 	outBuffer[bufcount++] = (comp_data.humidity >> 8) & 0xFF;
+				 	outBuffer[bufcount++] = (comp_data.humidity >> 16) & 0xFF;
+				 	outBuffer[bufcount++] = (comp_data.humidity >> 24) & 0xFF;
+				 	//					sprintf(outBuffer,"CAL %d %d %d\n",comp_data.temperature, comp_data.pressure, comp_data.humidity);
+				 	//					MSS_UART_polled_tx( &g_mss_uart1, outBuffer, strlen(outBuffer) );
+				 	rslt = bme280_set_sensor_mode(BME280_FORCED_MODE, &ptshv);
+				 	ptshv.delay_ms(40);
+				 	rslt = bme280_get_sensor_data(BME280_ALL, &comp_data, &ptshv);
+				 	outBuffer[bufcount++] = comp_data.temperature & 0xFF;
+				 	outBuffer[bufcount++] = (comp_data.temperature >> 8) & 0xFF;
+				 	outBuffer[bufcount++] = (comp_data.temperature >> 16) & 0xFF;
+				 	outBuffer[bufcount++] = (comp_data.temperature >> 24) & 0xFF;
+				 	outBuffer[bufcount++] = comp_data.pressure & 0xFF;
+				 	outBuffer[bufcount++] = (comp_data.pressure >> 8) & 0xFF;
+				 	outBuffer[bufcount++] = (comp_data.pressure >> 16) & 0xFF;
+				 	outBuffer[bufcount++] = (comp_data.pressure >> 24) & 0xFF;
+				 	outBuffer[bufcount++] = comp_data.humidity & 0xFF;
+				 	outBuffer[bufcount++] = (comp_data.humidity >> 8) & 0xFF;
+				 	outBuffer[bufcount++] = (comp_data.humidity >> 16) & 0xFF;
+				 	outBuffer[bufcount++] = (comp_data.humidity >> 24) & 0xFF;
+				 	//					sprintf(outBuffer,"HV %d %d %d\n",comp_data.temperature, comp_data.pressure, comp_data.humidity);
+				 	//					MSS_UART_polled_tx( &g_mss_uart1, outBuffer, strlen(outBuffer) );
+				 	outBufSend(g_uart, outBuffer, bufcount);
 
 					//begin of control_digi commands
 				}else if (commandID == ADCRWCMDID){
@@ -674,8 +663,7 @@ int main()
 						outBuffer[bufcount++] = address >> 8;
 						outBuffer[bufcount++] = result;
 						outBuffer[bufcount++] = 0;
-						UART_polled_tx_string( &g_uart, "monitoring\n" );
-						UART_send(&g_uart, outBuffer ,bufcount );
+						outBufSend(g_uart, outBuffer, bufcount);
 					}else{
 						adc_write(address,(uint8_t) data,(0x1<<adc_num));
 						//						sprintf(outBuffer,"Wrote adc %d address %02x: %02x\n",adc_num,address,data);
@@ -687,8 +675,7 @@ int main()
 						outBuffer[bufcount++] = address >> 8;
 						outBuffer[bufcount++] = data & 0xff;
 						outBuffer[bufcount++] = data >> 8;
-						UART_polled_tx_string( &g_uart, "monitoring\n" );
-						UART_send(&g_uart, outBuffer ,bufcount );
+						outBufSend(g_uart, outBuffer, bufcount);
 					}
 
 				}else if (commandID == BITSLIPCMDID){
@@ -751,8 +738,7 @@ int main()
 					outBuffer[bufcount++] = ( data2 >> 8 ) & 0xff;
 					outBuffer[bufcount++] = ( data2 >> 16 ) & 0xff;
 					outBuffer[bufcount++] = data2 >> 24;
-					UART_polled_tx_string( &g_uart, "monitoring\n" );
-					UART_send(&g_uart, outBuffer ,bufcount );
+					outBufSend(g_uart, outBuffer, bufcount);
 
 				}else if (commandID == AUTOBITSLIPCMDID){
 					// auto bitslip
@@ -780,8 +766,8 @@ int main()
 					uint64_t all_channel_mask = (((uint64_t) (mapped_channel_mask2)) <<32) | (uint64_t) (mapped_channel_mask1);
 
 					outBuffer[bufcount++] = AUTOBITSLIPCMDID;
-					outBuffer[bufcount++] = (22+9*48) & 0xff;
-					outBuffer[bufcount++] = (22+9*48) >> 8;
+					outBuffer[bufcount++] = (454) & 0xff;
+					outBuffer[bufcount++] = (454) >> 8;
 					outBuffer[bufcount++] = dophase;
 
 					if (dophase){
@@ -851,7 +837,7 @@ int main()
 								if (results[i] != 0x2AA && results[i] != 0x155){
 									continue;
 								}
-								int thisdist = 0;
+								uint8_t thisdist = 0;
 								for (uint8_t j=1;j<12;j++){
 									uint8_t i2 = (i+j) % 12;
 									if ((results[i2] != 0x2AA && results[i2] != 0x155) || results[i2] != results[i]){
@@ -859,7 +845,7 @@ int main()
 									}
 									thisdist++;
 								}
-								int thisdist2 = 0;
+								uint8_t thisdist2 = 0;
 								for (uint8_t j=1;j<12;j++){
 									uint8_t i2 = (i-j+12) % 12;
 									if ((results[i2] != 0x2AA && results[i2] != 0x155) || results[i2] != results[i]){
@@ -1119,8 +1105,7 @@ int main()
 					outBuffer[bufcount++] = ( error_mask >> 40 ) & 0xff;
 					outBuffer[bufcount++] = ( error_mask >> 48 ) & 0xff;
 					outBuffer[bufcount++] = error_mask >> 56;
-					UART_polled_tx_string( &g_uart, "monitoring\n" );
-					UART_send(&g_uart, outBuffer ,bufcount );
+					outBufSend(g_uart, outBuffer, bufcount);
 
 				}else if (commandID == READRATESCMDID){
 					uint16_t num_lookback = readU16fromBytes(&buffer[4]);
@@ -1130,12 +1115,11 @@ int main()
 					uint32_t channel_mask3 = readU32fromBytes(&buffer[16]);
 
 					outBuffer[bufcount++] = READRATESCMDID;
-					outBuffer[bufcount++] = (17*48) & 0xff;
-					outBuffer[bufcount++] = (17*48) >> 8;
+					outBuffer[bufcount++] = (816) & 0xff;
+					outBuffer[bufcount++] = (816) >> 8;
 
 					get_rates(channel_mask1,channel_mask2,channel_mask3,num_lookback,num_samples);
-					UART_polled_tx_string( &g_uart, "monitoring\n" );
-					UART_send(&g_uart, outBuffer ,bufcount );
+					outBufSend(g_uart, outBuffer, bufcount);
 
 				} else if (commandID == READDATACMDID){
 
@@ -1192,7 +1176,7 @@ int main()
 
 					outBuffer[bufcount++] = READDATACMDID;
 					//outBuffer[bufcount++] = 33;
-					outBuffer[bufcount++] = 27+8;
+					outBuffer[bufcount++] = 35;
 					outBuffer[bufcount++] = 0;
 					outBuffer[bufcount++] = enable_pulser;
 					outBuffer[bufcount++] = num_samples & 0xff;
@@ -1242,8 +1226,7 @@ int main()
 					readout_totalTriggers = 0;
 
 					outBuffer[bufcount++] = mode;
-					UART_polled_tx_string( &g_uart, "monitoring\n" );
-					UART_send(&g_uart, outBuffer ,bufcount );
+					outBufSend(g_uart, outBuffer, bufcount);
 
 					if (mode == 0){
 						int delay_count = 0;
@@ -1288,48 +1271,45 @@ int main()
 
 
 
-//				}else if (commandID == STOPRUNCMDID){
-//
-//					outBuffer[bufcount++] = STOPRUNCMDID;
-//					outBuffer[bufcount++] = 3;
-//					outBuffer[bufcount++] = 0;
-//					outBuffer[bufcount++] = readout_enabled;
-//
-//					if (readout_enabled == 0){
-//						//sprintf(outBuffer,"Error: no run to stop\n");
-//						//UART_polled_tx_string( &g_uart, outBuffer );
-//						outBuffer[bufcount++] = 0;
-//						outBuffer[bufcount++] = 0;
-//					}else{
-//						readout_enabled = 0;
-//						//sprintf(&dataBuffer[readout_obloc],"\nend\n");
-//						//UART_polled_tx_string( &g_uart, dataBuffer );
-//						//sprintf(outBuffer,"Run ended. Read %d triggers\n",readout_totalTriggers);
-//						//UART_polled_tx_string( &g_uart, outBuffer );
-//						outBuffer[bufcount++] = readout_totalTriggers & 0xff;
-//						outBuffer[bufcount++] = readout_totalTriggers >> 8;
-//					}
-//					UART_polled_tx_string( &g_uart, "monitoring\n" );
-//					UART_send(&g_uart, outBuffer ,bufcount );
-//
-//				}else if (commandID == ADCINITINFOCMDID){
-//
-//					outBuffer[bufcount++] = ADCINITINFOCMDID;
-//					outBuffer[bufcount++] = 16;
-//					outBuffer[bufcount++] = 0;
-//					for (uint8_t i=0; i<16; i++)
-//						outBuffer[bufcount++] = init_buff[i];
-//					UART_polled_tx_string( &g_uart, "monitoring\n" );
-//					UART_send(&g_uart, outBuffer ,bufcount );
+				}else if (commandID == STOPRUNCMDID){
 
-//				}else if (commandID == PACKAGETESTCMDID){
-//					outBuffer[bufcount++] = PACKAGETESTCMDID;
-//					outBuffer[bufcount++] = 0xCA;
-//					outBuffer[bufcount++] = 1;
-//					for (uint16_t i=0; i<458; i++)
-//						outBuffer[bufcount++] = i%256;
-//					UART_polled_tx_string( &g_uart, "monitoring\n" );
-//					UART_send(&g_uart, outBuffer ,bufcount );
+					outBuffer[bufcount++] = STOPRUNCMDID;
+					outBuffer[bufcount++] = 3;
+					outBuffer[bufcount++] = 0;
+					outBuffer[bufcount++] = readout_enabled;
+
+					if (readout_enabled == 0){
+						//sprintf(outBuffer,"Error: no run to stop\n");
+						//UART_polled_tx_string( &g_uart, outBuffer );
+						outBuffer[bufcount++] = 0;
+						outBuffer[bufcount++] = 0;
+					}else{
+						readout_enabled = 0;
+						//sprintf(&dataBuffer[readout_obloc],"\nend\n");
+						//UART_polled_tx_string( &g_uart, dataBuffer );
+						//sprintf(outBuffer,"Run ended. Read %d triggers\n",readout_totalTriggers);
+						//UART_polled_tx_string( &g_uart, outBuffer );
+						outBuffer[bufcount++] = readout_totalTriggers & 0xff;
+						outBuffer[bufcount++] = readout_totalTriggers >> 8;
+					}
+					outBufSend(g_uart, outBuffer, bufcount);
+
+				}else if (commandID == ADCINITINFOCMDID){
+
+					outBuffer[bufcount++] = ADCINITINFOCMDID;
+					outBuffer[bufcount++] = 16;
+					outBuffer[bufcount++] = 0;
+					for (uint8_t i=0; i<16; i++)
+						outBuffer[bufcount++] = init_buff[i];
+					outBufSend(g_uart, outBuffer, bufcount);
+
+				}else if (commandID == PACKAGETESTCMDID){
+					outBuffer[bufcount++] = PACKAGETESTCMDID;
+					outBuffer[bufcount++] = 0xCA;
+					outBuffer[bufcount++] = 1;
+					for (uint16_t i=0; i<458; i++)
+						outBuffer[bufcount++] = i%256;
+					outBufSend(g_uart, outBuffer, bufcount);
 
 				}
 
