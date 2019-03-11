@@ -810,7 +810,7 @@ int main()
 								readout_maxDelay = 50;
 								readout_mode = 0;
 								readout_wordsPerTrigger = 13;
-								readout_numTriggers = 1;
+								readout_numTriggers = 11;
 								readout_totalTriggers = 0;
 
 								int delay_count = 0;
@@ -819,7 +819,7 @@ int main()
 								uint16_t lasthit[13];
 
 								read_data2(&delay_count,&trigger_count,lasthit);
-								if (trigger_count != 1){
+								if (trigger_count != 11){
 
 									//									sprintf(outBuffer,"Didn't get enough triggers: %d\n",trigger_count);
 									//									UART_polled_tx_string( &g_uart, outBuffer );
@@ -949,7 +949,7 @@ int main()
 							readout_maxDelay = 50;
 							readout_mode = 0;
 							readout_wordsPerTrigger = 13;
-							readout_numTriggers = 1;
+							readout_numTriggers = 11;
 							readout_totalTriggers = 0;
 
 							int delay_count = 0;
@@ -958,7 +958,7 @@ int main()
 							uint16_t lasthit[13];
 
 							read_data2(&delay_count,&trigger_count,lasthit);
-							if (trigger_count != 1){
+							if (trigger_count != 11){
 								//								sprintf(outBuffer,"Didn't get enough triggers: %d\n",trigger_count);
 								//								UART_polled_tx_string( &g_uart, outBuffer );
 								break;
@@ -1058,7 +1058,7 @@ int main()
 						readout_maxDelay = 50;
 						readout_mode = 0;
 						readout_wordsPerTrigger = 13;
-						readout_numTriggers = 1;
+						readout_numTriggers = 11;
 						readout_totalTriggers = 0;
 
 						int delay_count = 0;
@@ -1067,7 +1067,7 @@ int main()
 						uint16_t lasthit[13];
 
 						read_data2(&delay_count,&trigger_count,lasthit);
-						if (trigger_count != 1){
+						if (trigger_count != 11){
 							//sprintf(outBuffer,"Didn't get enough triggers: %d\n",trigger_count);
 							//UART_polled_tx_string( &g_uart, outBuffer );
 							break;
