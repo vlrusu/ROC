@@ -34,7 +34,7 @@ const uint8_t default_delay = 200;
 
 
 #define BAUD_VALUE                  57600
-#define ENABLED_ADCS				0x01
+#define ENABLED_ADCS				0x3F
 
 const uint8_t MCPCALIBCHAN[8] = {1,2,3,4,9,10,11,12};
 
@@ -45,11 +45,6 @@ int main()
 	SystemCoreClockUpdate();
 	UART_init( &g_uart, UART_BASE_ADDRESS, (SYS_M1_CLK_FREQ/(16 * BAUD_VALUE))-1, (DATA_8_BITS | NO_PARITY));
 
-	GPIO_init( &g_gpio,    COREGPIO_BASE_ADDR, GPIO_APB_32_BITS_BUS );
-	//	GPIO_config( &g_gpio, GPIO_0, GPIO_OUTPUT_MODE);
-	GPIO_set_output( &g_gpio, GPIO_0, 0);
-
-
 	const uint8_t greeting[] = "\n\r\"Welcome to the ROC\"\n"
 			"\t - Sean Connery\n";
 
@@ -57,6 +52,14 @@ int main()
 	UART_polled_tx_string( &g_uart, greeting );
 	//		sprintf(outBuffer,"Last git revision: %s\n",LAST_GIT_REV);
 	//			UART_polled_tx_string( &g_uart, outBuffer );
+
+
+
+	GPIO_init( &g_gpio,    COREGPIO_BASE_ADDR, GPIO_APB_32_BITS_BUS );
+	//	GPIO_config( &g_gpio, GPIO_0, GPIO_OUTPUT_MODE);
+	GPIO_set_output( &g_gpio, GPIO_0, 0);
+
+
 
 	uint8_t readout_enabled = 0;
 	uint8_t calibration_enabled = 0;
