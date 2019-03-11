@@ -418,6 +418,7 @@ void read_data(int *delay_count, int *trigger_count)
 void read_data2(int *delay_count, int *trigger_count, uint16_t *lasthit)
 {
 	uint16_t memlevel = 0;
+	int fail_count = 0;
 	while (1){
 		if (memlevel < readout_wordsPerTrigger){
 			volatile uint32_t fifoinfo = *(registers_0_addr + 0x45);
@@ -432,13 +433,23 @@ void read_data2(int *delay_count, int *trigger_count, uint16_t *lasthit)
 		}
 
 		// have enough data, see if can read
+		int failed = 0;
 		for (int j=0;j<readout_wordsPerTrigger;j++){
 			uint16_t digioutput;
 			*(registers_0_addr + 0x40) = 1;
 			digioutput = *(registers_0_addr + 0x41);
 			memlevel -= 1;
+			if ((j == 0) && ((digioutput&0x1000) != 0x1000)){
+				failed = 1;
+				fail_count++;
+				break;
+			}
 			lasthit[j] = digioutput;
 		}
+		if (fail_count >= readout_wordsPerTrigger*10)
+			break;
+		if (failed)
+			continue;
 		(*trigger_count)++;
 		if ((*trigger_count) >= readout_numTriggers)
 			break;
