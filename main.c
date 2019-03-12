@@ -626,8 +626,7 @@ int main()
 				 	outBuffer[bufcount++] = 0;
 				 	for (uint8_t i = 0 ; i < 16; i++)
 				 		outBuffer[bufcount++] = data_buffer[i];
-				 	UART_polled_tx_string( &g_uart, "monitoring\n" );
-				 	UART_send(&g_uart, outBuffer ,bufcount );
+				 	outBufSend(g_uart, outBuffer, bufcount);
 
 				 }else if (commandID == READBMES){
 
@@ -669,7 +668,20 @@ int main()
 				 	//					MSS_UART_polled_tx( &g_mss_uart1, outBuffer, strlen(outBuffer) );
 				 	outBufSend(g_uart, outBuffer, bufcount);
 
-					//begin of control_digi commands
+				}else if (commandID == TOGGLECALHV){
+					HVCAL = (uint8_t) buffer[4];
+
+					channel_map = channel_map_storage[HVCAL];
+					adc_map = adc_map_storage[HVCAL];
+					adc_phases = adc_phases_storage[HVCAL];
+
+					if (HVCAL == 0){
+						UART_polled_tx_string( &g_uart, "Toggled to CAL\n" );
+					}else{
+						UART_polled_tx_string( &g_uart, "Toggled to HV\n" );
+					}
+
+//***********************************begin of control_digi commands*******************************************************************************
 				}else if (commandID == ADCRWCMDID){
 					// adc read/write
 					uint8_t adc_num = (uint8_t) buffer[4];

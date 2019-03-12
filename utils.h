@@ -11,7 +11,7 @@
 //#include <stdio.h>
 #include "hw_platform.h"
 
-#define IS_CAL 1
+//#define IS_CAL 1
 
 
 #define ADC_RAMP 4

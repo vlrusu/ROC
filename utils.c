@@ -5,30 +5,28 @@
 
 // channel_map[index adc channel] = straw number
 // adc_map[index adc channel order] = adc_number
-#if IS_CAL
-int channel_map[48] = {
+
+uint8_t HVCAL=0;//0 CAL 1 HV
+int channel_map_storage[2][48]={{
 		90,84,78,72,66,60,54,48,
 		42,36,30,24,18,12,6,0,
 		91,85,79,73,67,61,55,49,
 		43,37,31,25,19,13,7,1,
 		92,86,80,74,68,62,56,50,
-		44,38,32,26,20,14,8,2};
-
-#endif
-#if !IS_CAL
-int channel_map[48] = {
+		44,38,32,26,20,14,8,2},
+							{
 		45,39,33,27,21,15,9,3,
 		93,87,81,75,69,63,57,51,
 		46,40,34,28,22,16,10,4,
 		94,88,82,76,70,64,58,52,
 		47,41,35,29,23,17,11,5,
-		95,89,83,77,71,65,59,53};
+		95,89,83,77,71,65,59,53}};
+int adc_map_storage[2][6] = {{0,1,2,3,4,5},{6,7,8,9,10,11}};
+int adc_phases_storage[2][6] = {{0,0,0,0,0,0},{0,0,0,0,0,0}};
 
-#endif
-
-int adc_map[6] = {0,1,2,3,4,5};
-int adc_phases[6] = {0,0,0,0,0,0};
-
+int channel_map[48] = channel_map_storage[HVCAL];
+int adc_map[6] = adc_map_storage[HVCAL];
+int adc_phases[6] = adc_phases_storage[HVCAL];
 
 char outBuffer[1000]; // buffer for printing to serial port
 char dataBuffer[2000];

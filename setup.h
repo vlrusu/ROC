@@ -42,6 +42,7 @@
 #define GETDEVICEID 13
 #define TESTDDR 14
 #define RESETROC 15
+#define TOGGLECALHV 16
 
 //#define MAXCOM_MON 200 //200 monitoring commands ,rest reserved for future
 
