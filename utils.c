@@ -349,7 +349,7 @@ void read_data(int *delay_count, int *trigger_count)
 	while (1){
 
 		if (memlevel < readout_wordsPerTrigger){
-			volatile uint32_t fifoinfo = *(registers_0_addr + 0x13);
+			volatile uint32_t fifoinfo = *(registers_0_addr + 0x45);
 			memlevel = fifoinfo & 0x7FFF;
 			if (memlevel < readout_wordsPerTrigger){
 				(*delay_count)++;
@@ -390,8 +390,8 @@ void read_data(int *delay_count, int *trigger_count)
 			}
 
 			uint16_t digioutput;
-			*(registers_0_addr + 0x11) = 1;
-			digioutput = *(registers_0_addr + 0x12);
+			*(registers_0_addr + 0x40) = 1;
+			digioutput = *(registers_0_addr + 0x41);
 			memlevel -= 1;
 			//sprintf(&dataBuffer[readout_obloc],"%04x ",digioutput);
 			dataBuffer[readout_obloc++] = digioutput & 0xff;

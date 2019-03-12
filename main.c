@@ -501,7 +501,33 @@ int main()
 				 	outBuffer[bufcount++] = (dataddr>>16) & 0xFF;
 				 	outBuffer[bufcount++] = (dataddr>>24) & 0xFF;
 				 	outBufSend(g_uart, outBuffer, bufcount);
-
+//
+//				}else if (commandID == TESTDDR){
+//					uint8_t ddrwen = (uint8_t) buffer[4];
+//					uint8_t ddrren = (uint8_t) buffer[5];
+//					uint8_t ddrwaddr = (uint8_t) buffer[6];
+//					uint8_t ddrraddr = (uint8_t) buffer[7];
+//					uint8_t ddrwdata = (uint8_t) buffer[8];
+//					uint16_t retv = 0xF;
+//
+//					*(registers_0_addr + 0x03) = ddrwen;
+//					*(registers_0_addr + 0x04) = ddrren;
+//					*(registers_0_addr + 0x21) = ddrwaddr;
+//					*(registers_0_addr + 0x22) = ddrraddr;
+//					*(registers_0_addr + 0x0b) = ddrwdata;
+//					retv = *(registers_0_addr + 0x1B);
+//
+//					outBuffer[bufcount++] = TESTDDR;
+//					outBuffer[bufcount++] = 7;
+//					outBuffer[bufcount++] = 0;
+//					outBuffer[bufcount++] = ddrwen;
+//					outBuffer[bufcount++] = ddrren;
+//					outBuffer[bufcount++] = ddrwaddr;
+//					outBuffer[bufcount++] = ddrraddr;
+//					outBuffer[bufcount++] = ddrwdata;
+//					outBuffer[bufcount++] = retv & 0xFF;
+//					outBuffer[bufcount++] = (retv>>8) & 0xFF;
+//					outBufSend(g_uart, outBuffer, bufcount);
 
 				}else if (commandID == DUMPSETTINGS){
 					uint16_t channel = (uint16_t) buffer[4];
