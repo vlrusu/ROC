@@ -38,8 +38,15 @@
 #define EMPTY                       0xfffc//begin of data buffer, but it is empty
 #define ENDOFDATA                   0xfffb//end of data stream
 
-//extern int channel_map[48];
+extern uint8_t Hvcal;
+
+extern int channel_map_storage[96];
+extern int adc_map_storage[12];
+extern int adc_phases_storage[12];
+
+extern int channel_map[48];
 extern int adc_map[6];
+extern int adc_phases[6];
 
 uint16_t bufcount;
 int readout_obloc_place_holder;
@@ -57,9 +64,6 @@ volatile uint32_t * registers_0_addr;
 void GPIO_write(uint8_t pin, uint8_t value);
 uint32_t GPIO_read(uint8_t pin);
 
-extern int adc_phases[6];
-
-
 
 void reset_fabric();
 
@@ -75,7 +79,6 @@ void read_data2(int *delay_count, int *trigger_count, uint16_t *lasthit);
 void get_rates(uint32_t channel_mask1, uint32_t channel_mask2, uint32_t channel_mask3, int num_delays, int num_samples);
 void get_mapped_channels(uint32_t *channel_mask1, uint32_t *channel_mask2, uint32_t *channel_mask3, uint32_t *mapped_channel_mask1, uint32_t *mapped_channel_mask2);
 
-void outBufSend(UART_instance_t g_uart, char *outBuffer, uint16_t bufcount);
 void adc_spi(uint8_t rw, uint8_t bytes, uint16_t address, uint8_t *data, uint8_t adc_mask_r);
 void adc_write(uint16_t address, uint8_t data, uint8_t adc_mask_r);
 uint8_t adc_read(uint16_t address, uint8_t adc_num);
@@ -83,6 +86,8 @@ uint8_t init_adc(uint8_t adc_mask, uint8_t pattern, uint8_t phase);
 
 void digi_write(uint8_t address, uint16_t data);
 uint16_t digi_read(uint8_t address);
+void outBufSend(UART_instance_t g_uart, char *outBuffer, uint16_t bufcount);
+void arrayCopy (int len, int* from, int* to, uint8_t hvcal);
 
 extern int readout_maxDelay;
 extern int readout_obloc;

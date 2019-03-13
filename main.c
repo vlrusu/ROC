@@ -53,7 +53,9 @@ int main()
 	//		sprintf(outBuffer,"Last git revision: %s\n",LAST_GIT_REV);
 	//			UART_polled_tx_string( &g_uart, outBuffer );
 
-
+	arrayCopy(48, channel_map_storage, channel_map, Hvcal);
+	arrayCopy(6, adc_map_storage, adc_map, Hvcal);
+	arrayCopy(6, adc_phases_storage, adc_phases, Hvcal);
 
 	GPIO_init( &g_gpio,    COREGPIO_BASE_ADDR, GPIO_APB_32_BITS_BUS );
 	//	GPIO_config( &g_gpio, GPIO_0, GPIO_OUTPUT_MODE);
@@ -669,13 +671,13 @@ int main()
 				 	outBufSend(g_uart, outBuffer, bufcount);
 
 				}else if (commandID == TOGGLECALHV){
-					HVCAL = (uint8_t) buffer[4];
+					Hvcal = (uint8_t) buffer[4];
 
-					channel_map = channel_map_storage[HVCAL];
-					adc_map = adc_map_storage[HVCAL];
-					adc_phases = adc_phases_storage[HVCAL];
+					arrayCopy(48, channel_map_storage, channel_map, Hvcal);
+					arrayCopy(6, adc_map_storage, adc_map, Hvcal);
+					arrayCopy(6, adc_phases_storage, adc_phases, Hvcal);
 
-					if (HVCAL == 0){
+					if (Hvcal == 0){
 						UART_polled_tx_string( &g_uart, "Toggled to CAL\n" );
 					}else{
 						UART_polled_tx_string( &g_uart, "Toggled to HV\n" );

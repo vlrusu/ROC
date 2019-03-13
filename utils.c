@@ -6,27 +6,27 @@
 // channel_map[index adc channel] = straw number
 // adc_map[index adc channel order] = adc_number
 
-uint8_t HVCAL=0;//0 CAL 1 HV
-int channel_map_storage[2][48]={{
+uint8_t Hvcal=0;//0 CAL 1 HV
+int channel_map_storage[96]={
 		90,84,78,72,66,60,54,48,
 		42,36,30,24,18,12,6,0,
 		91,85,79,73,67,61,55,49,
 		43,37,31,25,19,13,7,1,
 		92,86,80,74,68,62,56,50,
-		44,38,32,26,20,14,8,2},
-							{
+		44,38,32,26,20,14,8,2,
+
 		45,39,33,27,21,15,9,3,
 		93,87,81,75,69,63,57,51,
 		46,40,34,28,22,16,10,4,
 		94,88,82,76,70,64,58,52,
 		47,41,35,29,23,17,11,5,
-		95,89,83,77,71,65,59,53}};
-int adc_map_storage[2][6] = {{0,1,2,3,4,5},{6,7,8,9,10,11}};
-int adc_phases_storage[2][6] = {{0,0,0,0,0,0},{0,0,0,0,0,0}};
+		95,89,83,77,71,65,59,53};
+int adc_map_storage[12] = {0,1,2,3,4,5,6,7,8,9,10,11};
+int adc_phases_storage[12] = {0,0,0,0,0,0,0,0,0,0,0,0};
 
-int channel_map[48] = channel_map_storage[HVCAL];
-int adc_map[6] = adc_map_storage[HVCAL];
-int adc_phases[6] = adc_phases_storage[HVCAL];
+int channel_map[48] = {0};
+int adc_map[6] = {0};
+int adc_phases[6] = {0};
 
 char outBuffer[1000]; // buffer for printing to serial port
 char dataBuffer[2000];
@@ -664,4 +664,10 @@ void get_mapped_channels(uint32_t *channel_mask1, uint32_t *channel_mask2, uint3
 void outBufSend(UART_instance_t g_uart, char *outBuffer, uint16_t bufcount){
 	UART_polled_tx_string( &g_uart, "monitoring\n" );
 	UART_send(&g_uart, outBuffer ,bufcount );
+}
+
+void arrayCopy (int len, int* from, int* to, uint8_t hvcal){
+	for (int i=0; i<len; i++){
+		to[i]=from[len*hvcal+i];
+	}
 }
