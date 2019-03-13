@@ -40,13 +40,13 @@
 
 extern uint8_t Hvcal;
 
-extern int channel_map_storage[96];
-extern int adc_map_storage[12];
-extern int adc_phases_storage[12];
+extern uint8_t channel_map_storage[96];
+extern uint8_t adc_map_storage[12];
+extern uint8_t adc_phases_storage[12];
 
-extern int channel_map[48];
-extern int adc_map[6];
-extern int adc_phases[6];
+extern uint8_t channel_map[48];
+extern uint8_t adc_map[6];
+extern uint8_t adc_phases[6];
 
 uint16_t bufcount;
 int readout_obloc_place_holder;
@@ -87,7 +87,7 @@ uint8_t init_adc(uint8_t adc_mask, uint8_t pattern, uint8_t phase);
 void digi_write(uint8_t address, uint16_t data);
 uint16_t digi_read(uint8_t address);
 void outBufSend(UART_instance_t g_uart, char *outBuffer, uint16_t bufcount);
-void arrayCopy (int len, int* from, int* to, uint8_t hvcal);
+void arrayCopy (uint8_t len, uint8_t* from, uint8_t* to, uint8_t hvcal);
 
 extern int readout_maxDelay;
 extern int readout_obloc;

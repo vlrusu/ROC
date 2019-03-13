@@ -7,7 +7,7 @@
 // adc_map[index adc channel order] = adc_number
 
 uint8_t Hvcal=0;//0 CAL 1 HV
-int channel_map_storage[96]={
+uint8_t channel_map_storage[96]={
 		90,84,78,72,66,60,54,48,
 		42,36,30,24,18,12,6,0,
 		91,85,79,73,67,61,55,49,
@@ -21,12 +21,12 @@ int channel_map_storage[96]={
 		94,88,82,76,70,64,58,52,
 		47,41,35,29,23,17,11,5,
 		95,89,83,77,71,65,59,53};
-int adc_map_storage[12] = {0,1,2,3,4,5,6,7,8,9,10,11};
-int adc_phases_storage[12] = {0,0,0,0,0,0,0,0,0,0,0,0};
+uint8_t adc_map_storage[12] = {0,1,2,3,4,5,6,7,8,9,10,11};
+uint8_t adc_phases_storage[12] = {0,0,0,0,0,0,0,0,0,0,0,0};
 
-int channel_map[48] = {0};
-int adc_map[6] = {0};
-int adc_phases[6] = {0};
+uint8_t channel_map[48] = {0};
+uint8_t adc_map[6] = {0};
+uint8_t adc_phases[6] = {0};
 
 char outBuffer[1000]; // buffer for printing to serial port
 char dataBuffer[2000];
@@ -666,8 +666,8 @@ void outBufSend(UART_instance_t g_uart, char *outBuffer, uint16_t bufcount){
 	UART_send(&g_uart, outBuffer ,bufcount );
 }
 
-void arrayCopy (int len, int* from, int* to, uint8_t hvcal){
-	for (int i=0; i<len; i++){
+void arrayCopy (uint8_t len, uint8_t* from, uint8_t* to, uint8_t hvcal){
+	for (uint8_t i=0; i<len; i++){
 		to[i]=from[len*hvcal+i];
 	}
 }
