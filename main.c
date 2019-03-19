@@ -7,9 +7,6 @@
 
 #include "./CMSIS/cortexm1_cfg.h"
 #include "./CMSIS/system_cortexm1_cfg.h"
-//#include <stdio.h>
-//#include <string.h>
-
 
 #include "setup.h"
 #include "Commands.h"
@@ -24,7 +21,6 @@ uint16_t default_threshs_cal[96] = {331,316,339,309,317,317,319,335,341,321,319,
 uint16_t default_threshs_hv[96] = {322,284,329,317,325,321,340,347,351,339,348,349,313,337,327,325,345,325,321,320,345,332,305,335,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,284,293,324,321,324,331,344,333,314,324,333,346,330,335,327,329,349,316,331,339,318,304,332,310};
 
 
-
 const uint16_t default_caldac[8] = {1000,1000,1000,1000,1000,1000,1000,1000};
 
 const uint8_t calpulse_chanmap[8]={9,1,10,2,11,3,12,4};
@@ -32,10 +28,9 @@ const uint8_t calpulse_chanmap[8]={9,1,10,2,11,3,12,4};
 const uint8_t default_delay = 200;
 
 
-
 #define BAUD_VALUE                  57600
-#define ENABLED_ADCS				0x3F
 
+const uint16_t ENABLED_ADCS = 0xFFF;
 const uint8_t MCPCALIBCHAN[8] = {1,2,3,4,9,10,11,12};
 
 int main()
@@ -53,14 +48,9 @@ int main()
 	//		sprintf(outBuffer,"Last git revision: %s\n",LAST_GIT_REV);
 	//			UART_polled_tx_string( &g_uart, outBuffer );
 
-	arrayCopy(48, channel_map_storage, channel_map, Hvcal);
-	arrayCopy(6, adc_map_storage, adc_map, Hvcal);
-	arrayCopy(6, adc_phases_storage, adc_phases, Hvcal);
-
 	GPIO_init( &g_gpio,    COREGPIO_BASE_ADDR, GPIO_APB_32_BITS_BUS );
 	//	GPIO_config( &g_gpio, GPIO_0, GPIO_OUTPUT_MODE);
 	GPIO_set_output( &g_gpio, GPIO_0, 0);
-
 
 
 	uint8_t readout_enabled = 0;
@@ -71,9 +61,7 @@ int main()
 	registers_0_addr = (volatile uint32_t *) REGISTERBASEADDR;
 
 
-	uint8_t errors = init_adc(0x3F,0x02,0x03);
-	//sprintf(outBuffer,"ADCs initialized (errors: %02x)\n",errors);
-	//UART_polled_tx_string( &g_uart, outBuffer );
+	uint8_t errors = init_adc(ENABLED_ADCS,0x02,0x03);
 
 	/*Initialize the CoreSysService_PF driver*/
 	SYS_init(CSS_PF_BASE_ADDRESS);
@@ -98,8 +86,6 @@ int main()
 	SPI_configure_master_mode( &g_spi[2] );
 	SPI_init( &g_spi[3], CALSPI_BASE_ADDR, 8 );
 	SPI_configure_master_mode( &g_spi[3] );
-
-
 
 
 	//setup MCPs
@@ -162,24 +148,17 @@ int main()
 
 	//adc_write(0x08,0x00,0x3F);
 
-	adc_write(0x08,0x01,0x3F);
-	adc_write(0x08,0x00,ENABLED_ADCS);
+	adc_write(ADC_ADDR_PWR,0x01,ENABLED_ADCS);
+	adc_write(ADC_ADDR_PWR,0x00,ENABLED_ADCS);
 
-	uint8_t bitslip0 = 0x30;
-	uint8_t bitslip1 = 0x31;
-	uint8_t bitslip2 = 0x32;
-	uint8_t bitslip3 = 0x33;
-	uint8_t bitslip4 = 0x34;
-	uint8_t bitslip5 = 0x35;
+	digi_write(DG_ADDR_BITSLIP0,0x0,0);
+	digi_write(DG_ADDR_BITSLIP1,0x0,0);
+	digi_write(DG_ADDR_BITSLIP2,0x0,0);
+	digi_write(DG_ADDR_BITSLIP3,0x0,0);
+	digi_write(DG_ADDR_BITSLIP4,0x0,0);
+	digi_write(DG_ADDR_BITSLIP5,0x0,0);
 
-	digi_write(bitslip0,0x0);
-	digi_write(bitslip1,0x0);
-	digi_write(bitslip2,0x0);
-	digi_write(bitslip3,0x0);
-	digi_write(bitslip4,0x0);
-	digi_write(bitslip5,0x0);
-
-	digi_write(0x10,1);
+	digi_write(DG_ADDR_RESET,1,0);
 
 	writePtr = 0;
 
@@ -202,7 +181,6 @@ int main()
 	bme280_get_regs(BME280_CHIP_ID_ADDR,&ptscalchipid,1,&ptscal);
 
 
-
 	uint8_t settings_sel;
 	struct bme280_data comp_data;
 
@@ -215,8 +193,6 @@ int main()
 	settings_sel = BME280_OSR_PRESS_SEL | BME280_OSR_TEMP_SEL | BME280_OSR_HUM_SEL | BME280_FILTER_SEL;
 
 	rslt = bme280_set_sensor_settings(settings_sel, &ptscal);
-
-
 
 
 	//set the HV sensor
@@ -267,7 +243,8 @@ int main()
 			int delay_count = 0;
 			int trigger_count = 0;
 			UART_polled_tx_string( &g_uart, "datastream\n" );
-			read_data(&delay_count,&trigger_count);
+			//read_data(&delay_count,&trigger_count,Hvcal);
+			read_data(&delay_count,&trigger_count,1);
 			readout_totalTriggers += trigger_count;
 		}
 
@@ -298,8 +275,8 @@ int main()
 				continue;
 			}
 
-			uint32_t numBytes = buffer[2];
-			if (writePtr >= numBytes){
+			uint8_t numBytes = buffer[2];
+			if (writePtr >= (uint32_t)numBytes){
 				uint8_t commandID = (uint8_t) buffer[3];
 				bufcount = 0;
 
@@ -322,12 +299,9 @@ int main()
 						//						sprintf(outBuffer,"Set channel %d HV gain to %d\n",channel,value);
 					}
 					outBuffer[bufcount++] = SETPREAMPGAIN;
-					outBuffer[bufcount++] = 4;
-					outBuffer[bufcount++] = 0;
-					outBuffer[bufcount++] = channel & 0xff;
-					outBuffer[bufcount++] = channel >> 8;
-					outBuffer[bufcount++] = value & 0xff;
-					outBuffer[bufcount++] = value >> 8;
+					bufWrite(outBuffer, &bufcount, 4, 2);
+					bufWrite(outBuffer, &bufcount, channel, 2);
+					bufWrite(outBuffer, &bufcount, value, 2);
 					outBufSend(g_uart, outBuffer, bufcount);
 
 
@@ -350,12 +324,9 @@ int main()
 					}
 
 					outBuffer[bufcount++] = SETPREAMPTHRESHOLD;
-					outBuffer[bufcount++] = 4;
-					outBuffer[bufcount++] = 0;
-					outBuffer[bufcount++] = channel & 0xff;
-					outBuffer[bufcount++] = channel >> 8;
-					outBuffer[bufcount++] = value & 0xff;
-					outBuffer[bufcount++] = value >> 8;
+					bufWrite(outBuffer, &bufcount, 4, 2);
+					bufWrite(outBuffer, &bufcount, channel, 2);
+					bufWrite(outBuffer, &bufcount, value, 2);
 					outBufSend(g_uart, outBuffer, bufcount);
 
 
@@ -363,18 +334,16 @@ int main()
 
 				 	uint8_t chan_mask = (uint8_t) buffer[4];
 				 	uint16_t value = readU16fromBytes(&buffer[5]);
-				 	*(registers_0_addr+0x11) = 1;
+				 	*(registers_0_addr+REG_ROC_RE) = 1;
 				 	for (uint8_t i=0;i<8;i++){
 				 		if (chan_mask & (0x1<<i))
 				 			AD5318_write(g_spi[3],1, i,value);
 				 	}
-				 	*(registers_0_addr+0x11) = 0;
+				 	*(registers_0_addr+REG_ROC_RE) = 0;
 				 	outBuffer[bufcount++] = SETCALDAC;
-				 	outBuffer[bufcount++] = 3;
-				 	outBuffer[bufcount++] = 0;
+				 	bufWrite(outBuffer, &bufcount, 3, 2);
 				 	outBuffer[bufcount++] = chan_mask;
-				 	outBuffer[bufcount++] = value & 0xff;
-				 	outBuffer[bufcount++] = value >> 8;
+				 	bufWrite(outBuffer, &bufcount, value, 2);
 				 	outBufSend(g_uart, outBuffer, bufcount);
 
 
@@ -426,16 +395,11 @@ int main()
 
 
 					outBuffer[bufcount++] = SETPULSERON;
-					outBuffer[bufcount++] = 8;
-					outBuffer[bufcount++] = 0;
+					bufWrite(outBuffer, &bufcount, 8, 2);
 					outBuffer[bufcount++] = chan_mask;
 					outBuffer[bufcount++] = pulserOdd;
-					outBuffer[bufcount++] = dutyCycle & 0xff;
-					outBuffer[bufcount++] = (dutyCycle>>8) & 0xff;
-					outBuffer[bufcount++] = pulserDelay & 0xff;
-					outBuffer[bufcount++] = (pulserDelay>>8) & 0xff;
-					outBuffer[bufcount++] = (pulserDelay>>16) & 0xff;
-					outBuffer[bufcount++] = (pulserDelay>>24) & 0xff;
+					bufWrite(outBuffer, &bufcount, dutyCycle, 2);
+					bufWrite(outBuffer, &bufcount, pulserDelay, 4);
 					outBufSend(g_uart, outBuffer, bufcount);
 
 
@@ -443,66 +407,55 @@ int main()
 
 					PWM_disable(&g_pwm,PWM_1);
 					outBuffer[bufcount++] = SETPULSEROFF;
-					outBuffer[bufcount++] = 0;
-					outBuffer[bufcount++] = 0;
+					bufWrite(outBuffer, &bufcount, 0, 2);
 					outBufSend(g_uart, outBuffer, bufcount);
 
 				 }else if (commandID == WHOAREYOU){
 
 				 	outBuffer[bufcount++] = WHOAREYOU;
-				 	outBuffer[bufcount++] = 0;
-				 	outBuffer[bufcount++] = 0;
+				 	bufWrite(outBuffer, &bufcount, 0, 2);
 				 	outBufSend(g_uart, outBuffer, bufcount);
 
 				 }else if (commandID == RESETROC){
-				 	*(registers_0_addr + 0x10) = 0;
-				 	*(registers_0_addr + 0x10) = 1;
-				 	outBuffer[bufcount++] = RESETROC;
-				 	outBuffer[bufcount++] = 0;
-				 	outBuffer[bufcount++] = 0;
 
-
+					digi_write(DG_ADDR_RESET,0,0);
+					digi_write(DG_ADDR_RESET,1,0);
+					outBuffer[bufcount++] = RESETROC;
+					bufWrite(outBuffer, &bufcount, 0, 2);
 				 	outBufSend(g_uart, outBuffer, bufcount);
-				 }else if (commandID == TESTDDR){
-				 	uint8_t ddrcs = (uint8_t) buffer[4];
-				 	uint8_t ddrwen = (uint8_t) buffer[5];
-				 	uint8_t ddrren = (uint8_t) buffer[6];
-				 	uint8_t ddrdmaen = (uint8_t) buffer[7];
-				 	uint8_t ddrnhits = (uint8_t) buffer[8];
-				 	uint8_t ddrpattern = (uint8_t) buffer[9];
-				 	uint16_t ddrraddr = readU16fromBytes(&buffer[10]);
-				 	uint32_t retv = 0xF;
 
-				 	*(registers_0_addr + 0x20) = ddrnhits;
-				 	*(registers_0_addr + 0x21) = 0;
-				 	*(registers_0_addr + 0x22) = ddrcs;
-				 	*(registers_0_addr + 0x23) = ddrwen;
-				 	*(registers_0_addr + 0x24) = ddrren;
-				 	*(registers_0_addr + 0x25) = ddrdmaen;
-				 	*(registers_0_addr + 0x27) = ddrpattern;
-				 	*(registers_0_addr + 0x28) = ddrraddr;
-				 	retv = *(registers_0_addr + 0x26);
-				 	uint32_t dataddr = *(registers_0_addr + 0x29);
-				 	outBuffer[bufcount++] = TESTDDR;
-				 	outBuffer[bufcount++] = 16;
-				 	outBuffer[bufcount++] = 0;
-				 	outBuffer[bufcount++] = ddrnhits;
-				 	outBuffer[bufcount++] = ddrcs;
-				 	outBuffer[bufcount++] = ddrwen;
-				 	outBuffer[bufcount++] = ddrren;
-				 	outBuffer[bufcount++] = ddrdmaen;
-				 	outBuffer[bufcount++] = ddrpattern;
-				 	outBuffer[bufcount++] = retv & 0xFF;
-				 	outBuffer[bufcount++] = (retv>>8) & 0xFF;
-				 	outBuffer[bufcount++] = (retv>>16) & 0xFF;
-				 	outBuffer[bufcount++] = (retv>>24) & 0xFF;
-				 	outBuffer[bufcount++] = ddrraddr & 0xFF;
-				 	outBuffer[bufcount++] = (ddrraddr>>8) & 0xFF;
-				 	outBuffer[bufcount++] =  dataddr& 0xFF;
-				 	outBuffer[bufcount++] = (dataddr>>8) & 0xFF;
-				 	outBuffer[bufcount++] = (dataddr>>16) & 0xFF;
-				 	outBuffer[bufcount++] = (dataddr>>24) & 0xFF;
-				 	outBufSend(g_uart, outBuffer, bufcount);
+//				 }else if (commandID == TESTDDR){
+//				 	uint8_t ddrcs = (uint8_t) buffer[4];
+//				 	uint8_t ddrwen = (uint8_t) buffer[5];
+//				 	uint8_t ddrren = (uint8_t) buffer[6];
+//				 	uint8_t ddrdmaen = (uint8_t) buffer[7];
+//				 	uint8_t ddrnhits = (uint8_t) buffer[8];
+//				 	uint8_t ddrpattern = (uint8_t) buffer[9];
+//				 	uint16_t ddrraddr = readU16fromBytes(&buffer[10]);
+//				 	uint32_t retv = 0xF;
+//
+//				 	*(registers_0_addr + REG_ROC_DDR_NHITS) = ddrnhits;
+//				 	*(registers_0_addr + REG_ROC_DDR_OFFSET) = 0;
+//				 	*(registers_0_addr + REG_ROC_DDR_CS) = ddrcs;
+//				 	*(registers_0_addr + REG_ROC_DDR_WEN) = ddrwen;
+//				 	*(registers_0_addr + REG_ROC_DDR_REN) = ddrren;
+//				 	*(registers_0_addr + REG_ROC_DDR_DMAEN) = ddrdmaen;
+//				 	*(registers_0_addr + REG_ROC_DDR_PATTERN) = ddrpattern;
+//				 	*(registers_0_addr + REG_ROC_DDR_RADDR) = ddrraddr;
+//				 	retv = *(registers_0_addr + REG_ROC_DDR_ERR);
+//				 	uint32_t dataddr = *(registers_0_addr + REG_ROC_DDR_DATA);
+//				 	outBuffer[bufcount++] = TESTDDR;
+//				 	bufWrite(outBuffer, &bufcount, 16, 2);
+//				 	outBuffer[bufcount++] = ddrnhits;
+//				 	outBuffer[bufcount++] = ddrcs;
+//				 	outBuffer[bufcount++] = ddrwen;
+//				 	outBuffer[bufcount++] = ddrren;
+//				 	outBuffer[bufcount++] = ddrdmaen;
+//				 	outBuffer[bufcount++] = ddrpattern;
+//				 	bufWrite(outBuffer, &bufcount, retv, 4);
+//				 	bufWrite(outBuffer, &bufcount, ddrraddr, 2);
+//				 	bufWrite(outBuffer, &bufcount, dataddr, 4);
+//				 	outBufSend(g_uart, outBuffer, bufcount);
 //
 //				}else if (commandID == TESTDDR){
 //					uint8_t ddrwen = (uint8_t) buffer[4];
@@ -520,15 +473,13 @@ int main()
 //					retv = *(registers_0_addr + 0x1B);
 //
 //					outBuffer[bufcount++] = TESTDDR;
-//					outBuffer[bufcount++] = 7;
-//					outBuffer[bufcount++] = 0;
+//					bufWrite(outBuffer, &bufcount, 7, 2);
 //					outBuffer[bufcount++] = ddrwen;
 //					outBuffer[bufcount++] = ddrren;
 //					outBuffer[bufcount++] = ddrwaddr;
 //					outBuffer[bufcount++] = ddrraddr;
 //					outBuffer[bufcount++] = ddrwdata;
-//					outBuffer[bufcount++] = retv & 0xFF;
-//					outBuffer[bufcount++] = (retv>>8) & 0xFF;
+//					bufWrite(outBuffer, &bufcount, retv, 2);
 //					outBufSend(g_uart, outBuffer, bufcount);
 
 				}else if (commandID == DUMPSETTINGS){
@@ -536,32 +487,22 @@ int main()
 					outBuffer[bufcount++] = DUMPSETTINGS;
 					if (channel>=0 && channel<96){
 
-						outBuffer[bufcount++] = 10;
-						outBuffer[bufcount++] = 0;
-						outBuffer[bufcount++] = channel & 0xff;
-						outBuffer[bufcount++] = channel >> 8;
-						outBuffer[bufcount++] = default_gains_hv[channel] & 0xff;
-						outBuffer[bufcount++] = default_gains_hv[channel] >> 8;
-						outBuffer[bufcount++] = default_threshs_hv[channel] & 0xff;
-						outBuffer[bufcount++] = default_threshs_hv[channel] >> 8;
-						outBuffer[bufcount++] = default_gains_cal[channel] & 0xff;
-						outBuffer[bufcount++] = default_gains_cal[channel] >> 8;
-						outBuffer[bufcount++] = default_threshs_cal[channel] & 0xff;
-						outBuffer[bufcount++] = default_threshs_cal[channel] >> 8;
+						bufWrite(outBuffer, &bufcount, 10, 2);
+						bufWrite(outBuffer, &bufcount, channel, 2);
+
+						bufWrite(outBuffer, &bufcount, default_gains_hv[channel], 2);
+						bufWrite(outBuffer, &bufcount, default_threshs_hv[channel], 2);
+						bufWrite(outBuffer, &bufcount, default_gains_cal[channel], 2);
+						bufWrite(outBuffer, &bufcount, default_threshs_cal[channel], 2);
 					}
 
 					else{
-						outBuffer[bufcount++] = 768 & 0xff;
-						outBuffer[bufcount++] = 768 >> 8;
+						bufWrite(outBuffer, &bufcount, 768, 2);
 						for (uint8_t ic = 0; ic < 96; ic++){
-							outBuffer[bufcount++] = default_gains_hv[ic] & 0xff;
-							outBuffer[bufcount++] = default_gains_hv[ic] >> 8;
-							outBuffer[bufcount++] = default_threshs_hv[ic] & 0xff;
-							outBuffer[bufcount++] = default_threshs_hv[ic] >> 8;
-							outBuffer[bufcount++] = default_gains_cal[ic] & 0xff;
-							outBuffer[bufcount++] = default_gains_cal[ic] >> 8;
-							outBuffer[bufcount++] = default_threshs_cal[ic] & 0xff;
-							outBuffer[bufcount++] = default_threshs_cal[ic] >> 8;
+							bufWrite(outBuffer, &bufcount, default_gains_hv[channel], 2);
+							bufWrite(outBuffer, &bufcount, default_threshs_hv[channel], 2);
+							bufWrite(outBuffer, &bufcount, default_gains_cal[channel], 2);
+							bufWrite(outBuffer, &bufcount, default_threshs_cal[channel], 2);
 						}
 					}
 					outBufSend(g_uart, outBuffer, bufcount);
@@ -574,26 +515,16 @@ int main()
 				 	uint32_t rx0;
 
 				 	outBuffer[bufcount++] = READMONADCS;
-				 	outBuffer[bufcount++] = 32;
-				 	outBuffer[bufcount++] = 0;
-				 	for (uint8_t i = 0 ; i < 8; i++){
-				 		SPI_set_slave_select( &g_spi[0] , (i<4?SPI_SLAVE_0:SPI_SLAVE_1));
-				 		uint16_t addr = (i%4 <<11 );
-				 		SPI_transfer_frame( &g_spi[0], addr);
-				 		rx0 = SPI_transfer_frame( &g_spi[0], addr);
-				 		SPI_clear_slave_select( &g_spi[0] , (i<4?SPI_SLAVE_0:SPI_SLAVE_1));
-				 		outBuffer[bufcount++] = rx0 & 0xFF;
-				 		outBuffer[bufcount++] = (rx0 >> 8) & 0x0F;
-				 	}
-
-				 	for (uint8_t i = 0 ; i < 8; i++){
-				 		SPI_set_slave_select( &g_spi[1] , (i<4?SPI_SLAVE_0:SPI_SLAVE_1));
-				 		uint16_t addr = (i%4 <<11 );
-				 		SPI_transfer_frame( &g_spi[1], addr);
-				 		rx0 = SPI_transfer_frame( &g_spi[1], addr);
-				 		SPI_clear_slave_select( &g_spi[1] , (i<4?SPI_SLAVE_0:SPI_SLAVE_1));
-				 		outBuffer[bufcount++] = rx0 & 0xFF;
-				 		outBuffer[bufcount++] = (rx0 >> 8) & 0x0F;
+				 	bufWrite(outBuffer, &bufcount, 32, 2);
+				 	for (uint8_t i = 0 ; i < 2; i++){
+				 		for (uint8_t j = 0 ; j < 8; j++){
+				 			SPI_set_slave_select( &g_spi[i] , (j<4?SPI_SLAVE_0:SPI_SLAVE_1));
+				 			uint16_t addr = (j%4 <<11 );
+				 			SPI_transfer_frame( &g_spi[i], addr);
+				 			rx0 = SPI_transfer_frame( &g_spi[i], addr);
+				 			SPI_clear_slave_select( &g_spi[i] , (j<4?SPI_SLAVE_0:SPI_SLAVE_1));
+				 			bufWrite(outBuffer, &bufcount, rx0, 2);
+				 		}
 				 	}
 
 				 	outBufSend(g_uart, outBuffer, bufcount);
@@ -624,8 +555,7 @@ int main()
 				 	uint8_t status;
 				 	status = SYS_get_serial_number(data_buffer, 0);
 				 	outBuffer[bufcount++] = GETDEVICEID;
-				 	outBuffer[bufcount++] = 16;
-				 	outBuffer[bufcount++] = 0;
+				 	bufWrite(outBuffer, &bufcount, 16, 2);
 				 	for (uint8_t i = 0 ; i < 16; i++)
 				 		outBuffer[bufcount++] = data_buffer[i];
 				 	outBufSend(g_uart, outBuffer, bufcount);
@@ -637,51 +567,21 @@ int main()
 				 	rslt = bme280_set_sensor_mode(BME280_FORCED_MODE, &ptscal);
 				 	ptscal.delay_ms(40);
 				 	rslt = bme280_get_sensor_data(BME280_ALL, &comp_data, &ptscal);
-				 	outBuffer[bufcount++] = comp_data.temperature & 0xFF;
-				 	outBuffer[bufcount++] = (comp_data.temperature >> 8) & 0xFF;
-				 	outBuffer[bufcount++] = (comp_data.temperature >> 16) & 0xFF;
-				 	outBuffer[bufcount++] = (comp_data.temperature >> 24) & 0xFF;
-				 	outBuffer[bufcount++] = comp_data.pressure & 0xFF;
-				 	outBuffer[bufcount++] = (comp_data.pressure >> 8) & 0xFF;
-				 	outBuffer[bufcount++] = (comp_data.pressure >> 16) & 0xFF;
-				 	outBuffer[bufcount++] = (comp_data.pressure >> 24) & 0xFF;
-				 	outBuffer[bufcount++] = comp_data.humidity & 0xFF;
-				 	outBuffer[bufcount++] = (comp_data.humidity >> 8) & 0xFF;
-				 	outBuffer[bufcount++] = (comp_data.humidity >> 16) & 0xFF;
-				 	outBuffer[bufcount++] = (comp_data.humidity >> 24) & 0xFF;
+				 	bufWrite(outBuffer, &bufcount, comp_data.temperature, 4);
+				 	bufWrite(outBuffer, &bufcount, comp_data.pressure, 4);
+				 	bufWrite(outBuffer, &bufcount, comp_data.humidity, 4);
+
 				 	//					sprintf(outBuffer,"CAL %d %d %d\n",comp_data.temperature, comp_data.pressure, comp_data.humidity);
 				 	//					MSS_UART_polled_tx( &g_mss_uart1, outBuffer, strlen(outBuffer) );
 				 	rslt = bme280_set_sensor_mode(BME280_FORCED_MODE, &ptshv);
 				 	ptshv.delay_ms(40);
 				 	rslt = bme280_get_sensor_data(BME280_ALL, &comp_data, &ptshv);
-				 	outBuffer[bufcount++] = comp_data.temperature & 0xFF;
-				 	outBuffer[bufcount++] = (comp_data.temperature >> 8) & 0xFF;
-				 	outBuffer[bufcount++] = (comp_data.temperature >> 16) & 0xFF;
-				 	outBuffer[bufcount++] = (comp_data.temperature >> 24) & 0xFF;
-				 	outBuffer[bufcount++] = comp_data.pressure & 0xFF;
-				 	outBuffer[bufcount++] = (comp_data.pressure >> 8) & 0xFF;
-				 	outBuffer[bufcount++] = (comp_data.pressure >> 16) & 0xFF;
-				 	outBuffer[bufcount++] = (comp_data.pressure >> 24) & 0xFF;
-				 	outBuffer[bufcount++] = comp_data.humidity & 0xFF;
-				 	outBuffer[bufcount++] = (comp_data.humidity >> 8) & 0xFF;
-				 	outBuffer[bufcount++] = (comp_data.humidity >> 16) & 0xFF;
-				 	outBuffer[bufcount++] = (comp_data.humidity >> 24) & 0xFF;
+				 	bufWrite(outBuffer, &bufcount, comp_data.temperature, 4);
+				 	bufWrite(outBuffer, &bufcount, comp_data.pressure, 4);
+				 	bufWrite(outBuffer, &bufcount, comp_data.humidity, 4);
 				 	//					sprintf(outBuffer,"HV %d %d %d\n",comp_data.temperature, comp_data.pressure, comp_data.humidity);
 				 	//					MSS_UART_polled_tx( &g_mss_uart1, outBuffer, strlen(outBuffer) );
 				 	outBufSend(g_uart, outBuffer, bufcount);
-
-				}else if (commandID == TOGGLECALHV){
-					Hvcal = (uint8_t) buffer[4];
-
-					arrayCopy(48, channel_map_storage, channel_map, Hvcal);
-					arrayCopy(6, adc_map_storage, adc_map, Hvcal);
-					arrayCopy(6, adc_phases_storage, adc_phases, Hvcal);
-
-					if (Hvcal == 0){
-						UART_polled_tx_string( &g_uart, "Toggled to CAL\n" );
-					}else{
-						UART_polled_tx_string( &g_uart, "Toggled to HV\n" );
-					}
 
 //***********************************begin of control_digi commands*******************************************************************************
 				}else if (commandID == ADCRWCMDID){
@@ -692,8 +592,7 @@ int main()
 					uint16_t data = readU16fromBytes(&buffer[8]);
 
 					outBuffer[bufcount++] = ADCRWCMDID;
-					outBuffer[bufcount++] = 6;
-					outBuffer[bufcount++] = 0;
+					bufWrite(outBuffer, &bufcount, 6, 2);
 
 					if (rw == 1){
 						uint8_t result = adc_read(address,adc_num);
@@ -702,8 +601,7 @@ int main()
 
 						outBuffer[bufcount++] = rw;
 						outBuffer[bufcount++] = adc_num;
-						outBuffer[bufcount++] = address & 0xff;
-						outBuffer[bufcount++] = address >> 8;
+						bufWrite(outBuffer, &bufcount, address, 2);
 						outBuffer[bufcount++] = result;
 						outBuffer[bufcount++] = 0;
 						outBufSend(g_uart, outBuffer, bufcount);
@@ -714,24 +612,21 @@ int main()
 
 						outBuffer[bufcount++] = rw;
 						outBuffer[bufcount++] = adc_num;
-						outBuffer[bufcount++] = address & 0xff;
-						outBuffer[bufcount++] = address >> 8;
-						outBuffer[bufcount++] = data & 0xff;
-						outBuffer[bufcount++] = data >> 8;
+						bufWrite(outBuffer, &bufcount, address, 2);
+						bufWrite(outBuffer, &bufcount, data, 2);
 						outBufSend(g_uart, outBuffer, bufcount);
 					}
 
 				}else if (commandID == BITSLIPCMDID){
+					/*
 					// bitslip
 					uint16_t num_bits = readU16fromBytes(&buffer[4]);
-					uint32_t channel_mask1 = readU32fromBytes(&buffer[6]);
-					uint32_t channel_mask2 = readU32fromBytes(&buffer[10]);
-					uint32_t channel_mask3 = readU32fromBytes(&buffer[14]);
-					uint32_t mapped_channel_mask1;
-					uint32_t mapped_channel_mask2;
-					get_mapped_channels(&channel_mask1,&channel_mask2,&channel_mask3,&mapped_channel_mask1,&mapped_channel_mask2);
+					channel_mask[0] = readU32fromBytes(&buffer[6]);
+					channel_mask[1] = readU32fromBytes(&buffer[10]);
+					channel_mask[2] = readU32fromBytes(&buffer[14]);
+					get_mapped_channels();
 
-					/*
+
 	      //for (int i=0;i<num_bits;i++){
 					 *(registers_0_addr + 0x30) = ((mapped_channel_mask1 & 0xFF)>>0);
 					 *(registers_0_addr + 0x31) = ((mapped_channel_mask1 & 0xFF00)>>8);
@@ -751,36 +646,39 @@ int main()
 	      sprintf(outBuffer,"Activated bitslip %d times for channels %08x %08x %08x\n",num_bits,channel_mask1,channel_mask2,channel_mask3);
 	      UART_polled_tx_string( &g_uart, outBuffer );
 					 */
-					volatile uint32_t *empty_p = (registers_0_addr + 0x43);
-					volatile uint32_t *full_p = (registers_0_addr + 0x42);
-					volatile uint32_t *data_p = (registers_0_addr + 0x41);
+					volatile uint32_t *empty_p_cal = (registers_0_addr + REG_ROC_CAL_EMPTY);
+					volatile uint32_t *full_p_cal = (registers_0_addr + REG_ROC_CAL_FULL);
+					volatile uint32_t *data_p_cal = (registers_0_addr + REG_ROC_CAL_DATA);
+					volatile uint32_t *empty_p_hv = (registers_0_addr + REG_ROC_HV_EMPTY);
+					volatile uint32_t *full_p_hv = (registers_0_addr + REG_ROC_HV_FULL);
+					volatile uint32_t *data_p_hv = (registers_0_addr + REG_ROC_HV_DATA);
 
-					uint32_t empty = *(empty_p);
-					uint32_t full = *(full_p);
-					uint32_t data1 = *(data_p);
-					*(registers_0_addr + 0x40) = 1;
-					uint32_t data2 = *(data_p);
+					uint32_t empty_cal = *(empty_p_cal);
+					uint32_t full_cal = *(full_p_cal);
+					uint32_t data1_cal = *(data_p_cal);
+					uint32_t empty_hv = *(empty_p_hv);
+					uint32_t full_hv = *(full_p_hv);
+					uint32_t data1_hv = *(data_p_hv);
+
+					*(registers_0_addr + REG_ROC_CAL_RE) = 1;
+					uint32_t data2_cal = *(data_p_cal);
+
+					*(registers_0_addr + REG_ROC_HV_RE) = 1;
+					uint32_t data2_hv = *(data_p_hv);
+
 					//					sprintf(outBuffer,"Empty: %d, Full: %d, data1: %04x, data2: %04x\n",empty,full,data1,data2);
 					//					UART_polled_tx_string( &g_uart, outBuffer );
 					outBuffer[bufcount++] = BITSLIPCMDID;
-					outBuffer[bufcount++] = 16;
-					outBuffer[bufcount++] = 0;
-					outBuffer[bufcount++] = empty & 0xff;
-					outBuffer[bufcount++] = ( empty >> 8 ) & 0xff;
-					outBuffer[bufcount++] = ( empty >> 16 ) & 0xff;
-					outBuffer[bufcount++] = empty >> 24;
-					outBuffer[bufcount++] = full & 0xff;
-					outBuffer[bufcount++] = ( full >> 8 ) & 0xff;
-					outBuffer[bufcount++] = ( full >> 16 ) & 0xff;
-					outBuffer[bufcount++] = full >> 24;
-					outBuffer[bufcount++] = data1 & 0xff;
-					outBuffer[bufcount++] = ( data1 >> 8 ) & 0xff;
-					outBuffer[bufcount++] = ( data1 >> 16 ) & 0xff;
-					outBuffer[bufcount++] = data1 >> 24;
-					outBuffer[bufcount++] = data2 & 0xff;
-					outBuffer[bufcount++] = ( data2 >> 8 ) & 0xff;
-					outBuffer[bufcount++] = ( data2 >> 16 ) & 0xff;
-					outBuffer[bufcount++] = data2 >> 24;
+					bufWrite(outBuffer, &bufcount, 32, 2);
+					bufWrite(outBuffer, &bufcount, empty_cal, 4);
+					bufWrite(outBuffer, &bufcount, full_cal, 4);
+					bufWrite(outBuffer, &bufcount, data1_cal, 4);
+					bufWrite(outBuffer, &bufcount, data2_cal, 4);
+					bufWrite(outBuffer, &bufcount, empty_hv, 4);
+					bufWrite(outBuffer, &bufcount, full_hv, 4);
+					bufWrite(outBuffer, &bufcount, data1_hv, 4);
+					bufWrite(outBuffer, &bufcount, data2_hv, 4);
+
 					outBufSend(g_uart, outBuffer, bufcount);
 
 				}else if (commandID == AUTOBITSLIPCMDID){
@@ -788,38 +686,41 @@ int main()
 
 					uint8_t clock = (uint8_t) buffer[4];
 					uint8_t dophase = (uint8_t) buffer[5];
-					uint32_t channel_mask1 = readU32fromBytes(&buffer[6]);
-					uint32_t channel_mask2 = readU32fromBytes(&buffer[10]);
-					uint32_t channel_mask3 = readU32fromBytes(&buffer[14]);
+					channel_mask[0] = readU32fromBytes(&buffer[6]);
+					channel_mask[1] = readU32fromBytes(&buffer[10]);
+					channel_mask[2] = readU32fromBytes(&buffer[14]);
 					int8_t adc_mode = 1;
 
+					hvcal = 1;
+					get_mapped_channels();
 
-					uint32_t mapped_channel_mask1;
-					uint32_t mapped_channel_mask2;
-					get_mapped_channels(&channel_mask1,&channel_mask2,&channel_mask3,&mapped_channel_mask1,&mapped_channel_mask2);
-
-					digi_write(0x3,1);
-					digi_write(0x4,1);
-					digi_write(0xb,(uint16_t) (mapped_channel_mask1 & 0xFFFF));
-					digi_write(0xe,(uint16_t) ((mapped_channel_mask1 & 0xFFFF0000)>>16));
-					digi_write(0xd,(uint16_t) (mapped_channel_mask2 & 0xFFFF));
-					digi_write(0xa,0);
-					digi_write(0xc,1);
-
-					uint64_t all_channel_mask = (((uint64_t) (mapped_channel_mask2)) <<32) | (uint64_t) (mapped_channel_mask1);
+					digi_write(DG_ADDR_SAMPLE,1,0);
+					digi_write(DG_ADDR_LOOKBACK,1,0);
+					digi_write(DG_ADDR_MASK1,(uint16_t) (mapped_channel_mask[0] & 0xFFFF), 1);
+					digi_write(DG_ADDR_MASK2,(uint16_t) ((mapped_channel_mask[0] & 0xFFFF0000)>>16), 1);
+					digi_write(DG_ADDR_MASK3,(uint16_t) (mapped_channel_mask[1] & 0xFFFF), 1);
+					digi_write(DG_ADDR_MASK1,(uint16_t) ((mapped_channel_mask[1] & 0xFFFF0000)>>16), 2);
+					digi_write(DG_ADDR_MASK2,(uint16_t) (mapped_channel_mask[2] & 0xFFFF), 2);
+					digi_write(DG_ADDR_MASK3,(uint16_t) ((mapped_channel_mask[2] & 0xFFFF0000)>>16), 2);
+					digi_write(DG_ADDR_TRIGGER_MODE,0,0);
+					digi_write(DG_ADDR_ENABLE_PULSER,1,0);
 
 					outBuffer[bufcount++] = AUTOBITSLIPCMDID;
-					outBuffer[bufcount++] = (454) & 0xff;
-					outBuffer[bufcount++] = (454) >> 8;
+					bufWrite(outBuffer, &bufcount, 902, 2);
 					outBuffer[bufcount++] = dophase;
 
 					if (dophase){
-						int phases[48];
-						for (uint8_t ichan=0;ichan<48;ichan++){
+						hvcal = 1;
+						int8_t phases[96];
+						for (uint8_t ichan=0;ichan<96;ichan++){
 							phases[ichan] = -1;
-							uint8_t adc_number = adc_map[ichan/8];
-							uint64_t thischanmask = (((uint64_t) 0x1)<<ichan);
-							if ((thischanmask & all_channel_mask) == 0x0){
+							if (ichan == 48)
+								hvcal =2;
+							uint16_t adc_number = adc_map[ichan/8];
+							thischanmask = (((uint32_t) 0x1)<<(ichan%32));
+							if ( ((ichan<32) && ((thischanmask & mapped_channel_mask[0]) == 0x0))||
+									((ichan>=32) && (ichan<64) && ((thischanmask & mapped_channel_mask[1]) == 0x0))||
+									((ichan>=64) && ((thischanmask & mapped_channel_mask[2]) == 0x0))	){
 								for (uint8_t i=0; i<9;i++) outBuffer[bufcount++] = 0;
 								continue;
 							}
@@ -827,27 +728,24 @@ int main()
 								for (uint8_t i=0; i<9;i++) outBuffer[bufcount++] = 0;
 								continue;
 							}
-							digi_write(0xb,0x0);
-							digi_write(0xe,0x0);
-							digi_write(0xd,0x0);
-							if (ichan < 16)
-								digi_write(0xb,(uint16_t) (0x1<<ichan));
-							else if (ichan < 32)
-								digi_write(0xe,(uint16_t) (0x1<<(ichan-16)));
+							digi_write(DG_ADDR_MASK1, 0x0, hvcal);
+							digi_write(DG_ADDR_MASK2, 0x0, hvcal);
+							digi_write(DG_ADDR_MASK3, 0x0, hvcal);
+							if ((ichan%48) < 16)
+								digi_write(DG_ADDR_MASK1, (uint16_t) (0x1<<(ichan%48)), hvcal);
+							else if ((ichan%48) < 32)
+								digi_write(DG_ADDR_MASK2, (uint16_t) (0x1<<((ichan%48)-16)), hvcal);
 							else
-								digi_write(0xd,(uint16_t) (0x1<<(ichan-32)));
+								digi_write(DG_ADDR_MASK3, (uint16_t) (0x1<<((ichan%48)-32)), hvcal);
 							uint16_t results[12];
 
 							uint8_t i=0;
 							for (i=0;i<12;i++){
-								adc_write(0x16,i,(0x1<<(adc_number)));
-								adc_write(0x0D,9,(0x1<<(adc_number)));
+								adc_write(ADC_ADDR_PHASE,i,(0x1<<(adc_number)));
+								adc_write(ADC_ADDR_TESTIO,9,(0x1<<(adc_number)));
 
 								// reset fifo
-								digi_write(0x10,0);
-								*(registers_0_addr + 0x44) = 1;
-								digi_write(0x10,1);
-								reset_fabric();
+								resetFIFO(hvcal);
 
 								readout_obloc = 0;
 								readout_maxDelay = 50;
@@ -861,7 +759,7 @@ int main()
 
 								uint16_t lasthit[13];
 
-								read_data2(&delay_count,&trigger_count,lasthit);
+								read_data2(&delay_count,&trigger_count,lasthit, hvcal);
 								if (trigger_count != 11){
 
 									//									sprintf(outBuffer,"Didn't get enough triggers: %d\n",trigger_count);
@@ -916,18 +814,15 @@ int main()
 							else{
 								//								sprintf(outBuffer,"%d: Could not find useable clock phase %02x %02x %02x\n",ichan,results[0],results[3],results[6]);
 								//								UART_polled_tx_string( &g_uart, outBuffer );
-								outBuffer[bufcount++] = results[0] & 0xff;
-								outBuffer[bufcount++] = results[0] >> 8;
-								outBuffer[bufcount++] = results[3] & 0xff;
-								outBuffer[bufcount++] = results[3] >> 8;
-								outBuffer[bufcount++] = results[6] & 0xff;
-								outBuffer[bufcount++] = results[6] >> 8;
+								bufWrite(outBuffer, &bufcount, results[0], 2);
+								bufWrite(outBuffer, &bufcount, results[3], 2);
+								bufWrite(outBuffer, &bufcount, results[6], 2);
 
 							}
 						}
 
 						// get best phase for each adc
-						for (uint8_t i=0;i<6;i++){
+						for (uint8_t i=0;i<12;i++){
 							int phasecount[12] = {0,0,0,0,0,0,0,0,0,0,0,0};
 							for (uint8_t j=0;j<8;j++)
 								if (phases[i*8+j] >= 0)
@@ -942,27 +837,32 @@ int main()
 							}
 						}
 					}else{
-						for (uint16_t i=0; i<9*48;i++) outBuffer[bufcount++] = 0;
+						for (uint16_t i=0; i<9*96;i++) outBuffer[bufcount++] = 0;
 					}
 
 					// now do bitslip
-					for (uint8_t i=0;i<6;i++){
+					for (uint8_t i=0;i<12;i++){
 
 						if ((0x1<<i) & ENABLED_ADCS){
 							if (clock < 99){
-								adc_write(0x16,clock,(0x1<<i));
-								adc_write(0x0D,1,(0x1<<i));
+								adc_write(ADC_ADDR_PHASE,clock,(0x1<<i));
+								adc_write(ADC_ADDR_TESTIO,1,(0x1<<i));
 							}else{
-								adc_write(0x16,adc_phases[i],(0x1<<i));
-								adc_write(0x0D,1,(0x1<<i));
+								adc_write(ADC_ADDR_PHASE,adc_phases[i],(0x1<<i));
+								adc_write(ADC_ADDR_TESTIO,1,(0x1<<i));
 							}
 						}
 					}
 					uint8_t ichan;
-					for (ichan=0;ichan<48;ichan++){
+					hvcal = 1;
+					for (ichan=0;ichan<96;ichan++){
+						if (ichan == 48)
+							hvcal =2;
 						uint8_t adc_number = adc_map[ichan/8];
-						uint64_t thischanmask = (((uint64_t) 0x1)<<ichan);
-						if ((thischanmask & all_channel_mask) == 0x0){
+						thischanmask = (((uint32_t) 0x1)<<(ichan%32));
+						if ( ((ichan<32) && ((thischanmask & mapped_channel_mask[0]) == 0x0))||
+								((ichan>=32) && (ichan<64) && ((thischanmask & mapped_channel_mask[1]) == 0x0))||
+								((ichan>=64) && ((thischanmask & mapped_channel_mask[2]) == 0x0))	){
 							outBuffer[bufcount] = outBuffer[bufcount] & (~((uint8_t)( 1 << (ichan % 8))));
 							if (((ichan+1)%8)==0) bufcount++;
 							continue;
@@ -972,21 +872,18 @@ int main()
 							if (((ichan+1)%8)==0) bufcount++;
 							continue;
 						}
-						digi_write(0xb,0x0);
-						digi_write(0xe,0x0);
-						digi_write(0xd,0x0);
-						if (ichan < 16)
-							digi_write(0xb,(uint16_t) (0x1<<ichan));
-						else if (ichan < 32)
-							digi_write(0xe,(uint16_t) (0x1<<(ichan-16)));
+						digi_write(DG_ADDR_MASK1, 0x0, hvcal);
+						digi_write(DG_ADDR_MASK2, 0x0, hvcal);
+						digi_write(DG_ADDR_MASK3, 0x0, hvcal);
+						if ((ichan%48) < 16)
+							digi_write(DG_ADDR_MASK1,(uint16_t) (0x1<<(ichan%48)), hvcal);
+						else if ((ichan%48) < 32)
+							digi_write(DG_ADDR_MASK2,(uint16_t) (0x1<<((ichan%48)-16)), hvcal);
 						else
-							digi_write(0xd,(uint16_t) (0x1<<(ichan-32)));
+							digi_write(DG_ADDR_MASK2,(uint16_t) (0x1<<((ichan%48)-32)), hvcal);
 						uint8_t success = 0;
 						for (uint8_t i=0;i<10;i++){
-							digi_write(0x10,0);
-							*(registers_0_addr + 0x44) = 1;
-							digi_write(0x10,1);
-							reset_fabric();
+							resetFIFO(hvcal);
 
 							readout_obloc = 0;
 							readout_maxDelay = 50;
@@ -1000,7 +897,7 @@ int main()
 
 							uint16_t lasthit[13];
 
-							read_data2(&delay_count,&trigger_count,lasthit);
+							read_data2(&delay_count,&trigger_count,lasthit,hvcal);
 							if (trigger_count != 11){
 								//								sprintf(outBuffer,"Didn't get enough triggers: %d\n",trigger_count);
 								//								UART_polled_tx_string( &g_uart, outBuffer );
@@ -1013,24 +910,24 @@ int main()
 							//sprintf(outBuffer,"%d: %d: got %02x\n",ichan,i,lasthit[12]);
 							//UART_polled_tx_string( &g_uart, outBuffer );
 
-							if (ichan < 8)
-								digi_write(0x30,((0x1<<(ichan-0))));
-							else if (ichan < 16)
-								digi_write(0x31,((0x1<<(ichan-8))));
-							else if (ichan < 24)
-								digi_write(0x32,((0x1<<(ichan-16))));
-							else if (ichan < 32)
-								digi_write(0x33,((0x1<<(ichan-24))));
-							else if (ichan < 40)
-								digi_write(0x34,((0x1<<(ichan-32))));
-							else if (ichan < 48)
-								digi_write(0x35,((0x1<<(ichan-40))));
-							digi_write(bitslip0,0x0);
-							digi_write(bitslip1,0x0);
-							digi_write(bitslip2,0x0);
-							digi_write(bitslip3,0x0);
-							digi_write(bitslip4,0x0);
-							digi_write(bitslip5,0x0);
+							if ((ichan%48) < 8)
+								digi_write(DG_ADDR_BITSLIP0,((0x1<<((ichan%48)-0))), hvcal);
+							else if ((ichan%48) < 16)
+								digi_write(DG_ADDR_BITSLIP1,((0x1<<((ichan%48)-8))), hvcal);
+							else if ((ichan%48) < 24)
+								digi_write(DG_ADDR_BITSLIP2,((0x1<<((ichan%48)-16))), hvcal);
+							else if ((ichan%48) < 32)
+								digi_write(DG_ADDR_BITSLIP3,((0x1<<((ichan%48)-24))), hvcal);
+							else if ((ichan%48) < 40)
+								digi_write(DG_ADDR_BITSLIP4,((0x1<<((ichan%48)-32))), hvcal);
+							else if ((ichan%48) < 48)
+								digi_write(DG_ADDR_BITSLIP5,((0x1<<((ichan%48)-40))), hvcal);
+							digi_write(DG_ADDR_BITSLIP0,0x0,hvcal);
+							digi_write(DG_ADDR_BITSLIP1,0x0,hvcal);
+							digi_write(DG_ADDR_BITSLIP2,0x0,hvcal);
+							digi_write(DG_ADDR_BITSLIP3,0x0,hvcal);
+							digi_write(DG_ADDR_BITSLIP4,0x0,hvcal);
+							digi_write(DG_ADDR_BITSLIP5,0x0,hvcal);
 						}
 
 						//if (success){
@@ -1044,35 +941,41 @@ int main()
 							outBuffer[bufcount] = outBuffer[bufcount] | ( 1 << (ichan % 8));
 						else
 							outBuffer[bufcount] = outBuffer[bufcount] & (~((uint8_t)( 1 << (ichan % 8))));
-						if (((ichan+1)%8)==0) bufcount++; //gives 6 bytes describing whether the operation is successful
+						if (((ichan+1)%8)==0) bufcount++; //gives 12 bytes describing whether the operation is successful
 					}
 
-					if (ichan<48){
-						for (uint8_t i=ichan; i<48; i++) {
+					if (ichan<96){
+						for (uint8_t i=ichan; i<96; i++) {
 							outBuffer[bufcount] = outBuffer[bufcount] & (~((uint8_t)( 1 << (i % 8))));
 							if (((i+1)%8)==0) bufcount++;
 						}
 					} //match the format if break in between
 
 					// check at the end with mixed frequency ADC
-					for (uint8_t i=0;i<6;i++){
+					for (uint8_t i=0;i<12;i++){
 
 						if ((0x1<<i) & ENABLED_ADCS){
+
 							if (clock < 99){
-								adc_write(0x16,clock,(0x1<<i));
-								adc_write(0x0D,0xC,(0x1<<i));
+								adc_write(ADC_ADDR_PHASE,clock,(0x1<<i));
+								adc_write(ADC_ADDR_TESTIO,0xC,(0x1<<i));
 							}else{
-								adc_write(0x16,adc_phases[i],(0x1<<i));
-								adc_write(0x0D,0xC,(0x1<<i));
+								adc_write(ADC_ADDR_PHASE,adc_phases[i],(0x1<<i));
+								adc_write(ADC_ADDR_TESTIO,0xC,(0x1<<i));
 							}
 						}
 					}
-					uint64_t error_mask = 0x0;
+					uint32_t error_mask[3] = {0};
 
-					for (ichan=0;ichan<48;ichan++){
+					hvcal = 1;
+					for (ichan=0;ichan<96;ichan++){
+						if (ichan == 48)
+							hvcal =2;
 						uint8_t adc_number = adc_map[ichan/8];
-						uint64_t thischanmask = (((uint64_t) 0x1)<<ichan);
-						if ((thischanmask & all_channel_mask) == 0x0){
+						thischanmask = (((uint32_t) 0x1)<<(ichan%32));
+						if ( ((ichan<32) && ((thischanmask & mapped_channel_mask[0]) == 0x0))||
+								((ichan>=32) && (ichan<64) && ((thischanmask & mapped_channel_mask[1]) == 0x0))||
+								((ichan>=64) && ((thischanmask & mapped_channel_mask[2]) == 0x0))	){
 							outBuffer[bufcount] = outBuffer[bufcount] & (~((uint8_t)( 1 << (ichan % 8))));
 							if (((ichan+1)%8)==0) bufcount++; //place holder, unchecked also gives 0
 							continue;
@@ -1082,20 +985,17 @@ int main()
 							if (((ichan+1)%8)==0) bufcount++; //place holder, unchecked also gives 0
 							continue;
 						}
-						digi_write(0xb,0x0);
-						digi_write(0xe,0x0);
-						digi_write(0xd,0x0);
-						if (ichan < 16)
-							digi_write(0xb,(uint16_t) (0x1<<ichan));
-						else if (ichan < 32)
-							digi_write(0xe,(uint16_t) (0x1<<(ichan-16)));
+						digi_write(DG_ADDR_MASK1, 0x0, hvcal);
+						digi_write(DG_ADDR_MASK2, 0x0, hvcal);
+						digi_write(DG_ADDR_MASK3, 0x0, hvcal);
+						if ((ichan%48) < 16)
+							digi_write(DG_ADDR_MASK1,(uint16_t) (0x1<<(ichan%48)), hvcal);
+						else if ((ichan%48) < 32)
+							digi_write(DG_ADDR_MASK2,(uint16_t) (0x1<<((ichan%48)-16)), hvcal);
 						else
-							digi_write(0xd,(uint16_t) (0x1<<(ichan-32)));
+							digi_write(DG_ADDR_MASK2,(uint16_t) (0x1<<((ichan%48)-32)), hvcal);
 
-						digi_write(0x10,0);
-						*(registers_0_addr + 0x44) = 1;
-						digi_write(0x10,1);
-						reset_fabric();
+						resetFIFO(hvcal);
 
 						readout_obloc = 0;
 						readout_maxDelay = 50;
@@ -1109,18 +1009,18 @@ int main()
 
 						uint16_t lasthit[13];
 
-						read_data2(&delay_count,&trigger_count,lasthit);
+						read_data2(&delay_count,&trigger_count,lasthit,hvcal);
 						if (trigger_count != 11){
 							//sprintf(outBuffer,"Didn't get enough triggers: %d\n",trigger_count);
 							//UART_polled_tx_string( &g_uart, outBuffer );
 							break;
 						}
 						if (lasthit[12] != 0x319){
-							error_mask |= (((uint64_t)0x1)<<ichan);
+							error_mask[ichan/32]|= (((uint32_t)0x1)<<(ichan%32));
 							//sprintf(outBuffer,"%d FAILED final check: %02x (instead of 0x319)\n",ichan,lasthit[12]);
 							//UART_polled_tx_string( &g_uart, outBuffer );
 							outBuffer[bufcount] = outBuffer[bufcount] & (~((uint8_t)( 1 << (ichan % 8))));
-							if (((ichan+1)%8)==0) bufcount++; //gives 6 bytes describing whether final check is successful
+							if (((ichan+1)%8)==0) bufcount++; //gives 12 bytes describing whether final check is successful
 						}
 						else{
 							outBuffer[bufcount] = outBuffer[bufcount] | ( 1 << (ichan % 8));
@@ -1128,8 +1028,8 @@ int main()
 						}
 					}
 
-					if (ichan<48){
-						for (uint8_t i=ichan; i<48; i++) {
+					if (ichan<96){
+						for (uint8_t i=ichan; i<96; i++) {
 							outBuffer[bufcount] = outBuffer[bufcount] & (~((uint8_t)( 1 << (ichan % 8))));
 							if (((i+1)%8)==0) bufcount++;
 						}
@@ -1140,28 +1040,24 @@ int main()
 					//sprintf(outBuffer,"Error mask: %04x%08x\n",((uint32_t)(error_mask>>32)),(uint32_t)(error_mask&0xFFFFFFFF));
 					//UART_polled_tx_string( &g_uart, outBuffer );
 
-					outBuffer[bufcount++] = error_mask & 0xff;
-					outBuffer[bufcount++] = ( error_mask >> 8 ) & 0xff;
-					outBuffer[bufcount++] = ( error_mask >> 16 ) & 0xff;
-					outBuffer[bufcount++] = ( error_mask >> 24 ) & 0xff;
-					outBuffer[bufcount++] = ( error_mask >> 32 ) & 0xff;
-					outBuffer[bufcount++] = ( error_mask >> 40 ) & 0xff;
-					outBuffer[bufcount++] = ( error_mask >> 48 ) & 0xff;
-					outBuffer[bufcount++] = error_mask >> 56;
+					for (uint8_t i=0; i<3; i++)
+						bufWrite(outBuffer, &bufcount, error_mask[i], 4);
 					outBufSend(g_uart, outBuffer, bufcount);
 
 				}else if (commandID == READRATESCMDID){
 					uint16_t num_lookback = readU16fromBytes(&buffer[4]);
 					uint16_t num_samples = readU16fromBytes(&buffer[6]);
-					uint32_t channel_mask1 = readU32fromBytes(&buffer[8]);
-					uint32_t channel_mask2 = readU32fromBytes(&buffer[12]);
-					uint32_t channel_mask3 = readU32fromBytes(&buffer[16]);
+					channel_mask[0] = readU32fromBytes(&buffer[8]);
+					channel_mask[1] = readU32fromBytes(&buffer[12]);
+					channel_mask[2] = readU32fromBytes(&buffer[16]);
 
 					outBuffer[bufcount++] = READRATESCMDID;
-					outBuffer[bufcount++] = (816) & 0xff;
-					outBuffer[bufcount++] = (816) >> 8;
+					bufcount_place_holder = bufcount;
+					bufWrite(outBuffer, &bufcount, 0, 2);
 
-					get_rates(channel_mask1,channel_mask2,channel_mask3,num_lookback,num_samples);
+					get_rates(num_lookback,num_samples);
+
+					bufWrite(outBuffer, &bufcount_place_holder, (bufcount-3), 2);
 					outBufSend(g_uart, outBuffer, bufcount);
 
 				} else if (commandID == READDATACMDID){
@@ -1171,47 +1067,67 @@ int main()
 					uint16_t num_lookback = readU16fromBytes(&buffer[6]);
 					uint16_t num_samples = readU16fromBytes(&buffer[8]);
 					uint32_t num_triggers = readU32fromBytes(&buffer[10]);
-					uint32_t channel_mask1 = readU32fromBytes(&buffer[14]);
-					uint32_t channel_mask2 = readU32fromBytes(&buffer[18]);
-					uint32_t channel_mask3 = readU32fromBytes(&buffer[22]);
+					channel_mask[0] = readU32fromBytes(&buffer[14]);
+					channel_mask[1] = readU32fromBytes(&buffer[18]);
+					channel_mask[2] = readU32fromBytes(&buffer[22]);
 					uint8_t clock = (uint8_t) buffer[26];
 					uint8_t enable_pulser = (uint8_t) buffer[27];
 					uint16_t max_total_delay = readU16fromBytes(&buffer[28]);
 					uint8_t mode = buffer[30];
 
-					for (uint8_t i=0;i<6;i++){
+					for (uint8_t i=0;i<12;i++){
 						if ((0x1<<i) & ENABLED_ADCS){
 							if (clock < 99){
-								adc_write(0x16,clock,(0x1<<i));
-								adc_write(0x0D,adc_mode,(0x1<<i));
+								adc_write(ADC_ADDR_PHASE,clock,(0x1<<i));
+								adc_write(ADC_ADDR_TESTIO,adc_mode,(0x1<<i));
 							}else{
-								adc_write(0x16,adc_phases[i],(0x1<<i));
-								adc_write(0x0D,adc_mode,(0x1<<i));
+								adc_write(ADC_ADDR_PHASE,adc_phases[i],(0x1<<i));
+								adc_write(ADC_ADDR_TESTIO,adc_mode,(0x1<<i));
 							}
 						}
 					}
 
-					uint32_t mapped_channel_mask1;
-					uint32_t mapped_channel_mask2;
-					get_mapped_channels(&channel_mask1,&channel_mask2,&channel_mask3,&mapped_channel_mask1,&mapped_channel_mask2);
+					hvcal = 1;
+					get_mapped_channels();
 
-					digi_write(0x3,num_samples);
-					digi_write(0x4,num_lookback);
-					digi_write(0xb,(uint16_t) (mapped_channel_mask1 & 0xFFFF));
-					digi_write(0xe,(uint16_t) ((mapped_channel_mask1 & 0xFFFF0000)>>16));
-					digi_write(0xd,(uint16_t) (mapped_channel_mask2 & 0xFFFF));
-					digi_write(0xa,tdc_mode);
-					digi_write(0xc,enable_pulser);
+					digi_write(DG_ADDR_SAMPLE,num_samples,0);
+					digi_write(DG_ADDR_LOOKBACK,num_lookback,0);
+					digi_write(DG_ADDR_MASK1,(uint16_t) (mapped_channel_mask[0] & 0xFFFF), 1);
+					digi_write(DG_ADDR_MASK2,(uint16_t) ((mapped_channel_mask[0] & 0xFFFF0000)>>16), 1);
+					digi_write(DG_ADDR_MASK3,(uint16_t) (mapped_channel_mask[1] & 0xFFFF), 1);
+					digi_write(DG_ADDR_MASK1,(uint16_t) ((mapped_channel_mask[1] & 0xFFFF0000)>>16), 2);
+					digi_write(DG_ADDR_MASK2,(uint16_t) (mapped_channel_mask[2] & 0xFFFF), 2);
+					digi_write(DG_ADDR_MASK3,(uint16_t) ((mapped_channel_mask[2] & 0xFFFF0000)>>16), 2);
+					digi_write(DG_ADDR_TRIGGER_MODE,tdc_mode,0);
+					digi_write(DG_ADDR_ENABLE_PULSER,enable_pulser,0);
 
-					num_samples = digi_read(0x3);
-					enable_pulser = digi_read(0xc);
+					if ((mapped_channel_mask[2]!=0)||((mapped_channel_mask[1]>>16)!=0))
+						hvcal = 2;
+
+					num_samples = digi_read(DG_ADDR_SAMPLE, hvcal);
+					enable_pulser = digi_read(DG_ADDR_ENABLE_PULSER, hvcal);
 
 					char tdc_string[8];
-					//if (enable_pulser == 0)
+					if (enable_pulser == 0){
 					//	strncpy(tdc_string, "REAL  \0", 7);
-					//else
+						tdc_string[0]='R';
+						tdc_string[1]='E';
+						tdc_string[2]='A';
+						tdc_string[3]='L';
+						tdc_string[4]=' ';
+						tdc_string[5]=' ';
+						tdc_string[6]='\0';
+					}
+					else{
 					//	strncpy(tdc_string, "PULSER\0", 7);
-
+						tdc_string[0]='P';
+						tdc_string[1]='U';
+						tdc_string[2]='L';
+						tdc_string[3]='S';
+						tdc_string[4]='E';
+						tdc_string[5]='R';
+						tdc_string[6]='\0';
+					}
 					//sprintf(outBuffer,"Setup complete:\nSamples: %d\nLookback: %d\nChannel Mask: %08x\nADC Mode: %d\nTDC Mode: %d\nTrigger on: %s\nClock Mode: %d\nTriggers: %d\n",num_samples,num_lookback,channel_mask1,adc_mode,tdc_mode,tdc_string,clock,num_triggers);
 					//UART_polled_tx_string( &g_uart, outBuffer );
 					//sprintf(outBuffer,"CM: %08x %08x %08x, ep: %d\n",digi_read(0xb),digi_read(0xe),digi_read(0xd),digi_read(0xc));
@@ -1219,45 +1135,26 @@ int main()
 
 					outBuffer[bufcount++] = READDATACMDID;
 					//outBuffer[bufcount++] = 33;
-					outBuffer[bufcount++] = 35;
-					outBuffer[bufcount++] = 0;
+					bufWrite(outBuffer, &bufcount, 35, 2);
 					outBuffer[bufcount++] = enable_pulser;
-					outBuffer[bufcount++] = num_samples & 0xff;
-					outBuffer[bufcount++] = num_samples >> 8;
-					outBuffer[bufcount++] = num_lookback & 0xff;
-					outBuffer[bufcount++] = num_lookback >> 8;
-					outBuffer[bufcount++] = channel_mask1 & 0xff;
-					outBuffer[bufcount++] = ( channel_mask1 >> 8) & 0xff;
-					outBuffer[bufcount++] = ( channel_mask1 >> 16) & 0xff;;
-					outBuffer[bufcount++] = channel_mask1 >> 24;
-					outBuffer[bufcount++] = adc_mode & 0xff;
-					outBuffer[bufcount++] = adc_mode >> 8;
-					outBuffer[bufcount++] = tdc_mode & 0xff;
-					outBuffer[bufcount++] = tdc_mode >> 8;
+					bufWrite(outBuffer, &bufcount, num_samples, 2);
+					bufWrite(outBuffer, &bufcount, num_lookback, 2);
+					bufWrite(outBuffer, &bufcount, channel_mask[0], 4);
+					bufWrite(outBuffer, &bufcount, adc_mode, 2);
+					bufWrite(outBuffer, &bufcount, tdc_mode, 2);
 					for (uint8_t i=0; i<8; i++)
 						outBuffer[bufcount++] = (uint8_t) tdc_string[i];
 					outBuffer[bufcount++] = clock;
-					outBuffer[bufcount++] = num_triggers & 0xff;
-					outBuffer[bufcount++] = ( num_triggers >> 8) & 0xff;
-					outBuffer[bufcount++] = ( num_triggers >> 16) & 0xff;;
-					outBuffer[bufcount++] = num_triggers >> 24;
-
-					outBuffer[bufcount++] = digi_read(0xb) & 0xff;
-					outBuffer[bufcount++] = digi_read(0xb) >> 8;
-					outBuffer[bufcount++] = digi_read(0xe) & 0xff;
-					outBuffer[bufcount++] = digi_read(0xe) >> 8;
-					outBuffer[bufcount++] = digi_read(0xd) & 0xff;
-					outBuffer[bufcount++] = digi_read(0xd) >> 8;
-					outBuffer[bufcount++] = digi_read(0xc) & 0xff;
-					outBuffer[bufcount++] = digi_read(0xc) >> 8;
+					bufWrite(outBuffer, &bufcount, num_triggers, 4);
+					bufWrite(outBuffer, &bufcount, digi_read(DG_ADDR_MASK1,hvcal), 2);
+					bufWrite(outBuffer, &bufcount, digi_read(DG_ADDR_MASK2,hvcal), 2);
+					bufWrite(outBuffer, &bufcount, digi_read(DG_ADDR_MASK3,hvcal), 2);
+					bufWrite(outBuffer, &bufcount, digi_read(DG_ADDR_ENABLE_PULSER,hvcal), 2);
 
 					delayUs(100);
 
 					// reset fifo
-					digi_write(0x10,0);
-					*(registers_0_addr + 0x44) = 1;
-					digi_write(0x10,1);
-					reset_fabric();
+					resetFIFO(hvcal);
 
 					//readout_obloc = 6;
 					readout_obloc = 0;
@@ -1275,35 +1172,28 @@ int main()
 						int delay_count = 0;
 						int trigger_count = 0;
 
-						read_data(&delay_count,&trigger_count);
+						read_data(&delay_count,&trigger_count,hvcal);
 
 						//sprintf(&dataBuffer[readout_obloc],"\nend\n");
 						//UART_polled_tx_string( &g_uart, dataBuffer );
 						bufcount = 0;
 						outBuffer[bufcount++] = READDATACMDID;
-						outBuffer[bufcount++] = 5 & 0xff;
-						outBuffer[bufcount++] = 5 >> 8;
+						bufWrite(outBuffer, &bufcount, 5, 2);
 						outBuffer[bufcount++] = (uint8_t)(trigger_count == num_triggers);
 
 						if (trigger_count == num_triggers){
 							//sprintf(outBuffer,"SUCCESS! Delayed %d times\n",delay_count);
-							outBuffer[bufcount++] = (uint32_t)delay_count & 0xff;
-							outBuffer[bufcount++] = ( (uint32_t)delay_count >> 8) & 0xff;
-							outBuffer[bufcount++] = ( (uint32_t)delay_count >> 16) & 0xff;;
-							outBuffer[bufcount++] = (uint32_t)delay_count >> 24;
+							bufWrite(outBuffer, &bufcount, (uint32_t)delay_count, 4);
 						}else{
 							//sprintf(outBuffer,"FAILED! Read %d triggers\n",trigger_count);
-							outBuffer[bufcount++] = (uint32_t)trigger_count & 0xff;
-							outBuffer[bufcount++] = ( (uint32_t)trigger_count >> 8) & 0xff;
-							outBuffer[bufcount++] = ( (uint32_t)trigger_count >> 16) & 0xff;;
-							outBuffer[bufcount++] = (uint32_t)trigger_count >> 24;
+							bufWrite(outBuffer, &bufcount, (uint32_t)trigger_count, 4);
 						}
 
 						UART_send(&g_uart, outBuffer ,bufcount );
 
 						//UART_polled_tx_string( &g_uart, outBuffer );
 
-						//get_rates(channel_mask1,channel_mask2,channel_mask3,0,10);
+						//get_rates(0,10);
 					}else{
 						readout_enabled = 1;
 						//sprintf(outBuffer,"Run started\n");
@@ -1312,37 +1202,31 @@ int main()
 						UART_send(&g_uart, outBuffer ,1);
 					}
 
-
-
 				}else if (commandID == STOPRUNCMDID){
 
 					outBuffer[bufcount++] = STOPRUNCMDID;
-					outBuffer[bufcount++] = 3;
-					outBuffer[bufcount++] = 0;
+					bufWrite(outBuffer, &bufcount, 3, 2);
 					outBuffer[bufcount++] = readout_enabled;
 
 					if (readout_enabled == 0){
 						//sprintf(outBuffer,"Error: no run to stop\n");
 						//UART_polled_tx_string( &g_uart, outBuffer );
-						outBuffer[bufcount++] = 0;
-						outBuffer[bufcount++] = 0;
+						bufWrite(outBuffer, &bufcount, 0, 2);
 					}else{
 						readout_enabled = 0;
 						//sprintf(&dataBuffer[readout_obloc],"\nend\n");
 						//UART_polled_tx_string( &g_uart, dataBuffer );
 						//sprintf(outBuffer,"Run ended. Read %d triggers\n",readout_totalTriggers);
 						//UART_polled_tx_string( &g_uart, outBuffer );
-						outBuffer[bufcount++] = readout_totalTriggers & 0xff;
-						outBuffer[bufcount++] = readout_totalTriggers >> 8;
+						bufWrite(outBuffer, &bufcount, readout_totalTriggers, 2);
 					}
 					outBufSend(g_uart, outBuffer, bufcount);
 
 				}else if (commandID == ADCINITINFOCMDID){
 
 					outBuffer[bufcount++] = ADCINITINFOCMDID;
-					outBuffer[bufcount++] = 16;
-					outBuffer[bufcount++] = 0;
-					for (uint8_t i=0; i<16; i++)
+					bufWrite(outBuffer, &bufcount, 30, 2);
+					for (uint8_t i=0; i<30; i++)
 						outBuffer[bufcount++] = init_buff[i];
 					outBufSend(g_uart, outBuffer, bufcount);
 
