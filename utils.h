@@ -44,7 +44,7 @@
 #define GETDEVICEID 13
 #define TESTDDR 14
 #define RESETROC 15
-#define TOGGLECALHV 16
+//#define TOGGLECALHV 16
 
 //"digi" command ID (1 byte)
 

@@ -30,12 +30,11 @@ const uint8_t default_delay = 200;
 
 #define BAUD_VALUE                  57600
 
-const uint16_t ENABLED_ADCS = 0xFFF;
 const uint8_t MCPCALIBCHAN[8] = {1,2,3,4,9,10,11,12};
 
 int main()
 {
-
+	const uint16_t ENABLED_ADCS = 0xFFF;
 
 	SystemCoreClockUpdate();
 	UART_init( &g_uart, UART_BASE_ADDRESS, (SYS_M1_CLK_FREQ/(16 * BAUD_VALUE))-1, (DATA_8_BITS | NO_PARITY));
@@ -563,7 +562,7 @@ int main()
 				 }else if (commandID == READBMES){
 
 				 	outBuffer[bufcount++] = READBMES;
-				 	outBuffer[bufcount++] = 24;
+				 	bufWrite(outBuffer, &bufcount, 24, 2);
 				 	rslt = bme280_set_sensor_mode(BME280_FORCED_MODE, &ptscal);
 				 	ptscal.delay_ms(40);
 				 	rslt = bme280_get_sensor_data(BME280_ALL, &comp_data, &ptscal);
