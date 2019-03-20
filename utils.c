@@ -145,14 +145,14 @@ uint32_t GPIO_read(uint8_t pin)
 
 void digi_write(uint8_t address, uint16_t data, uint8_t hvcal)
 {
-	if ((hvcal==1)||(hvcal=0)){
+	if ((hvcal==1)||(hvcal==0)){
 
 		*(data_p_cal) = data;
 		*(address_p_cal) = address;
 		*(init_p_cal) = 1;
 		while (*(busy_p_cal) != 0){};
 	}
-	if ((hvcal==2)||(hvcal=0)){
+	if ((hvcal==2)||(hvcal==0)){
 
 		*(data_p_hv) = data;
 		*(address_p_hv) = address;
