@@ -145,7 +145,20 @@ uint32_t GPIO_read(uint8_t pin)
 
 void digi_write(uint8_t address, uint16_t data, uint8_t hvcal)
 {
+	volatile uint32_t * busy_p_cal;
+	volatile uint32_t * data_p_cal;
+	volatile uint32_t * address_p_cal;
+	volatile uint32_t * init_p_cal;
+	volatile uint32_t * busy_p_hv;
+	volatile uint32_t * data_p_hv;
+	volatile uint32_t * address_p_hv;
+	volatile uint32_t * init_p_hv;
+
 	if ((hvcal==1)||(hvcal==0)){
+		busy_p_cal = registers_0_addr+REG_ROC_CAL_BUSY_P;
+		data_p_cal = registers_0_addr+REG_ROC_CAL_DATA_P;
+		address_p_cal = registers_0_addr+REG_ROC_CAL_ADDRESS_P;
+		init_p_cal = registers_0_addr+REG_ROC_CAL_INIT_P;
 
 		*(data_p_cal) = data;
 		*(address_p_cal) = address;
@@ -153,6 +166,10 @@ void digi_write(uint8_t address, uint16_t data, uint8_t hvcal)
 		while (*(busy_p_cal) != 0){};
 	}
 	if ((hvcal==2)||(hvcal==0)){
+		busy_p_hv = registers_0_addr+REG_ROC_HV_BUSY_P;
+		data_p_hv = registers_0_addr+REG_ROC_HV_DATA_P;
+		address_p_hv = registers_0_addr+REG_ROC_HV_ADDRESS_P;
+		init_p_hv = registers_0_addr+REG_ROC_HV_INIT_P;
 
 		*(data_p_hv) = data;
 		*(address_p_hv) = address;
@@ -163,11 +180,23 @@ void digi_write(uint8_t address, uint16_t data, uint8_t hvcal)
 
 uint16_t digi_read(uint8_t address, uint8_t hvcal)//hvcal can only be 1 or 2
 {
+	volatile uint32_t * busy_p_cal;
+	volatile uint32_t * data_p_cal;
+	volatile uint32_t * address_p_cal;
+	volatile uint32_t * init_p_cal;
+	volatile uint32_t * busy_p_hv;
+	volatile uint32_t * data_p_hv;
+	volatile uint32_t * address_p_hv;
+	volatile uint32_t * init_p_hv;
 
 	if (hvcal!=1 && hvcal!=2)
 		hvcal = 1;//for safety.
 
 	if (hvcal==1){
+		busy_p_cal = registers_0_addr+REG_ROC_CAL_BUSY_P;
+		data_p_cal = registers_0_addr+REG_ROC_CAL_DATA_P;
+		address_p_cal = registers_0_addr+REG_ROC_CAL_ADDRESS_P;
+		init_p_cal = registers_0_addr+REG_ROC_CAL_INIT_P;
 
 		*(address_p_cal) = (0x1<<8) | address;
 		*(init_p_cal) = 1;
@@ -175,6 +204,10 @@ uint16_t digi_read(uint8_t address, uint8_t hvcal)//hvcal can only be 1 or 2
 		return *(data_p_cal);
 	}
 	else{
+		busy_p_hv = registers_0_addr+REG_ROC_HV_BUSY_P;
+		data_p_hv = registers_0_addr+REG_ROC_HV_DATA_P;
+		address_p_hv = registers_0_addr+REG_ROC_HV_ADDRESS_P;
+		init_p_hv = registers_0_addr+REG_ROC_HV_INIT_P;
 
 		*(address_p_hv) = (0x1<<8) | address;
 		*(init_p_hv) = 1;

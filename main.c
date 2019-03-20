@@ -55,14 +55,6 @@ int main()
 
 	//register address for bit banging
 	registers_0_addr = (volatile uint32_t *) REGISTERBASEADDR;
-	busy_p_cal = registers_0_addr+REG_ROC_CAL_BUSY_P;
-	data_p_cal = registers_0_addr+REG_ROC_CAL_DATA_P;
-	address_p_cal = registers_0_addr+REG_ROC_CAL_ADDRESS_P;
-	init_p_cal = registers_0_addr+REG_ROC_CAL_INIT_P;
-	busy_p_hv = registers_0_addr+REG_ROC_HV_BUSY_P;
-	data_p_hv = registers_0_addr+REG_ROC_HV_DATA_P;
-	address_p_hv = registers_0_addr+REG_ROC_HV_ADDRESS_P;
-	init_p_hv = registers_0_addr+REG_ROC_HV_INIT_P;
 
 	uint8_t errors = init_adc(ENABLED_ADCS,0x02,0x03);
 
