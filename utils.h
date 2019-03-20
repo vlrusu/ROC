@@ -45,6 +45,7 @@
 #define TESTDDR 14
 #define RESETROC 15
 //#define TOGGLECALHV 16
+#define DIGIRW 16
 
 //"digi" command ID (1 byte)
 
@@ -209,6 +210,14 @@ extern uint8_t buffer[256]; // buffer for reading from serial port
 extern uint32_t writePtr;
 
 volatile uint32_t * registers_0_addr;
+volatile uint32_t * busy_p_cal;
+volatile uint32_t * data_p_cal;
+volatile uint32_t * address_p_cal;
+volatile uint32_t * init_p_cal;
+volatile uint32_t * busy_p_hv;
+volatile uint32_t * data_p_hv;
+volatile uint32_t * address_p_hv;
+volatile uint32_t * init_p_hv;
 
 extern int readout_maxDelay;
 extern int readout_mode;

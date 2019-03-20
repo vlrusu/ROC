@@ -14,6 +14,8 @@
 #include "utils.h"
 #include "version.h"
 
+#define BAUD_VALUE                  57600
+#define ENABLED_ADCS				0xfffu
 
 uint16_t default_gains_cal[96] = {271,275,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,269,269,269,269,269,269,269,268,269,269,269,264,269,269,269,270};
 uint16_t default_gains_hv[96] = {270,271,270,270,270,270,270,270,270,270,270,270,270,270,266,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,267,270,270,270,270,266,266,272,268,266,265,269,269,269,269,270};
@@ -27,15 +29,10 @@ const uint8_t calpulse_chanmap[8]={9,1,10,2,11,3,12,4};
 
 const uint8_t default_delay = 200;
 
-
-#define BAUD_VALUE                  57600
-
 const uint8_t MCPCALIBCHAN[8] = {1,2,3,4,9,10,11,12};
 
 int main()
 {
-	const uint16_t ENABLED_ADCS = 0xFFF;
-
 	SystemCoreClockUpdate();
 	UART_init( &g_uart, UART_BASE_ADDRESS, (SYS_M1_CLK_FREQ/(16 * BAUD_VALUE))-1, (DATA_8_BITS | NO_PARITY));
 
@@ -58,7 +55,14 @@ int main()
 
 	//register address for bit banging
 	registers_0_addr = (volatile uint32_t *) REGISTERBASEADDR;
-
+	busy_p_cal = (volatile uint32_t *)(registers_0_addr+REG_ROC_CAL_BUSY_P);
+	data_p_cal = (volatile uint32_t *)(registers_0_addr+REG_ROC_CAL_DATA_P);
+	address_p_cal = (volatile uint32_t *)(registers_0_addr+REG_ROC_CAL_ADDRESS_P);
+	init_p_cal = (volatile uint32_t *)(registers_0_addr+REG_ROC_CAL_INIT_P);
+	busy_p_hv = (volatile uint32_t *)(registers_0_addr+REG_ROC_HV_BUSY_P);
+	data_p_hv = (volatile uint32_t *)(registers_0_addr+REG_ROC_HV_DATA_P);
+	address_p_hv = (volatile uint32_t *)(registers_0_addr+REG_ROC_HV_ADDRESS_P);
+	init_p_hv = (volatile uint32_t *)(registers_0_addr+REG_ROC_HV_INIT_P);
 
 	uint8_t errors = init_adc(ENABLED_ADCS,0x02,0x03);
 
@@ -581,6 +585,28 @@ int main()
 				 	//					sprintf(outBuffer,"HV %d %d %d\n",comp_data.temperature, comp_data.pressure, comp_data.humidity);
 				 	//					MSS_UART_polled_tx( &g_mss_uart1, outBuffer, strlen(outBuffer) );
 				 	outBufSend(g_uart, outBuffer, bufcount);
+
+				 }else if (commandID == DIGIRW){
+					 uint8_t rw = (uint8_t) buffer[4];
+					 uint8_t thishvcal = (uint8_t) buffer[5];
+					 uint8_t address = (uint8_t) buffer[6];
+					 uint16_t data = readU16fromBytes(&buffer[7]);
+
+					 outBuffer[bufcount++] = DIGIRW;
+					 bufWrite(outBuffer, &bufcount, 5, 2);
+
+					 if ( rw == 0 ){//read
+						 data = digi_read(address, thishvcal);
+					 }
+					 else{
+						 digi_write(address, data, thishvcal);
+					 }
+					 bufWrite(outBuffer, &bufcount, rw, 1);
+					 bufWrite(outBuffer, &bufcount, thishvcal, 1);
+					 bufWrite(outBuffer, &bufcount, address, 1);
+					 bufWrite(outBuffer, &bufcount, data, 2);
+					 outBufSend(g_uart, outBuffer, bufcount);
+
 
 //***********************************begin of control_digi commands*******************************************************************************
 				}else if (commandID == ADCRWCMDID){
