@@ -463,7 +463,7 @@ void read_data2(int *delay_count, int *trigger_count, uint16_t *lasthit, uint8_t
 	while (1){
 		if (memlevel < readout_wordsPerTrigger){
 			volatile uint32_t fifoinfo = *(registers_0_addr + rdcnt);
-			memlevel = fifoinfo & 0x7FFF;
+			memlevel = fifoinfo & 0xFFFF;
 			if (memlevel < readout_wordsPerTrigger){
 				(*delay_count)++;
 				if ((*delay_count) >= readout_maxDelay)
