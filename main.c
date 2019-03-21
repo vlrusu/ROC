@@ -1105,6 +1105,8 @@ int main()
 					digi_write(DG_ADDR_TRIGGER_MODE,tdc_mode,0);
 					digi_write(DG_ADDR_ENABLE_PULSER,enable_pulser,0);
 
+					*(registers_0_addr + REG_ROC_FIFO_HOWMANY) = num_samples;
+
 					if ((mapped_channel_mask[2]!=0)||((mapped_channel_mask[1]>>16)!=0))
 						hvcal = 2;
 
