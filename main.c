@@ -709,8 +709,6 @@ int main()
 					digi_write(DG_ADDR_TRIGGER_MODE,0,0);
 					digi_write(DG_ADDR_ENABLE_PULSER,1,0);
 
-					*(registers_0_addr + REG_ROC_FIFO_HOWMANY) = 1;
-
 					outBuffer[bufcount++] = AUTOBITSLIPCMDID;
 					bufWrite(outBuffer, &bufcount, 902, 2);
 					outBuffer[bufcount++] = dophase;
@@ -1071,16 +1069,15 @@ int main()
 					uint16_t adc_mode = (uint16_t) ((uint8_t) buffer[4]);
 					uint16_t tdc_mode = (uint16_t) ((uint8_t) buffer[5]);
 					uint16_t num_lookback = readU16fromBytes(&buffer[6]);
-					uint8_t num_open_chan = ((uint8_t) buffer[8]);
-					uint16_t num_samples = readU16fromBytes(&buffer[9]);
-					uint32_t num_triggers = readU32fromBytes(&buffer[11]);
-					channel_mask[0] = readU32fromBytes(&buffer[15]);
-					channel_mask[1] = readU32fromBytes(&buffer[19]);
-					channel_mask[2] = readU32fromBytes(&buffer[23]);
-					uint8_t clock = (uint8_t) buffer[27];
-					uint8_t enable_pulser = (uint8_t) buffer[28];
-					uint16_t max_total_delay = readU16fromBytes(&buffer[29]);
-					uint8_t mode = buffer[31];
+					uint16_t num_samples = readU16fromBytes(&buffer[8]);
+					uint32_t num_triggers = readU32fromBytes(&buffer[10]);
+					channel_mask[0] = readU32fromBytes(&buffer[14]);
+					channel_mask[1] = readU32fromBytes(&buffer[18]);
+					channel_mask[2] = readU32fromBytes(&buffer[22]);
+					uint8_t clock = (uint8_t) buffer[26];
+					uint8_t enable_pulser = (uint8_t) buffer[27];
+					uint16_t max_total_delay = readU16fromBytes(&buffer[28]);
+					uint8_t mode = buffer[30];
 
 					for (uint8_t i=0;i<12;i++){
 						if ((0x1<<i) & ENABLED_ADCS){
@@ -1170,7 +1167,7 @@ int main()
 					//sprintf(dataBuffer,"start\n");
 					readout_maxDelay = max_total_delay*50;
 					readout_mode = mode;
-					readout_wordsPerTrigger = 12 + num_open_chan * num_samples;
+					readout_wordsPerTrigger = 12 + num_samples;
 					readout_numTriggers = num_triggers;
 					readout_totalTriggers = 0;
 
