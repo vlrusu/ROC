@@ -111,19 +111,13 @@
 //#define REG_ROC_DDR_RADDR 0x28
 //#define REG_ROC_DDR_DATA 0x29
 
-#define REG_ROC_CAL_RE 0x40
-#define REG_ROC_CAL_DATA 0x41
-#define REG_ROC_CAL_FULL 0x42
-#define REG_ROC_CAL_EMPTY 0x43
-#define REG_ROC_CAL_RESET 0x44
-#define REG_ROC_CAL_RDCNT 0x45
+#define REG_ROC_FIFO_RE 0x40
+#define REG_ROC_FIFO_DATA 0x41
+#define REG_ROC_FIFO_FULL 0x42
+#define REG_ROC_FIFO_EMPTY 0x43
+#define REG_ROC_FIFO_RESET 0x44
+#define REG_ROC_FIFO_RDCNT 0x45
 
-#define REG_ROC_HV_RE 0x50   //FIFO status for HV ?????
-#define REG_ROC_HV_DATA 0x51
-#define REG_ROC_HV_FULL 0x52
-#define REG_ROC_HV_EMPTY 0x53
-#define REG_ROC_HV_RESET 0x54
-#define REG_ROC_HV_RDCNT 0x55
 
 #define REG_ROC_CAL_BUSY_P 0x61
 #define REG_ROC_CAL_DATA_P 0x63
@@ -240,8 +234,8 @@ void delay_ms(uint32_t us);
 void delayTicks(uint8_t ticks);
 char * print_float(char *fchars, float value);
 
-void read_data(int *delay_count, int *trigger_count, uint8_t hvcal);
-void read_data2(int *delay_count, int *trigger_count, uint16_t *lasthit, uint8_t hvcal);
+void read_data(int *delay_count, int *trigger_count);
+void read_data2(int *delay_count, int *trigger_count, uint16_t *lasthit);
 void get_rates(int num_delays, int num_samples);
 void get_mapped_channels();
 
@@ -255,7 +249,7 @@ void digi_write(uint8_t address, uint16_t data, uint8_t hvcal);
 uint16_t digi_read(uint8_t address, uint8_t hvcal);
 void bufWrite(char *outBuffer, uint16_t *bufcount, uint32_t data, uint8_t nbytes);
 void outBufSend(UART_instance_t g_uart, char *outBuffer, uint16_t bufcount);
-void resetFIFO(uint8_t hvcal);
+void resetFIFO();
 
 #endif /* UTILS_H_ */
 

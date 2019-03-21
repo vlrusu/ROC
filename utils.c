@@ -367,19 +367,13 @@ uint8_t adc_read(uint16_t address, uint8_t adc_num){
 	return data;
 }
 
-void read_data(int *delay_count, int *trigger_count, uint8_t hvcal)
+void read_data(int *delay_count, int *trigger_count)
 {
 	uint16_t memlevel = 0;
 
-	uint32_t rdcnt = REG_ROC_CAL_RDCNT;
-	uint32_t re = REG_ROC_CAL_RE;
-	uint32_t data_reg = REG_ROC_CAL_DATA;
-
-	if (hvcal==2){
-		rdcnt = REG_ROC_HV_RDCNT;
-		re = REG_ROC_HV_RE;
-		data_reg = REG_ROC_HV_DATA;
-	}
+	uint32_t rdcnt = REG_ROC_FIFO_RDCNT;
+	uint32_t re = REG_ROC_FIFO_RE;
+	uint32_t data_reg = REG_ROC_FIFO_DATA;
 
 	while (1){
 
@@ -387,7 +381,7 @@ void read_data(int *delay_count, int *trigger_count, uint8_t hvcal)
 
 		if (memlevel < readout_wordsPerTrigger){
 			volatile uint32_t fifoinfo = *(registers_0_addr + rdcnt);
-			memlevel = fifoinfo & 0xFFFF;
+			memlevel = fifoinfo & 0x1FFFF;
 			if (memlevel < readout_wordsPerTrigger){
 				(*delay_count)++;
 				if ((*delay_count) >= readout_maxDelay){
@@ -445,25 +439,19 @@ void read_data(int *delay_count, int *trigger_count, uint8_t hvcal)
 	}
 }
 
-void read_data2(int *delay_count, int *trigger_count, uint16_t *lasthit, uint8_t hvcal)
+void read_data2(int *delay_count, int *trigger_count, uint16_t *lasthit)
 {
 	uint16_t memlevel = 0;
 	int fail_count = 0;
 
-	uint32_t rdcnt = REG_ROC_CAL_RDCNT;
-	uint32_t re = REG_ROC_CAL_RE;
-	uint32_t data_reg = REG_ROC_CAL_DATA;
-
-	if (hvcal==2){
-		rdcnt = REG_ROC_HV_RDCNT;
-		re = REG_ROC_HV_RE;
-		data_reg = REG_ROC_HV_DATA;
-	}
+	uint32_t rdcnt = REG_ROC_FIFO_RDCNT;
+	uint32_t re = REG_ROC_FIFO_RE;
+	uint32_t data_reg = REG_ROC_FIFO_DATA;
 
 	while (1){
 		if (memlevel < readout_wordsPerTrigger){
 			volatile uint32_t fifoinfo = *(registers_0_addr + rdcnt);
-			memlevel = fifoinfo & 0xFFFF;
+			memlevel = fifoinfo & 0x1FFFF;
 			if (memlevel < readout_wordsPerTrigger){
 				(*delay_count)++;
 				if ((*delay_count) >= readout_maxDelay)
@@ -618,12 +606,9 @@ void outBufSend(UART_instance_t g_uart, char *outBuffer, uint16_t bufcount){
 	UART_send(&g_uart, outBuffer ,bufcount );
 }
 
-void resetFIFO(uint8_t hvcal){
+void resetFIFO(){
 	digi_write(DG_ADDR_RESET, 0, hvcal);
-	if (hvcal==1)
-		*(registers_0_addr + REG_ROC_CAL_RESET) = 1;
-	else if (hvcal==2)
-		*(registers_0_addr + REG_ROC_HV_RESET) = 1;
+	*(registers_0_addr + REG_ROC_FIFO_RESET) = 1;
 	digi_write(DG_ADDR_RESET, 1, hvcal);
 //	reset_fabric();
 }

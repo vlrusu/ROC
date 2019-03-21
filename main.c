@@ -238,8 +238,8 @@ int main()
 			int delay_count = 0;
 			int trigger_count = 0;
 			UART_polled_tx_string( &g_uart, "datastream\n" );
-			//read_data(&delay_count,&trigger_count,Hvcal);
-			read_data(&delay_count,&trigger_count,1);
+
+			read_data(&delay_count,&trigger_count);
 			readout_totalTriggers += trigger_count;
 		}
 
@@ -663,38 +663,25 @@ int main()
 	      sprintf(outBuffer,"Activated bitslip %d times for channels %08x %08x %08x\n",num_bits,channel_mask1,channel_mask2,channel_mask3);
 	      UART_polled_tx_string( &g_uart, outBuffer );
 					 */
-					volatile uint32_t *empty_p_cal = (registers_0_addr + REG_ROC_CAL_EMPTY);
-					volatile uint32_t *full_p_cal = (registers_0_addr + REG_ROC_CAL_FULL);
-					volatile uint32_t *data_p_cal = (registers_0_addr + REG_ROC_CAL_DATA);
-					volatile uint32_t *empty_p_hv = (registers_0_addr + REG_ROC_HV_EMPTY);
-					volatile uint32_t *full_p_hv = (registers_0_addr + REG_ROC_HV_FULL);
-					volatile uint32_t *data_p_hv = (registers_0_addr + REG_ROC_HV_DATA);
+					volatile uint32_t *empty_p = (registers_0_addr + REG_ROC_FIFO_EMPTY);
+					volatile uint32_t *full_p = (registers_0_addr + REG_ROC_FIFO_FULL);
+					volatile uint32_t *data_p = (registers_0_addr + REG_ROC_FIFO_DATA);
 
-					uint32_t empty_cal = *(empty_p_cal);
-					uint32_t full_cal = *(full_p_cal);
-					uint32_t data1_cal = *(data_p_cal);
-					uint32_t empty_hv = *(empty_p_hv);
-					uint32_t full_hv = *(full_p_hv);
-					uint32_t data1_hv = *(data_p_hv);
+					uint32_t empty = *(empty_p);
+					uint32_t full = *(full_p);
+					uint32_t data1 = *(data_p);
 
-					*(registers_0_addr + REG_ROC_CAL_RE) = 1;
-					uint32_t data2_cal = *(data_p_cal);
-
-					*(registers_0_addr + REG_ROC_HV_RE) = 1;
-					uint32_t data2_hv = *(data_p_hv);
+					*(registers_0_addr + REG_ROC_FIFO_RE) = 1;
+					uint32_t data2 = *(data_p);
 
 					//					sprintf(outBuffer,"Empty: %d, Full: %d, data1: %04x, data2: %04x\n",empty,full,data1,data2);
 					//					UART_polled_tx_string( &g_uart, outBuffer );
 					outBuffer[bufcount++] = BITSLIPCMDID;
 					bufWrite(outBuffer, &bufcount, 32, 2);
-					bufWrite(outBuffer, &bufcount, empty_cal, 4);
-					bufWrite(outBuffer, &bufcount, full_cal, 4);
-					bufWrite(outBuffer, &bufcount, data1_cal, 4);
-					bufWrite(outBuffer, &bufcount, data2_cal, 4);
-					bufWrite(outBuffer, &bufcount, empty_hv, 4);
-					bufWrite(outBuffer, &bufcount, full_hv, 4);
-					bufWrite(outBuffer, &bufcount, data1_hv, 4);
-					bufWrite(outBuffer, &bufcount, data2_hv, 4);
+					bufWrite(outBuffer, &bufcount, empty, 4);
+					bufWrite(outBuffer, &bufcount, full, 4);
+					bufWrite(outBuffer, &bufcount, data1, 4);
+					bufWrite(outBuffer, &bufcount, data2, 4);
 
 					outBufSend(g_uart, outBuffer, bufcount);
 
@@ -776,7 +763,7 @@ int main()
 
 								uint16_t lasthit[13];
 
-								read_data2(&delay_count,&trigger_count,lasthit, hvcal);
+								read_data2(&delay_count,&trigger_count,lasthit);
 								if (trigger_count != 11){
 
 									//									sprintf(outBuffer,"Didn't get enough triggers: %d\n",trigger_count);
@@ -914,7 +901,7 @@ int main()
 
 							uint16_t lasthit[13];
 
-							read_data2(&delay_count,&trigger_count,lasthit,hvcal);
+							read_data2(&delay_count,&trigger_count,lasthit);
 							if (trigger_count != 11){
 								//								sprintf(outBuffer,"Didn't get enough triggers: %d\n",trigger_count);
 								//								UART_polled_tx_string( &g_uart, outBuffer );
@@ -1026,7 +1013,7 @@ int main()
 
 						uint16_t lasthit[13];
 
-						read_data2(&delay_count,&trigger_count,lasthit,hvcal);
+						read_data2(&delay_count,&trigger_count,lasthit);
 						if (trigger_count != 11){
 							//sprintf(outBuffer,"Didn't get enough triggers: %d\n",trigger_count);
 							//UART_polled_tx_string( &g_uart, outBuffer );
@@ -1189,7 +1176,7 @@ int main()
 						int delay_count = 0;
 						int trigger_count = 0;
 
-						read_data(&delay_count,&trigger_count,hvcal);
+						read_data(&delay_count,&trigger_count);
 
 						//sprintf(&dataBuffer[readout_obloc],"\nend\n");
 						//UART_polled_tx_string( &g_uart, dataBuffer );
