@@ -709,6 +709,8 @@ int main()
 					digi_write(DG_ADDR_TRIGGER_MODE,0,0);
 					digi_write(DG_ADDR_ENABLE_PULSER,1,0);
 
+					*(registers_0_addr + REG_ROC_FIFO_HOWMANY) = 1;
+
 					outBuffer[bufcount++] = AUTOBITSLIPCMDID;
 					bufWrite(outBuffer, &bufcount, 902, 2);
 					outBuffer[bufcount++] = dophase;
