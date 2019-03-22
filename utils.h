@@ -100,16 +100,16 @@
 //***********************REG_ROC_* are the ROC registers
 #define REG_ROC_RE 0x11
 
-//#define REG_ROC_DDR_NHITS 0x20
-//#define REG_ROC_DDR_OFFSET 0x21
-//#define REG_ROC_DDR_CS 0x22
-//#define REG_ROC_DDR_WEN 0x23
-//#define REG_ROC_DDR_REN 0x24
-//#define REG_ROC_DDR_DMAEN 0x25
-//#define REG_ROC_DDR_ERR 0x26
-//#define REG_ROC_DDR_PATTERN 0x27
-//#define REG_ROC_DDR_RADDR 0x28
-//#define REG_ROC_DDR_DATA 0x29
+#define REG_ROC_DDR_NHITS 0x20
+#define REG_ROC_DDR_OFFSET 0x21
+#define REG_ROC_DDR_CS 0x22
+#define REG_ROC_DDR_WEN 0x23
+#define REG_ROC_DDR_REN 0x24
+#define REG_ROC_DDR_DMAEN 0x25
+#define REG_ROC_DDR_ERR 0x26
+#define REG_ROC_DDR_RADDR 0x27
+#define REG_ROC_DDR_DATA 0x28
+#define REG_ROC_DDR_PATTERN 0x29
 
 #define REG_ROC_CAL_RE 0x40
 #define REG_ROC_CAL_DATA 0x41
