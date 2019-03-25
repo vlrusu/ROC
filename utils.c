@@ -401,12 +401,6 @@ void read_data(int *delay_count, int *trigger_count)
 		// have enough data, see if can read
 		for (int j=0;j<readout_wordsPerTrigger;j++){
 
-			//targeting the problem in this verison with 1 extra word at the beginning
-			if (j==0){
-				*(registers_0_addr + re) = 1;
-				memlevel -= 1;
-				continue;
-			}
 
 
 			//if (readout_obloc > 600){//originally each package contains 1501=6+5*299 chars, which now becomes 2+2+299*2 bytes
@@ -474,12 +468,6 @@ void read_data2(int *delay_count, int *trigger_count, uint16_t *lasthit)
 		int failed = 0;
 		for (int j=0;j<readout_wordsPerTrigger;j++){
 
-			//targeting the problem in this verison with 1 extra word at the beginning
-			if (j==0){
-				*(registers_0_addr + re) = 1;
-				memlevel -= 1;
-				continue;
-			}
 
 
 			uint16_t digioutput;

@@ -635,34 +635,34 @@ int main()
 					}
 
 				}else if (commandID == BITSLIPCMDID){
-					/*
-					// bitslip
-					uint16_t num_bits = readU16fromBytes(&buffer[4]);
-					channel_mask[0] = readU32fromBytes(&buffer[6]);
-					channel_mask[1] = readU32fromBytes(&buffer[10]);
-					channel_mask[2] = readU32fromBytes(&buffer[14]);
-					get_mapped_channels();
 
+//					// bitslip
+//					uint16_t num_bits = readU16fromBytes(&buffer[4]);
+//					channel_mask[0] = readU32fromBytes(&buffer[6]);
+//					channel_mask[1] = readU32fromBytes(&buffer[10]);
+//					channel_mask[2] = readU32fromBytes(&buffer[14]);
+//					get_mapped_channels();
+//
+//
+//	      //for (int i=0;i<num_bits;i++){
+//					 *(registers_0_addr + 0x30) = ((mapped_channel_mask1 & 0xFF)>>0);
+//					 *(registers_0_addr + 0x31) = ((mapped_channel_mask1 & 0xFF00)>>8);
+//					 *(registers_0_addr + 0x32) = ((mapped_channel_mask1 & 0xFF0000)>>16);
+//					 *(registers_0_addr + 0x33) = ((mapped_channel_mask1 & 0xFF000000)>>24);
+//					 *(registers_0_addr + 0x34) = ((mapped_channel_mask2 & 0xFF)>>0);
+//					 *(registers_0_addr + 0x35) = ((mapped_channel_mask2 & 0xFF00)>>8);
+//					 *(registers_0_addr + 0x30) = 0x0;
+//					 *(registers_0_addr + 0x31) = 0x0;
+//					 *(registers_0_addr + 0x32) = 0x0;
+//					 *(registers_0_addr + 0x33) = 0x0;
+//					 *(registers_0_addr + 0x34) = 0x0;
+//					 *(registers_0_addr + 0x35) = 0x0;
+//	      delayUs(100);
+//	      //}
+//
+//	      sprintf(outBuffer,"Activated bitslip %d times for channels %08x %08x %08x\n",num_bits,channel_mask1,channel_mask2,channel_mask3);
+//	      UART_polled_tx_string( &g_uart, outBuffer );
 
-	      //for (int i=0;i<num_bits;i++){
-					 *(registers_0_addr + 0x30) = ((mapped_channel_mask1 & 0xFF)>>0);
-					 *(registers_0_addr + 0x31) = ((mapped_channel_mask1 & 0xFF00)>>8);
-					 *(registers_0_addr + 0x32) = ((mapped_channel_mask1 & 0xFF0000)>>16);
-					 *(registers_0_addr + 0x33) = ((mapped_channel_mask1 & 0xFF000000)>>24);
-					 *(registers_0_addr + 0x34) = ((mapped_channel_mask2 & 0xFF)>>0);
-					 *(registers_0_addr + 0x35) = ((mapped_channel_mask2 & 0xFF00)>>8);
-					 *(registers_0_addr + 0x30) = 0x0;
-					 *(registers_0_addr + 0x31) = 0x0;
-					 *(registers_0_addr + 0x32) = 0x0;
-					 *(registers_0_addr + 0x33) = 0x0;
-					 *(registers_0_addr + 0x34) = 0x0;
-					 *(registers_0_addr + 0x35) = 0x0;
-	      delayUs(100);
-	      //}
-
-	      sprintf(outBuffer,"Activated bitslip %d times for channels %08x %08x %08x\n",num_bits,channel_mask1,channel_mask2,channel_mask3);
-	      UART_polled_tx_string( &g_uart, outBuffer );
-					 */
 					volatile uint32_t *empty_p = (registers_0_addr + REG_ROC_FIFO_EMPTY);
 					volatile uint32_t *full_p = (registers_0_addr + REG_ROC_FIFO_FULL);
 					volatile uint32_t *data_p = (registers_0_addr + REG_ROC_FIFO_DATA);
