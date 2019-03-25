@@ -727,11 +727,11 @@ int main()
 							if ( ((ichan<32) && ((thischanmask & mapped_channel_mask[0]) == 0x0))||
 									((ichan>=32) && (ichan<64) && ((thischanmask & mapped_channel_mask[1]) == 0x0))||
 									((ichan>=64) && ((thischanmask & mapped_channel_mask[2]) == 0x0))	){
-								for (uint8_t i=0; i<9;i++) outBuffer[bufcount++] = 0;
+								bufWrite(outBuffer, &bufcount, 0, 9);
 								continue;
 							}
 							if (((0x1<<(adc_number)) & ENABLED_ADCS) == 0x0){
-								for (uint8_t i=0; i<9;i++) outBuffer[bufcount++] = 0;
+								bufWrite(outBuffer, &bufcount, 0, 9);
 								continue;
 							}
 							digi_write(DG_ADDR_MASK1, 0x0, hvcal);
@@ -745,9 +745,9 @@ int main()
 								digi_write(DG_ADDR_MASK3, (uint16_t) (0x1<<((ichan%48)-32)), hvcal);
 							uint16_t results[12];
 
-							uint8_t i=0;
-							for (i=0;i<12;i++){
-								adc_write(ADC_ADDR_PHASE,i,(0x1<<(adc_number)));
+							uint8_t itrig=0;
+							for (itrig=0;itrig<12;itrig++){
+								adc_write(ADC_ADDR_PHASE,itrig,(0x1<<(adc_number)));
 								adc_write(ADC_ADDR_TESTIO,9,(0x1<<(adc_number)));
 
 								// reset fifo
@@ -772,18 +772,18 @@ int main()
 									//									UART_polled_tx_string( &g_uart, outBuffer );
 									break;
 								}
-								results[i] = lasthit[12];
+								results[itrig] = lasthit[12];
 							}
 							outBuffer[bufcount++] = ichan;
-							outBuffer[bufcount++] = i; // outputs the number of triggers
+							outBuffer[bufcount++] = itrig; // outputs the number of triggers
 
-							int maxdist = 0;
+							uint8_t maxdist = 0;
 							//int bestclock = -1;
 							uint8_t bestclock = 0xff;
 							for (uint8_t i=0;i<12;i++){
 								if (results[i] != 0x2AA && results[i] != 0x155){
 									continue;
-								}
+								} //find first occurrence of 0x2AA or 0x155
 								uint8_t thisdist = 0;
 								for (uint8_t j=1;j<12;j++){
 									uint8_t i2 = (i+j) % 12;
@@ -815,7 +815,7 @@ int main()
 							//if (bestclock > -1)
 							if (bestclock < 12){
 								phases[ichan] = bestclock;
-								for (uint8_t i=0; i<6;i++) outBuffer[bufcount++] = 0;
+								bufWrite(outBuffer, &bufcount, 0, 6);
 							}
 							else{
 								//								sprintf(outBuffer,"%d: Could not find useable clock phase %02x %02x %02x\n",ichan,results[0],results[3],results[6]);
@@ -829,7 +829,7 @@ int main()
 
 						// get best phase for each adc
 						for (uint8_t i=0;i<12;i++){
-							int phasecount[12] = {0,0,0,0,0,0,0,0,0,0,0,0};
+							int phasecount[12] = {0};
 							for (uint8_t j=0;j<8;j++)
 								if (phases[i*8+j] >= 0)
 									phasecount[phases[i*8+j]]++;
@@ -843,7 +843,7 @@ int main()
 							}
 						}
 					}else{
-						for (uint16_t i=0; i<9*96;i++) outBuffer[bufcount++] = 0;
+						bufWrite(outBuffer, &bufcount, 0, 9*96);
 					}
 
 					// now do bitslip
