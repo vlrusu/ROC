@@ -18,13 +18,13 @@ C_DEPS :=
 # Every subdirectory with source files must be described here
 SUBDIRS := \
 . \
-hal/CortexM1 \
-hal/CortexM1/GNU \
-drivers/CoreUARTapb \
-drivers/CoreSysServices_PF \
-drivers/CoreSPI \
-drivers/CorePWM \
-drivers/CoreGPIO \
-CMSIS \
 CMSIS/startup_gcc \
+CMSIS \
+drivers/CoreGPIO \
+drivers/CorePWM \
+drivers/CoreSPI \
+drivers/CoreSysServices_PF \
+drivers/CoreUARTapb \
+hal/CortexM1/GNU \
+hal/CortexM1 \
 
