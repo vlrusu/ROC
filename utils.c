@@ -607,7 +607,7 @@ void get_mapped_channels(){
 	}
 }
 
-void bufWrite(char *outBuffer, uint16_t *bufcount, uint32_t data, uint8_t nbytes){
+void bufWrite(char *outBuffer, uint16_t *bufcount, uint32_t data, uint16_t nbytes){
 	for (uint8_t i=0; i<nbytes; i++){
 		outBuffer[(*bufcount)++] = (data>>(i*8)) & 0xff;
 	}

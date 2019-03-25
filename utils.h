@@ -253,7 +253,7 @@ uint16_t init_adc(uint16_t adc_mask, uint8_t pattern, uint8_t phase);
 
 void digi_write(uint8_t address, uint16_t data, uint8_t hvcal);
 uint16_t digi_read(uint8_t address, uint8_t hvcal);
-void bufWrite(char *outBuffer, uint16_t *bufcount, uint32_t data, uint8_t nbytes);
+void bufWrite(char *outBuffer, uint16_t *bufcount, uint32_t data, uint16_t nbytes);
 void outBufSend(UART_instance_t g_uart, char *outBuffer, uint16_t bufcount);
 void resetFIFO(uint8_t hvcal);
 
