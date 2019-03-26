@@ -713,12 +713,7 @@ int main()
 
 					digi_write(DG_ADDR_SAMPLE,1,0);
 					digi_write(DG_ADDR_LOOKBACK,1,0);
-					digi_write(DG_ADDR_MASK1,(uint16_t) (mapped_channel_mask[0] & 0xFFFF), 1);
-					digi_write(DG_ADDR_MASK2,(uint16_t) ((mapped_channel_mask[0] & 0xFFFF0000)>>16), 1);
-					digi_write(DG_ADDR_MASK3,(uint16_t) (mapped_channel_mask[1] & 0xFFFF), 1);
-					digi_write(DG_ADDR_MASK1,(uint16_t) ((mapped_channel_mask[1] & 0xFFFF0000)>>16), 2);
-					digi_write(DG_ADDR_MASK2,(uint16_t) (mapped_channel_mask[2] & 0xFFFF), 2);
-					digi_write(DG_ADDR_MASK3,(uint16_t) ((mapped_channel_mask[2] & 0xFFFF0000)>>16), 2);
+
 					digi_write(DG_ADDR_TRIGGER_MODE,0,0);
 					digi_write(DG_ADDR_ENABLE_PULSER,1,0);
 
@@ -731,7 +726,7 @@ int main()
 						int8_t phases[96];
 						for (uint8_t ichan=0;ichan<96;ichan++){
 							phases[ichan] = -1;
-							if (ichan == 48)
+							if (ichan > 47)
 								hvcal =2;
 							uint16_t adc_number = adc_map[ichan/8];
 							thischanmask = (((uint32_t) 0x1)<<(ichan%32));
@@ -745,9 +740,9 @@ int main()
 								bufWrite(outBuffer, &bufcount, 0, 9);
 								continue;
 							}
-							digi_write(DG_ADDR_MASK1, 0x0, hvcal);
-							digi_write(DG_ADDR_MASK2, 0x0, hvcal);
-							digi_write(DG_ADDR_MASK3, 0x0, hvcal);
+							digi_write(DG_ADDR_MASK1, 0x0, 0);
+							digi_write(DG_ADDR_MASK2, 0x0, 0);
+							digi_write(DG_ADDR_MASK3, 0x0, 0);
 							if ((ichan%48) < 16)
 								digi_write(DG_ADDR_MASK1, (uint16_t) (0x1<<(ichan%48)), hvcal);
 							else if ((ichan%48) < 32)
@@ -756,9 +751,9 @@ int main()
 								digi_write(DG_ADDR_MASK3, (uint16_t) (0x1<<((ichan%48)-32)), hvcal);
 							uint16_t results[12];
 
-							uint8_t itrig=0;
-							for (itrig=0;itrig<12;itrig++){
-								adc_write(ADC_ADDR_PHASE,itrig,(0x1<<(adc_number)));
+							uint8_t iphase=0;
+							for (iphase=0;iphase<12;iphase++){
+								adc_write(ADC_ADDR_PHASE,iphase,(0x1<<(adc_number)));
 								adc_write(ADC_ADDR_TESTIO,9,(0x1<<(adc_number)));
 
 								// reset fifo
@@ -783,10 +778,10 @@ int main()
 									//									UART_polled_tx_string( &g_uart, outBuffer );
 									break;
 								}
-								results[itrig] = lasthit[12];
+								results[iphase] = lasthit[12];
 							}
 							outBuffer[bufcount++] = ichan;
-							outBuffer[bufcount++] = itrig; // outputs the number of triggers
+							outBuffer[bufcount++] = iphase; // outputs the number of phases tested with enough triggers
 
 							uint8_t maxdist = 0;
 							//int bestclock = -1;
@@ -795,7 +790,7 @@ int main()
 								if (results[i] != 0x2AA && results[i] != 0x155){
 									continue;
 								} //find first occurrence of 0x2AA or 0x155
-								uint8_t thisdist = 0;
+								uint8_t thisdist = 1;
 								for (uint8_t j=1;j<12;j++){
 									uint8_t i2 = (i+j) % 12;
 									if ((results[i2] != 0x2AA && results[i2] != 0x155) || results[i2] != results[i]){
@@ -803,7 +798,7 @@ int main()
 									}
 									thisdist++;
 								}
-								uint8_t thisdist2 = 0;
+								uint8_t thisdist2 = 1;
 								for (uint8_t j=1;j<12;j++){
 									uint8_t i2 = (i-j+12) % 12;
 									if ((results[i2] != 0x2AA && results[i2] != 0x155) || results[i2] != results[i]){
@@ -873,7 +868,7 @@ int main()
 					uint8_t ichan;
 					hvcal = 1;
 					for (ichan=0;ichan<96;ichan++){
-						if (ichan == 48)
+						if (ichan > 47)
 							hvcal =2;
 						uint8_t adc_number = adc_map[ichan/8];
 						thischanmask = (((uint32_t) 0x1)<<(ichan%32));
@@ -889,9 +884,9 @@ int main()
 							if (((ichan+1)%8)==0) bufcount++;
 							continue;
 						}
-						digi_write(DG_ADDR_MASK1, 0x0, hvcal);
-						digi_write(DG_ADDR_MASK2, 0x0, hvcal);
-						digi_write(DG_ADDR_MASK3, 0x0, hvcal);
+						digi_write(DG_ADDR_MASK1, 0x0, 0);
+						digi_write(DG_ADDR_MASK2, 0x0, 0);
+						digi_write(DG_ADDR_MASK3, 0x0, 0);
 						if ((ichan%48) < 16)
 							digi_write(DG_ADDR_MASK1,(uint16_t) (0x1<<(ichan%48)), hvcal);
 						else if ((ichan%48) < 32)
@@ -986,7 +981,7 @@ int main()
 
 					hvcal = 1;
 					for (ichan=0;ichan<96;ichan++){
-						if (ichan == 48)
+						if (ichan > 47)
 							hvcal =2;
 						uint8_t adc_number = adc_map[ichan/8];
 						thischanmask = (((uint32_t) 0x1)<<(ichan%32));
@@ -1002,9 +997,9 @@ int main()
 							if (((ichan+1)%8)==0) bufcount++; //place holder, unchecked also gives 0
 							continue;
 						}
-						digi_write(DG_ADDR_MASK1, 0x0, hvcal);
-						digi_write(DG_ADDR_MASK2, 0x0, hvcal);
-						digi_write(DG_ADDR_MASK3, 0x0, hvcal);
+						digi_write(DG_ADDR_MASK1, 0x0, 0);
+						digi_write(DG_ADDR_MASK2, 0x0, 0);
+						digi_write(DG_ADDR_MASK3, 0x0, 0);
 						if ((ichan%48) < 16)
 							digi_write(DG_ADDR_MASK1,(uint16_t) (0x1<<(ichan%48)), hvcal);
 						else if ((ichan%48) < 32)
