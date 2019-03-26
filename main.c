@@ -886,7 +886,7 @@ int main()
 						else if ((ichan%48) < 32)
 							digi_write(DG_ADDR_MASK2,(uint16_t) (0x1<<((ichan%48)-16)), hvcal);
 						else
-							digi_write(DG_ADDR_MASK2,(uint16_t) (0x1<<((ichan%48)-32)), hvcal);
+							digi_write(DG_ADDR_MASK3,(uint16_t) (0x1<<((ichan%48)-32)), hvcal);
 						uint8_t success = 0;
 						for (uint8_t i=0;i<10;i++){
 							resetFIFO(hvcal);
@@ -999,7 +999,7 @@ int main()
 						else if ((ichan%48) < 32)
 							digi_write(DG_ADDR_MASK2,(uint16_t) (0x1<<((ichan%48)-16)), hvcal);
 						else
-							digi_write(DG_ADDR_MASK2,(uint16_t) (0x1<<((ichan%48)-32)), hvcal);
+							digi_write(DG_ADDR_MASK3,(uint16_t) (0x1<<((ichan%48)-32)), hvcal);
 
 						resetFIFO(hvcal);
 
