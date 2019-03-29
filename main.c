@@ -494,10 +494,10 @@ int main()
 					else{
 						bufWrite(outBuffer, &bufcount, 768, 2);
 						for (uint8_t ic = 0; ic < 96; ic++){
-							bufWrite(outBuffer, &bufcount, default_gains_hv[channel], 2);
-							bufWrite(outBuffer, &bufcount, default_threshs_hv[channel], 2);
-							bufWrite(outBuffer, &bufcount, default_gains_cal[channel], 2);
-							bufWrite(outBuffer, &bufcount, default_threshs_cal[channel], 2);
+							bufWrite(outBuffer, &bufcount, default_gains_hv[ic], 2);
+							bufWrite(outBuffer, &bufcount, default_threshs_hv[ic], 2);
+							bufWrite(outBuffer, &bufcount, default_gains_cal[ic], 2);
+							bufWrite(outBuffer, &bufcount, default_threshs_cal[ic], 2);
 						}
 					}
 					outBufSend(g_uart, outBuffer, bufcount);
