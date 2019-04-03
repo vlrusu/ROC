@@ -427,10 +427,11 @@ int main()
 				 	uint8_t ddrnhits = (uint8_t) buffer[8];
 				 	uint8_t ddrpattern = (uint8_t) buffer[9];
 				 	uint16_t ddrraddr = readU16fromBytes(&buffer[10]);
+				 	uint32_t ddroffset = readU32fromBytes(&buffer[12]);
 				 	uint32_t retv = 0xF;
 
 				 	*(registers_0_addr + REG_ROC_DDR_NHITS) = ddrnhits;
-				 	*(registers_0_addr + REG_ROC_DDR_OFFSET) = 0;
+				 	*(registers_0_addr + REG_ROC_DDR_OFFSET) = ddroffset;
 				 	*(registers_0_addr + REG_ROC_DDR_CS) = ddrcs;
 				 	*(registers_0_addr + REG_ROC_DDR_WEN) = ddrwen;
 				 	*(registers_0_addr + REG_ROC_DDR_REN) = ddrren;
@@ -440,7 +441,7 @@ int main()
 				 	retv = *(registers_0_addr + REG_ROC_DDR_ERR);
 				 	uint32_t dataddr = *(registers_0_addr + REG_ROC_DDR_DATA);
 				 	outBuffer[bufcount++] = TESTDDR;
-				 	bufWrite(outBuffer, &bufcount, 16, 2);
+				 	bufWrite(outBuffer, &bufcount, 20, 2);
 				 	outBuffer[bufcount++] = ddrnhits;
 				 	outBuffer[bufcount++] = ddrcs;
 				 	outBuffer[bufcount++] = ddrwen;
@@ -450,6 +451,7 @@ int main()
 				 	bufWrite(outBuffer, &bufcount, retv, 4);
 				 	bufWrite(outBuffer, &bufcount, ddrraddr, 2);
 				 	bufWrite(outBuffer, &bufcount, dataddr, 4);
+				 	bufWrite(outBuffer, &bufcount, ddroffset, 4);
 				 	outBufSend(g_uart, outBuffer, bufcount);
 
 //				}else if (commandID == TESTDDR){
