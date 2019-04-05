@@ -46,6 +46,7 @@
 #define RESETROC 15
 //#define TOGGLECALHV 16
 #define DIGIRW 16
+#define READTVS 17
 
 //"digi" command ID (1 byte)
 
@@ -98,6 +99,7 @@
 #define DG_ADDR_BITSLIP5 0x35
 
 //***********************REG_ROC_* are the ROC registers
+#define REG_ROC_RESET 0x10
 #define REG_ROC_RE 0x11
 
 #define REG_ROC_DDR_NHITS 0x20
@@ -128,6 +130,11 @@
 #define REG_ROC_HV_DATA_P 0x73
 #define REG_ROC_HV_ADDRESS_P 0x72
 #define REG_ROC_HV_INIT_P 0x70
+
+#define REG_ROC_TVS_1V 0x80
+#define REG_ROC_TVS_1V8 0x81
+#define REG_ROC_TVS_2V5 0x82
+#define REG_ROC_TVS_TEMP 0x83
 
 //***********************ADC_ADDR_* are the ADC addresses
 										//AD9212 memory map:
