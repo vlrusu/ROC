@@ -602,25 +602,19 @@ int main()
 					 outBufSend(g_uart, outBuffer, bufcount);
 
 				 }else if (commandID == READTVS){
-					 uint16_t tvs_1v = 0;
-					 uint16_t tvs_1v8 = 0;
-					 uint16_t tvs_2v5 = 0;
-					 uint16_t tvs_temp = 0;
-
-					 *(registers_0_addr+REG_ROC_RE) = 1;
-					 delayUs(3840); //equals to the conversion rate of TVS module
-
-					 tvs_1v = *(registers_0_addr + REG_ROC_TVS_1V);
-					 tvs_1v8 = *(registers_0_addr + REG_ROC_TVS_1V8);
-					 tvs_2v5 = *(registers_0_addr + REG_ROC_TVS_2V5);
-					 tvs_temp = *(registers_0_addr + REG_ROC_TVS_TEMP);
-
+					 uint16_t tvs_val[4] = {0};
 					 outBuffer[bufcount++] = READTVS;
 					 bufWrite(outBuffer, &bufcount, 8, 2);
-					 bufWrite(outBuffer, &bufcount, tvs_1v, 2);
-					 bufWrite(outBuffer, &bufcount, tvs_1v8, 2);
-					 bufWrite(outBuffer, &bufcount, tvs_2v5, 2);
-					 bufWrite(outBuffer, &bufcount, tvs_temp, 2);
+
+					 *(registers_0_addr+REG_ROC_RE) = 1;
+
+					 for (uint8_t i =0; i<4; i++){
+						 *(registers_0_addr+REG_ROC_TVS_ADDR) = i;
+						 tvs_val[i] = *(registers_0_addr + REG_ROC_TVS_VAL);
+						 bufWrite(outBuffer, &bufcount, tvs_val[i], 2);
+						 delayUs(1);
+					 }
+
 					 outBufSend(g_uart, outBuffer, bufcount);
 
 //***********************************begin of control_digi commands*******************************************************************************

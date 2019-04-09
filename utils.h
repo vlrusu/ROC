@@ -131,10 +131,8 @@
 #define REG_ROC_HV_ADDRESS_P 0x72
 #define REG_ROC_HV_INIT_P 0x70
 
-#define REG_ROC_TVS_1V 0x80
-#define REG_ROC_TVS_1V8 0x81
-#define REG_ROC_TVS_2V5 0x82
-#define REG_ROC_TVS_TEMP 0x83
+#define REG_ROC_TVS_VAL 0x80
+#define REG_ROC_TVS_ADDR 0x81
 
 //***********************ADC_ADDR_* are the ADC addresses
 										//AD9212 memory map:
