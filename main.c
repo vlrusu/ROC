@@ -604,7 +604,7 @@ int main()
 				 }else if (commandID == READTVS){
 					 uint16_t tvs_val[4] = {0};
 					 outBuffer[bufcount++] = READTVS;
-					 bufWrite(outBuffer, &bufcount, 8, 2);
+					 bufWrite(outBuffer, &bufcount, 24, 2);
 
 					 *(registers_0_addr+REG_ROC_RE) = 1;
 
@@ -614,6 +614,16 @@ int main()
 						 tvs_val[i] = *(registers_0_addr + REG_ROC_TVS_VAL);
 						 bufWrite(outBuffer, &bufcount, tvs_val[i], 2);
 						 delayUs(1);
+					 }
+
+					 for (uint8_t ihvcal=1; ihvcal<3; ihvcal++){
+						 for (uint8_t i =0; i<4; i++){
+							 digi_write(DG_ADDR_TVS_ADDR, i, ihvcal);
+							 delayUs(1);
+							 tvs_val[i] = digi_read(DG_ADDR_TVS_VAL, ihvcal);
+							 bufWrite(outBuffer, &bufcount, tvs_val[i], 2);
+							 delayUs(1);
+						 }
 					 }
 
 					 outBufSend(g_uart, outBuffer, bufcount);

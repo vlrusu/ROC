@@ -98,6 +98,9 @@
 #define DG_ADDR_BITSLIP4 0x34
 #define DG_ADDR_BITSLIP5 0x35
 
+#define DG_ADDR_TVS_VAL 0x40
+#define DG_ADDR_TVS_ADDR 0x41
+
 //***********************REG_ROC_* are the ROC registers
 #define REG_ROC_RESET 0x10
 #define REG_ROC_RE 0x11
