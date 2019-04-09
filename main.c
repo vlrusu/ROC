@@ -610,6 +610,7 @@ int main()
 
 					 for (uint8_t i =0; i<4; i++){
 						 *(registers_0_addr+REG_ROC_TVS_ADDR) = i;
+						 delayUs(1);
 						 tvs_val[i] = *(registers_0_addr + REG_ROC_TVS_VAL);
 						 bufWrite(outBuffer, &bufcount, tvs_val[i], 2);
 						 delayUs(1);
