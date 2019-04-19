@@ -51,7 +51,7 @@ int main()
 
 	uint8_t readout_enabled = 0;
 	uint8_t calibration_enabled = 0;
-	readout_totalTriggers = 0;
+	int readout_totalTriggers = 0;
 
 	//register address for bit banging
 	registers_0_addr = (volatile uint32_t *) REGISTERBASEADDR;
@@ -875,8 +875,10 @@ int main()
 						if ((0x1<<i) & ENABLED_ADCS){
 							if (clock < 99){
 								adc_write(ADC_ADDR_PHASE,clock,(0x1<<i));
+								adc_write(ADC_ADDR_TESTIO,1,(0x1<<i));
 							}else{
 								adc_write(ADC_ADDR_PHASE,adc_phases[i],(0x1<<i));
+								adc_write(ADC_ADDR_TESTIO,1,(0x1<<i));
 							}
 						}
 					}
@@ -886,7 +888,6 @@ int main()
 						if (ichan > 47)
 							hvcal =2;
 						uint8_t adc_number = adc_map[ichan/8];
-						uint8_t pattern_valid[10]={0};
 						thischanmask = (((uint32_t) 0x1)<<(ichan%32));
 						if ( ((ichan<32) && ((thischanmask & mapped_channel_mask[0]) == 0x0))||
 								((ichan>=32) && (ichan<64) && ((thischanmask & mapped_channel_mask[1]) == 0x0))||
@@ -900,54 +901,84 @@ int main()
 							if (((ichan+1)%8)==0) bufcount++;
 							continue;
 						}
-
+						digi_write(DG_ADDR_MASK1, 0x0, 0);
+						digi_write(DG_ADDR_MASK2, 0x0, 0);
+						digi_write(DG_ADDR_MASK3, 0x0, 0);
+						if ((ichan%48) < 16)
+							digi_write(DG_ADDR_MASK1,(uint16_t) (0x1<<(ichan%48)), hvcal);
+						else if ((ichan%48) < 32)
+							digi_write(DG_ADDR_MASK2,(uint16_t) (0x1<<((ichan%48)-16)), hvcal);
+						else
+							digi_write(DG_ADDR_MASK3,(uint16_t) (0x1<<((ichan%48)-32)), hvcal);
+						uint8_t success = 0;
 						for (uint8_t i=0;i<10;i++){
+							resetFIFO(hvcal);
 
-							pattern_valid[i]+=channelPatternCheck(0x1, ichan, hvcal, ENABLED_ADCS);
-							pattern_valid[i]+=channelPatternCheck(0x2, ichan, hvcal, ENABLED_ADCS);
-							pattern_valid[i]+=channelPatternCheck(0x9, ichan, hvcal, ENABLED_ADCS);
-							pattern_valid[i]+=channelPatternCheck(0xc, ichan, hvcal, ENABLED_ADCS);
+							readout_obloc = 0;
+							readout_maxDelay = 50;
+							readout_mode = 0;
+							readout_wordsPerTrigger = 13;
+							readout_numTriggers = 11;
+							readout_totalTriggers = 0;
 
-							nbitslip(ichan, hvcal, 1);
+							int delay_count = 0;
+							int trigger_count = 0;
+
+							uint16_t lasthit[13];
+
+							read_data2(&delay_count,&trigger_count,lasthit);
+							if (trigger_count != 11){
+								//								sprintf(outBuffer,"Didn't get enough triggers: %d\n",trigger_count);
+								//								UART_polled_tx_string( &g_uart, outBuffer );
+								break;
+							}
+							if (lasthit[12] == 0x001){
+								success = 1;
+								break;
+							}
+							//sprintf(outBuffer,"%d: %d: got %02x\n",ichan,i,lasthit[12]);
+							//UART_polled_tx_string( &g_uart, outBuffer );
+
+							if ((ichan%48) < 8)
+								digi_write(DG_ADDR_BITSLIP0,((0x1<<((ichan%48)-0))), hvcal);
+							else if ((ichan%48) < 16)
+								digi_write(DG_ADDR_BITSLIP1,((0x1<<((ichan%48)-8))), hvcal);
+							else if ((ichan%48) < 24)
+								digi_write(DG_ADDR_BITSLIP2,((0x1<<((ichan%48)-16))), hvcal);
+							else if ((ichan%48) < 32)
+								digi_write(DG_ADDR_BITSLIP3,((0x1<<((ichan%48)-24))), hvcal);
+							else if ((ichan%48) < 40)
+								digi_write(DG_ADDR_BITSLIP4,((0x1<<((ichan%48)-32))), hvcal);
+							else if ((ichan%48) < 48)
+								digi_write(DG_ADDR_BITSLIP5,((0x1<<((ichan%48)-40))), hvcal);
+							digi_write(DG_ADDR_BITSLIP0,0x0,hvcal);
+							digi_write(DG_ADDR_BITSLIP1,0x0,hvcal);
+							digi_write(DG_ADDR_BITSLIP2,0x0,hvcal);
+							digi_write(DG_ADDR_BITSLIP3,0x0,hvcal);
+							digi_write(DG_ADDR_BITSLIP4,0x0,hvcal);
+							digi_write(DG_ADDR_BITSLIP5,0x0,hvcal);
 						}
 
-						uint8_t maxdist = 0;
-						uint8_t bestbitslip = 255;
-						for (uint8_t i=0;i<10;i++){
-							if (pattern_valid[i] != 4){
-								continue;
-							}
-							uint8_t thisdist = 1;
-							for (uint8_t j=1;j<10;j++){
-								uint8_t i2 = (i+j) % 10;
-								if (pattern_valid[i2] != 4){
-									break;
-								}
-								thisdist++;
-							}
-							uint8_t thisdist2 = 1;
-							for (uint8_t j=1;j<10;j++){
-								uint8_t i2 = (i-j+10) % 10;
-								if (pattern_valid[i2] != 4){
-									break;
-								}
-								thisdist2++;
-							}
-							if (thisdist2 < thisdist)
-								thisdist = thisdist2;
-							if (thisdist > maxdist){
-								maxdist = thisdist;
-								bestbitslip = i;
-							}
-						}
-
-						if (bestbitslip!=255){
+						//if (success){
+						//	sprintf(outBuffer,"%d: Found correct word alignment\n",ichan);
+						//	UART_polled_tx_string( &g_uart, outBuffer );
+						//}else{
+						//	sprintf(outBuffer,"%d: FAILED to find correct word alignment\n",ichan);
+						//	UART_polled_tx_string( &g_uart, outBuffer );
+						//}
+						if (success)
 							outBuffer[bufcount] = outBuffer[bufcount] | ( 1 << (ichan % 8));
-							nbitslip(ichan, hvcal, bestbitslip);
-						}else
+						else
 							outBuffer[bufcount] = outBuffer[bufcount] & (~((uint8_t)( 1 << (ichan % 8))));
 						if (((ichan+1)%8)==0) bufcount++; //gives 12 bytes describing whether the operation is successful
 					}
+
+					if (ichan<96){
+						for (uint8_t i=ichan; i<96; i++) {
+							outBuffer[bufcount] = outBuffer[bufcount] & (~((uint8_t)( 1 << (i % 8))));
+							if (((i+1)%8)==0) bufcount++;
+						}
+					} //match the format if break in between
 
 					// check at the end with mixed frequency ADC
 					for (uint8_t i=0;i<12;i++){
@@ -983,8 +1014,37 @@ int main()
 							if (((ichan+1)%8)==0) bufcount++; //place holder, unchecked also gives 0
 							continue;
 						}
+						digi_write(DG_ADDR_MASK1, 0x0, 0);
+						digi_write(DG_ADDR_MASK2, 0x0, 0);
+						digi_write(DG_ADDR_MASK3, 0x0, 0);
+						if ((ichan%48) < 16)
+							digi_write(DG_ADDR_MASK1,(uint16_t) (0x1<<(ichan%48)), hvcal);
+						else if ((ichan%48) < 32)
+							digi_write(DG_ADDR_MASK2,(uint16_t) (0x1<<((ichan%48)-16)), hvcal);
+						else
+							digi_write(DG_ADDR_MASK3,(uint16_t) (0x1<<((ichan%48)-32)), hvcal);
 
-						if (!channelPatternCheck(0xc, ichan, hvcal, ENABLED_ADCS)){
+						resetFIFO(hvcal);
+
+						readout_obloc = 0;
+						readout_maxDelay = 50;
+						readout_mode = 0;
+						readout_wordsPerTrigger = 13;
+						readout_numTriggers = 11;
+						readout_totalTriggers = 0;
+
+						int delay_count = 0;
+						int trigger_count = 0;
+
+						uint16_t lasthit[13];
+
+						read_data2(&delay_count,&trigger_count,lasthit);
+						if (trigger_count != 11){
+							//sprintf(outBuffer,"Didn't get enough triggers: %d\n",trigger_count);
+							//UART_polled_tx_string( &g_uart, outBuffer );
+							break;
+						}
+						if (lasthit[12] != 0x319){
 							error_mask[ichan/32]|= (((uint32_t)0x1)<<(ichan%32));
 							//sprintf(outBuffer,"%d FAILED final check: %02x (instead of 0x319)\n",ichan,lasthit[12]);
 							//UART_polled_tx_string( &g_uart, outBuffer );
@@ -996,6 +1056,13 @@ int main()
 							if (((ichan+1)%8)==0) bufcount++;
 						}
 					}
+
+					if (ichan<96){
+						for (uint8_t i=ichan; i<96; i++) {
+							outBuffer[bufcount] = outBuffer[bufcount] & (~((uint8_t)( 1 << (ichan % 8))));
+							if (((i+1)%8)==0) bufcount++;
+						}
+					} //match the format if break in between
 
 					outBuffer[bufcount++] = ichan;
 

@@ -218,7 +218,6 @@ extern int readout_mode;
 extern int readout_wordInTrigger;
 extern int readout_wordsPerTrigger;
 extern int readout_numTriggers;
-extern int readout_totalTriggers;
 extern int calibration_count[32];
 extern uint32_t calibration_done;
 
@@ -258,10 +257,7 @@ void digi_write(uint8_t address, uint16_t data, uint8_t hvcal);
 uint16_t digi_read(uint8_t address, uint8_t hvcal);
 void bufWrite(char *outBuffer, uint16_t *bufcount, uint32_t data, uint16_t nbytes);
 void outBufSend(UART_instance_t g_uart, char *outBuffer, uint16_t bufcount);
-void resetFIFO(uint8_t hvcal);
-void nbitslip(uint8_t ichan, uint8_t hvcal, uint8_t ntimes);
-void adcPatternSet(uint8_t pattern, uint16_t enabledADCs);
-uint8_t channelPatternCheck(uint8_t pattern, uint8_t ichan, uint8_t hvcal, uint16_t enabledADCs);
+void resetFIFO();
 
 #endif /* UTILS_H_ */
 
