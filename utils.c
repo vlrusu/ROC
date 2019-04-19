@@ -43,6 +43,7 @@ int readout_maxDelay;
 int readout_mode;
 int readout_wordsPerTrigger;
 int readout_numTriggers;
+int readout_totalTriggers;
 
 int calibration_count[32];
 uint32_t calibration_done;
@@ -612,9 +613,83 @@ void outBufSend(UART_instance_t g_uart, char *outBuffer, uint16_t bufcount){
 	UART_send(&g_uart, outBuffer ,bufcount );
 }
 
-void resetFIFO(){
+void resetFIFO(uint8_t hvcal){
 	digi_write(DG_ADDR_RESET, 0, hvcal);
 	*(registers_0_addr + REG_ROC_FIFO_RESET) = 1;
 	digi_write(DG_ADDR_RESET, 1, hvcal);
 //	reset_fabric();
+}
+
+void nbitslip(uint8_t ichan, uint8_t hvcal, uint8_t ntimes){
+	for (uint8_t i=0; i<ntimes; i++){
+		if ((ichan%48) < 8)
+			digi_write(DG_ADDR_BITSLIP0,((0x1<<((ichan%48)-0))), hvcal);
+		else if ((ichan%48) < 16)
+			digi_write(DG_ADDR_BITSLIP1,((0x1<<((ichan%48)-8))), hvcal);
+		else if ((ichan%48) < 24)
+			digi_write(DG_ADDR_BITSLIP2,((0x1<<((ichan%48)-16))), hvcal);
+		else if ((ichan%48) < 32)
+			digi_write(DG_ADDR_BITSLIP3,((0x1<<((ichan%48)-24))), hvcal);
+		else if ((ichan%48) < 40)
+			digi_write(DG_ADDR_BITSLIP4,((0x1<<((ichan%48)-32))), hvcal);
+		else if ((ichan%48) < 48)
+			digi_write(DG_ADDR_BITSLIP5,((0x1<<((ichan%48)-40))), hvcal);
+		digi_write(DG_ADDR_BITSLIP0,0x0,hvcal);
+		digi_write(DG_ADDR_BITSLIP1,0x0,hvcal);
+		digi_write(DG_ADDR_BITSLIP2,0x0,hvcal);
+		digi_write(DG_ADDR_BITSLIP3,0x0,hvcal);
+		digi_write(DG_ADDR_BITSLIP4,0x0,hvcal);
+		digi_write(DG_ADDR_BITSLIP5,0x0,hvcal);
+	}
+}
+
+void adcPatternSet(uint8_t pattern, uint16_t enabledADCs){
+	for (uint8_t i=0;i<12;i++){
+		if ((0x1<<i) & enabledADCs){
+			adc_write(ADC_ADDR_TESTIO,pattern,(0x1<<i));
+		}
+	}
+}
+
+uint8_t channelPatternCheck(uint8_t pattern, uint8_t ichan, uint8_t hvcal, uint16_t enabledADCs){
+	adcPatternSet(pattern, enabledADCs);
+	//delayTicks(2);
+	digi_write(DG_ADDR_MASK1, 0x0, 0);
+	digi_write(DG_ADDR_MASK2, 0x0, 0);
+	digi_write(DG_ADDR_MASK3, 0x0, 0);
+	if ((ichan%48) < 16)
+		digi_write(DG_ADDR_MASK1,(uint16_t) (0x1<<(ichan%48)), hvcal);
+	else if ((ichan%48) < 32)
+		digi_write(DG_ADDR_MASK2,(uint16_t) (0x1<<((ichan%48)-16)), hvcal);
+	else
+		digi_write(DG_ADDR_MASK3,(uint16_t) (0x1<<((ichan%48)-32)), hvcal);
+	resetFIFO(hvcal);
+
+	readout_obloc = 0;
+	readout_maxDelay = 50;
+	readout_mode = 0;
+	readout_wordsPerTrigger = 13;
+	readout_numTriggers = 11;
+	readout_totalTriggers = 0;
+
+	int delay_count = 0;
+	int trigger_count = 0;
+	uint8_t success = 0;
+
+	uint16_t lasthit[13];
+	read_data2(&delay_count,&trigger_count,lasthit);
+	if (trigger_count == 11){
+		uint16_t patternTemplate = 0;
+		if (pattern == 1)
+			patternTemplate = 0x0001;
+		else if (pattern == 2)
+			patternTemplate = 0x03FF;
+		else if (pattern == 9)
+			patternTemplate = 0x0155;
+		else if (pattern == 0xc)
+			patternTemplate = 0x0319;
+		if (lasthit[12] == patternTemplate)
+			success = 1;
+	}
+	return success;
 }
