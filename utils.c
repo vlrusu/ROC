@@ -612,7 +612,7 @@ void outBufSend(UART_instance_t g_uart, char *outBuffer, uint16_t bufcount){
 	UART_send(&g_uart, outBuffer ,bufcount );
 }
 
-void resetFIFO(){
+void resetFIFO(uint8_t hvcal){
 	digi_write(DG_ADDR_RESET, 0, hvcal);
 	*(registers_0_addr + REG_ROC_FIFO_RESET) = 1;
 	digi_write(DG_ADDR_RESET, 1, hvcal);

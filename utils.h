@@ -257,7 +257,7 @@ void digi_write(uint8_t address, uint16_t data, uint8_t hvcal);
 uint16_t digi_read(uint8_t address, uint8_t hvcal);
 void bufWrite(char *outBuffer, uint16_t *bufcount, uint32_t data, uint16_t nbytes);
 void outBufSend(UART_instance_t g_uart, char *outBuffer, uint16_t bufcount);
-void resetFIFO();
+void resetFIFO(uint8_t hvcal);
 
 #endif /* UTILS_H_ */
 
