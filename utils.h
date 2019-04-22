@@ -57,6 +57,7 @@
 #define READDATACMDID 105
 #define STOPRUNCMDID 106
 #define ADCINITINFOCMDID 107
+#define FINDTHRESHOLDSCMDID 108
 
 #define PACKAGETESTCMDID 151
 
@@ -191,6 +192,11 @@
 
 extern uint8_t hvcal;
 
+extern uint16_t default_gains_cal[96];
+extern uint16_t default_gains_hv[96];
+extern uint16_t default_threshs_cal[96];
+extern uint16_t default_threshs_hv[96];
+
 volatile uint32_t channel_mask[3];
 volatile uint32_t mapped_channel_mask[3];
 extern uint32_t thischanmask;
@@ -244,7 +250,7 @@ char * print_float(char *fchars, float value);
 
 void read_data(int *delay_count, int *trigger_count);
 void read_data2(int *delay_count, int *trigger_count, uint16_t *lasthit);
-void get_rates(int num_delays, int num_samples);
+uint32_t get_rates(int num_delays, int num_samples, uint8_t channel, uint32_t* timecounts);
 void get_mapped_channels();
 
 void adc_spi(uint8_t rw, uint8_t bytes, uint16_t address, uint8_t *data, uint16_t adc_mask_f);
@@ -258,6 +264,9 @@ uint16_t digi_read(uint8_t address, uint8_t hvcal);
 void bufWrite(char *outBuffer, uint16_t *bufcount, uint32_t data, uint16_t nbytes);
 void outBufSend(UART_instance_t g_uart, char *outBuffer, uint16_t bufcount);
 void resetFIFO(uint8_t hvcal);
+void setPreampGain(uint16_t channel, uint16_t value);
+void setPreampThreshold(uint16_t channel, uint16_t value);
+void findChThreshold(int num_delays, int num_samples, uint16_t channel, uint16_t target_rate, uint8_t verbose);
 
 #endif /* UTILS_H_ */
 

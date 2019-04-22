@@ -2,9 +2,15 @@
 #include "./CMSIS/cortexm1_cfg.h"
 #include "./CMSIS/system_cortexm1_cfg.h"
 #include "hw_platform.h"
+#include "setup.h"
 
 // channel_map[index adc channel] = straw number
 // adc_map[index adc channel order] = adc_number
+
+uint16_t default_gains_cal[96] = {271,275,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,269,269,269,269,269,269,269,268,269,269,269,264,269,269,269,270};
+uint16_t default_gains_hv[96] = {270,271,270,270,270,270,270,270,270,270,270,270,270,270,266,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,267,270,270,270,270,266,266,272,268,266,265,269,269,269,269,270};
+uint16_t default_threshs_cal[96] = {331,316,339,309,317,317,319,335,341,321,319,359,347,320,323,332,352,334,325,339,304,312,340,330,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,305,294,311,307,340,332,321,336,335,327,322,356,344,304,324,325,315,325,325,341,348,343,343,319};
+uint16_t default_threshs_hv[96] = {322,284,329,317,325,321,340,347,351,339,348,349,313,337,327,325,345,325,321,320,345,332,305,335,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,284,293,324,321,324,331,344,333,314,324,333,346,330,335,327,329,349,316,331,339,318,304,332,310};
 
 uint8_t hvcal=1;//1 CAL 2 HV 0 both
 uint8_t channel_map[96]={
@@ -491,8 +497,7 @@ void read_data2(int *delay_count, int *trigger_count, uint16_t *lasthit)
 	}
 }
 
-void get_rates(int num_delays, int num_samples)
-{
+uint32_t get_rates(int num_delays, int num_samples, uint8_t channel, uint32_t* timecounts){
 	mapped_channel_mask[0] = 0x0;
 	mapped_channel_mask[1] = 0x0;
 	mapped_channel_mask[2] = 0x0;
@@ -554,22 +559,34 @@ void get_rates(int num_delays, int num_samples)
 		}
 	}
 
-	for (int i=0;i<96;i++){
-		if ( ((0x1<<(i%32)) & channel_mask[0])||
-				((0x1<<(i%32)) & channel_mask[1])||
-				((0x1<<(i%32)) & channel_mask[2]) ){
-			//double total_global_time = total_time_counts*16e-9;
-			//sprintf(outBuffer,"%d: HV %d Hz, CAL %d Hz, COINC %d Hz, %d %d %d %d\n",
-			//		i,(int)(total_hv[i]/total_global_time),(int)(total_cal[i]/total_global_time),(int)(total_coinc[i]/total_global_time),
-			//		total_hv[i],total_cal[i],total_coinc[i],total_time_counts);
-			//UART_polled_tx_string( &g_uart, outBuffer );
-			outBuffer[bufcount++] = i;
-			bufWrite(outBuffer, &bufcount, total_hv[i], 4);
-			bufWrite(outBuffer, &bufcount, total_cal[i], 4);
-			bufWrite(outBuffer, &bufcount, total_coinc[i], 4);
-			bufWrite(outBuffer, &bufcount, total_time_counts[ishv[i]], 4);
+	uint32_t result = 0;
+	if (channel > 191){
+		for (uint8_t i=0;i<96;i++){
+			if ( ((0x1<<(i%32)) & channel_mask[0])||
+					((0x1<<(i%32)) & channel_mask[1])||
+					((0x1<<(i%32)) & channel_mask[2]) ){
+				//double total_global_time = total_time_counts*16e-9;
+				//sprintf(outBuffer,"%d: HV %d Hz, CAL %d Hz, COINC %d Hz, %d %d %d %d\n",
+				//		i,(int)(total_hv[i]/total_global_time),(int)(total_cal[i]/total_global_time),(int)(total_coinc[i]/total_global_time),
+				//		total_hv[i],total_cal[i],total_coinc[i],total_time_counts);
+				//UART_polled_tx_string( &g_uart, outBuffer );
+				outBuffer[bufcount++] = i;
+				bufWrite(outBuffer, &bufcount, total_hv[i], 4);
+				bufWrite(outBuffer, &bufcount, total_cal[i], 4);
+				bufWrite(outBuffer, &bufcount, total_coinc[i], 4);
+				bufWrite(outBuffer, &bufcount, total_time_counts[ishv[i]], 4);
+			}
+		}
+	}else{
+		for (uint8_t i=0;i<96;i++){
+			if (channel_map[i]==channel){
+				result = total_hv[i]*(channel/96)+total_cal[i]*(1-channel/96);
+				*timecounts=total_time_counts[ishv[i]];
+				break;
+			}
 		}
 	}
+	return result;
 }
 
 void get_mapped_channels(){
@@ -617,4 +634,101 @@ void resetFIFO(uint8_t hvcal){
 	*(registers_0_addr + REG_ROC_FIFO_RESET) = 1;
 	digi_write(DG_ADDR_RESET, 1, hvcal);
 //	reset_fabric();
+}
+
+void setPreampGain(uint16_t channel, uint16_t value){
+	if (channel < 96){
+		LTC2634_write(strawsCal[channel]._ltc,strawsCal[channel]._gain,value);
+		default_gains_cal[channel] = value;
+		//						sprintf(outBuffer,"Set channel %d CAL gain to %d\n",channel,value);
+	}
+	if (channel >= 96){
+
+		LTC2634_write(strawsHV[channel - 96]._ltc,strawsHV[channel - 96]._gain,value);
+		default_gains_hv[channel-96] = value;
+		//						sprintf(outBuffer,"Set channel %d HV gain to %d\n",channel,value);
+	}
+}
+
+void setPreampThreshold(uint16_t channel, uint16_t value){
+	if (channel < 96){
+		LTC2634_write(strawsCal[channel]._ltc,strawsCal[channel]._thresh,value);
+		//						sprintf(outBuffer,"Set channel %d CAL threshold to %d\n",channel,value);
+		default_threshs_cal[channel] = value;
+	}
+	if (channel >= 96){
+
+		LTC2634_write(strawsHV[channel - 96]._ltc,strawsHV[channel - 96]._thresh,value);
+		//						sprintf(outBuffer,"Set channel %d HV threshold to %d\n",channel,value);
+		default_threshs_hv[channel-96] = value;
+	}
+}
+
+void findChThreshold(int num_delays, int num_samples, uint16_t channel, uint16_t target_rate, uint8_t verbose){
+	uint16_t threshold = 0;
+	uint32_t timecounts = 0;
+	if (channel < 96)
+		threshold = default_threshs_cal[channel];
+	else
+		threshold = default_threshs_hv[channel];
+	uint32_t lastrate = 10000000;
+	uint32_t thisrate = 0;
+	uint16_t lastThreshold = threshold;
+	uint8_t zerocounts = 0;
+	uint16_t nonzero = 0;
+	while(1){
+		uint32_t thiscount = get_rates(num_delays, num_samples, channel, &timecounts);
+		thisrate = (uint32_t)(((uint64_t)thiscount)*50000000/timecounts);
+
+		if ((verbose==(1+channel/96))&&(bufcount<1900)){//buffer overflow protection
+			bufWrite(outBuffer, &bufcount, threshold, 2);
+			bufWrite(outBuffer, &bufcount, thisrate, 4);
+		}
+
+		if (thisrate == 0){
+			zerocounts += 1;
+			if (nonzero==0){
+				if (zerocounts==10){//if never see a rate for 10 iterations, exit
+					bufWrite(outBuffer, &bufcount, 0, 2);
+					break;
+				}
+			}
+			else {
+				if (zerocounts==3){//saw a rate at one point but change to 0 again for 3 times, use the last non-zero threshold
+					setPreampThreshold(channel, nonzero);
+					bufWrite(outBuffer, &bufcount, nonzero, 2);
+					break;
+				}
+			}
+		}
+		else {
+			nonzero = threshold;
+			zerocounts = 0;
+		}
+
+		if (lastrate!=10000000){
+			if ( ((lastrate<=target_rate)&&(thisrate>target_rate))||
+					((lastrate>target_rate)&&(thisrate<=target_rate)) ){
+				if (threshold>lastThreshold)
+					threshold = lastThreshold;
+				setPreampThreshold(channel, threshold);
+				bufWrite(outBuffer, &bufcount, threshold, 2);
+				break;
+			}
+
+		}
+
+		lastThreshold = threshold;
+		lastrate = thisrate;
+		if (thisrate > target_rate){
+			threshold-=1;
+			setPreampThreshold(channel, threshold);
+			continue;
+		}
+		if (thisrate <= target_rate){
+			threshold+=1;
+			setPreampThreshold(channel, threshold);
+			continue;
+		}
+	}
 }

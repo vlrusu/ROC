@@ -9,19 +9,13 @@
 #include "./CMSIS/system_cortexm1_cfg.h"
 
 #include "setup.h"
-#include "Commands.h"
+//#include "Commands.h"
 
 #include "utils.h"
 #include "version.h"
 
 #define BAUD_VALUE                  57600
 #define ENABLED_ADCS				0xfffu
-
-uint16_t default_gains_cal[96] = {271,275,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,269,269,269,269,269,269,269,268,269,269,269,264,269,269,269,270};
-uint16_t default_gains_hv[96] = {270,271,270,270,270,270,270,270,270,270,270,270,270,270,266,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,267,270,270,270,270,266,266,272,268,266,265,269,269,269,269,270};
-uint16_t default_threshs_cal[96] = {331,316,339,309,317,317,319,335,341,321,319,359,347,320,323,332,352,334,325,339,304,312,340,330,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,305,294,311,307,340,332,321,336,335,327,322,356,344,304,324,325,315,325,325,341,348,343,343,319};
-uint16_t default_threshs_hv[96] = {322,284,329,317,325,321,340,347,351,339,348,349,313,337,327,325,345,325,321,320,345,332,305,335,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,320,284,293,324,321,324,331,344,333,314,324,333,346,330,335,327,329,349,316,331,339,318,304,332,310};
-
 
 const uint16_t default_caldac[8] = {1000,1000,1000,1000,1000,1000,1000,1000};
 
@@ -282,17 +276,8 @@ int main()
 					uint16_t channel = readU16fromBytes(&buffer[4]);
 					uint16_t value = readU16fromBytes(&buffer[6]);
 
-					if (channel < 96){
-						LTC2634_write(strawsCal[channel]._ltc,strawsCal[channel]._gain,value);
-						default_gains_cal[channel] = value;
-						//						sprintf(outBuffer,"Set channel %d CAL gain to %d\n",channel,value);
-					}
-					if (channel >= 96){
+					setPreampGain(channel, value);
 
-						LTC2634_write(strawsHV[channel - 96]._ltc,strawsHV[channel - 96]._gain,value);
-						default_gains_hv[channel-96] = value;
-						//						sprintf(outBuffer,"Set channel %d HV gain to %d\n",channel,value);
-					}
 					outBuffer[bufcount++] = SETPREAMPGAIN;
 					bufWrite(outBuffer, &bufcount, 4, 2);
 					bufWrite(outBuffer, &bufcount, channel, 2);
@@ -306,17 +291,7 @@ int main()
 
 					uint16_t value = readU16fromBytes(&buffer[6]);
 
-					if (channel < 96){
-						LTC2634_write(strawsCal[channel]._ltc,strawsCal[channel]._thresh,value);
-						//						sprintf(outBuffer,"Set channel %d CAL threshold to %d\n",channel,value);
-						default_threshs_cal[channel] = value;
-					}
-					if (channel >= 96){
-
-						LTC2634_write(strawsHV[channel - 96]._ltc,strawsHV[channel - 96]._thresh,value);
-						//						sprintf(outBuffer,"Set channel %d HV threshold to %d\n",channel,value);
-						default_threshs_hv[channel-96] = value;
-					}
+					setPreampThreshold(channel, value);
 
 					outBuffer[bufcount++] = SETPREAMPTHRESHOLD;
 					bufWrite(outBuffer, &bufcount, 4, 2);
@@ -405,13 +380,13 @@ int main()
 					bufWrite(outBuffer, &bufcount, 0, 2);
 					outBufSend(g_uart, outBuffer, bufcount);
 
-				 }else if (commandID == WHOAREYOU){
+				}else if (commandID == WHOAREYOU){
 
 				 	outBuffer[bufcount++] = WHOAREYOU;
 				 	bufWrite(outBuffer, &bufcount, 0, 2);
 				 	outBufSend(g_uart, outBuffer, bufcount);
 
-				 }else if (commandID == RESETROC){
+				}else if (commandID == RESETROC){
 
 					digi_write(DG_ADDR_RESET,0,0);
 					digi_write(DG_ADDR_RESET,1,0);
@@ -419,7 +394,7 @@ int main()
 					bufWrite(outBuffer, &bufcount, 0, 2);
 				 	outBufSend(g_uart, outBuffer, bufcount);
 
-				 }else if (commandID == TESTDDR){
+				}else if (commandID == TESTDDR){
 				 	uint8_t ddrcs = (uint8_t) buffer[4];
 				 	uint8_t ddrwen = (uint8_t) buffer[5];
 				 	uint8_t ddrren = (uint8_t) buffer[6];
@@ -505,7 +480,7 @@ int main()
 					outBufSend(g_uart, outBuffer, bufcount);
 
 
-				 }else if (commandID == READMONADCS){
+				}else if (commandID == READMONADCS){
 
 				 	//read currents
 
@@ -546,7 +521,7 @@ int main()
 					//					outBuffer[bufcount++] = channel >> 8;
 					//
 					//					UART_send(&g_uart, outBuffer ,bufcount );
-				 }else if (commandID == GETDEVICEID){
+				}else if (commandID == GETDEVICEID){
 
 				 	uint8_t data_buffer[16];
 				 	uint8_t status;
@@ -557,7 +532,7 @@ int main()
 				 		outBuffer[bufcount++] = data_buffer[i];
 				 	outBufSend(g_uart, outBuffer, bufcount);
 
-				 }else if (commandID == READBMES){
+				}else if (commandID == READBMES){
 
 				 	outBuffer[bufcount++] = READBMES;
 				 	bufWrite(outBuffer, &bufcount, 24, 2);
@@ -580,7 +555,7 @@ int main()
 				 	//					MSS_UART_polled_tx( &g_mss_uart1, outBuffer, strlen(outBuffer) );
 				 	outBufSend(g_uart, outBuffer, bufcount);
 
-				 }else if (commandID == DIGIRW){
+				}else if (commandID == DIGIRW){
 					 uint8_t rw = (uint8_t) buffer[4];
 					 uint8_t thishvcal = (uint8_t) buffer[5];
 					 uint8_t address = (uint8_t) buffer[6];
@@ -601,7 +576,7 @@ int main()
 					 bufWrite(outBuffer, &bufcount, data, 2);
 					 outBufSend(g_uart, outBuffer, bufcount);
 
-				 }else if (commandID == READTVS){
+				}else if (commandID == READTVS){
 					 uint16_t tvs_val[4] = {0};
 					 outBuffer[bufcount++] = READTVS;
 					 bufWrite(outBuffer, &bufcount, 24, 2);
@@ -1084,7 +1059,7 @@ int main()
 					bufcount_place_holder = bufcount;
 					bufWrite(outBuffer, &bufcount, 0, 2);
 
-					get_rates(num_lookback,num_samples);
+					get_rates(num_lookback,num_samples,255,NULL);
 
 					bufWrite(outBuffer, &bufcount_place_holder, (bufcount-3), 2);
 					outBufSend(g_uart, outBuffer, bufcount);
@@ -1224,7 +1199,6 @@ int main()
 
 						//UART_polled_tx_string( &g_uart, outBuffer );
 
-						//get_rates(0,10);
 					}else{
 						readout_enabled = 1;
 						//sprintf(outBuffer,"Run started\n");
@@ -1267,6 +1241,48 @@ int main()
 					outBuffer[bufcount++] = 1;
 					for (uint16_t i=0; i<458; i++)
 						outBuffer[bufcount++] = i%256;
+					outBufSend(g_uart, outBuffer, bufcount);
+
+				}else if (commandID == FINDTHRESHOLDSCMDID){
+					uint16_t num_lookback = readU16fromBytes(&buffer[4]);
+					uint16_t num_samples = readU16fromBytes(&buffer[6]);
+					channel_mask[0] = readU32fromBytes(&buffer[8]);
+					channel_mask[1] = readU32fromBytes(&buffer[12]);
+					channel_mask[2] = readU32fromBytes(&buffer[16]);
+					uint16_t target_rate = readU16fromBytes(&buffer[20]);
+					uint8_t verbose = (uint8_t) buffer[22];
+					//if single channel, verbose = 1/2 prints the detailed process for cal/hv
+
+					outBuffer[bufcount++] = FINDTHRESHOLDSCMDID;
+					bufcount_place_holder = bufcount;
+					bufWrite(outBuffer, &bufcount, 0, 2);
+					bufWrite(outBuffer, &bufcount, num_lookback, 2);
+					bufWrite(outBuffer, &bufcount, num_samples, 2);
+					bufWrite(outBuffer, &bufcount, target_rate, 2);
+					bufWrite(outBuffer, &bufcount, verbose, 1);
+
+					//disable pulser
+					digi_write(DG_ADDR_ENABLE_PULSER,0,0);
+
+					for (uint8_t channel=0; channel<96; channel++){
+						thischanmask = (((uint32_t) 0x1)<<(channel%32));
+						if 	( ((channel<32) && ((thischanmask & channel_mask[0]) == 0x0))||
+								((channel>=32) && (channel<64) && ((thischanmask & channel_mask[1]) == 0x0))||
+								((channel>=64) && ((thischanmask & channel_mask[2]) == 0x0))	){
+							continue;
+						}
+						//prints initial settings
+						bufWrite(outBuffer, &bufcount, channel, 1);
+						bufWrite(outBuffer, &bufcount, default_gains_cal[channel], 2);
+						bufWrite(outBuffer, &bufcount, default_threshs_cal[channel], 2);
+						bufWrite(outBuffer, &bufcount, default_gains_hv[channel], 2);
+						bufWrite(outBuffer, &bufcount, default_threshs_hv[channel], 2);
+
+						findChThreshold(num_lookback, num_samples, channel, target_rate, verbose);
+						findChThreshold(num_lookback, num_samples, channel+96, target_rate, verbose);
+					}
+
+					bufWrite(outBuffer, &bufcount_place_holder, (bufcount-3), 2);
 					outBufSend(g_uart, outBuffer, bufcount);
 
 				}
