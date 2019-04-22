@@ -676,6 +676,7 @@ void findChThreshold(int num_delays, int num_samples, uint16_t channel, uint16_t
 	uint16_t lastThreshold = threshold;
 	uint8_t zerocounts = 0;
 	uint16_t nonzero = 0;
+	uint32_t nonzerorate = 0;
 	while(1){
 		uint32_t thiscount = get_rates(num_delays, num_samples, channel, &timecounts);
 		thisrate = (uint32_t)(((uint64_t)thiscount)*50000000/timecounts);
@@ -690,6 +691,7 @@ void findChThreshold(int num_delays, int num_samples, uint16_t channel, uint16_t
 			if (nonzero==0){
 				if (zerocounts==10){//if never see a rate for 10 iterations, exit
 					bufWrite(outBuffer, &bufcount, 0, 2);
+					bufWrite(outBuffer, &bufcount, 0, 4);
 					break;
 				}
 			}
@@ -697,22 +699,27 @@ void findChThreshold(int num_delays, int num_samples, uint16_t channel, uint16_t
 				if (zerocounts==3){//saw a rate at one point but change to 0 again for 3 times, use the last non-zero threshold
 					setPreampThreshold(channel, nonzero);
 					bufWrite(outBuffer, &bufcount, nonzero, 2);
+					bufWrite(outBuffer, &bufcount, nonzerorate, 4);
 					break;
 				}
 			}
 		}
 		else {
 			nonzero = threshold;
+			nonzerorate = thisrate;
 			zerocounts = 0;
 		}
 
 		if (lastrate!=10000000){
 			if ( ((lastrate<=target_rate)&&(thisrate>target_rate))||
 					((lastrate>target_rate)&&(thisrate<=target_rate)) ){
-				if (threshold>lastThreshold)
+				if (threshold>lastThreshold){
 					threshold = lastThreshold;
+					thisrate = lastrate;
+				}
 				setPreampThreshold(channel, threshold);
 				bufWrite(outBuffer, &bufcount, threshold, 2);
+				bufWrite(outBuffer, &bufcount, thisrate, 4);
 				break;
 			}
 
