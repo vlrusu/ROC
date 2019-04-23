@@ -562,9 +562,9 @@ uint32_t get_rates(int num_delays, int num_samples, uint8_t channel, uint32_t* t
 	uint32_t result = 0;
 	if (channel > 191){
 		for (uint8_t i=0;i<96;i++){
-			if ( ((0x1<<(i%32)) & channel_mask[0])||
-					((0x1<<(i%32)) & channel_mask[1])||
-					((0x1<<(i%32)) & channel_mask[2]) ){
+			if ( ((i<32) && ((0x1<<(i%32)) & channel_mask[0]))||
+					((i>=32) && (i<64) && ((0x1<<(i%32)) & channel_mask[1]))||
+					((i>=64) && ((0x1<<(i%32)) & channel_mask[2])) ){
 				//double total_global_time = total_time_counts*16e-9;
 				//sprintf(outBuffer,"%d: HV %d Hz, CAL %d Hz, COINC %d Hz, %d %d %d %d\n",
 				//		i,(int)(total_hv[i]/total_global_time),(int)(total_cal[i]/total_global_time),(int)(total_coinc[i]/total_global_time),
@@ -579,7 +579,7 @@ uint32_t get_rates(int num_delays, int num_samples, uint8_t channel, uint32_t* t
 		}
 	}else{
 		for (uint8_t i=0;i<96;i++){
-			if (channel_map[i]==channel){
+			if (i == (channel%96)){
 				result = total_hv[i]*(channel/96)+total_cal[i]*(1-channel/96);
 				*timecounts=total_time_counts[ishv[i]];
 				break;
