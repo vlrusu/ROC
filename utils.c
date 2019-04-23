@@ -216,6 +216,35 @@ uint16_t digi_read(uint8_t address, uint8_t hvcal)//hvcal can only be 1 or 2
 	}
 }
 
+void read_histogram(uint8_t channel, uint8_t hv_or_cal, uint16_t *output){
+	// select channel
+	digi_write(0x23,((channel << 1) | (hv_or_cal & 0x1)),1);
+	// tell digi to write histogram to sram
+	digi_write(0x20,0x1,1);
+	digi_write(0x20,0x0,1);
+	delay_ms(1);
+	// read from sram
+	for (int i=0;i<256;i++){
+		digi_write(0x21,i,1);
+		output[i] = digi_read(0x22,1);
+	}
+	/*
+	if (hv_or_cal == 1){
+	volatile uint32_t * ewm = registers_0_addr + 0x80;
+	*ewm = 1;
+	*ewm = 0;
+	}else{
+	delay_ms(100);
+	uint16_t ewm_counter = digi_read(0x80,1);
+	output[0] = ewm_counter;
+	delay_ms(100);
+	ewm_counter = digi_read(0x80,1);
+	output[1] = ewm_counter;
+	}
+	*/
+
+}
+
 uint16_t init_adc(uint16_t adc_mask, uint8_t pattern, uint8_t phase)
 {
 	//sprintf(outBuffer,"Init ADC %02x: pattern %02x phase %d\n",adc_mask,pattern,phase);
@@ -369,6 +398,13 @@ uint8_t adc_read(uint16_t address, uint8_t adc_num){
 
 void read_data(int *delay_count, int *trigger_count)
 {
+
+	volatile uint32_t * ewm = registers_0_addr + 0x80;
+	for (int i=0;i<1000;i++){
+	//	*ewm = 1;
+	//	*ewm = 0;
+	//	delayTicks(100);
+	}
 	uint16_t memlevel = 0;
 
 	uint32_t rdcnt = REG_ROC_FIFO_RDCNT;
@@ -418,12 +454,13 @@ void read_data(int *delay_count, int *trigger_count)
 				//readout_obloc = 6;
 			}
 
-			uint16_t digioutput;
+			uint32_t digioutput;
 			*(registers_0_addr + re) = 1;
 			digioutput = *(registers_0_addr + data_reg);
 			memlevel -= 1;
 			//sprintf(&dataBuffer[readout_obloc],"%04x ",digioutput);
-			bufWrite(dataBuffer, &readout_obloc, digioutput, 2);
+			bufWrite(dataBuffer, &readout_obloc, ((digioutput & 0xFFFF0000)>>16), 2);
+			bufWrite(dataBuffer, &readout_obloc, (digioutput & 0xFFFF), 2);
 			//readout_obloc += 5;
 		}
 		bufWrite(dataBuffer, &readout_obloc_place_holder, (readout_obloc-4), 2);
@@ -470,16 +507,16 @@ void read_data2(int *delay_count, int *trigger_count, uint16_t *lasthit)
 
 
 
-			uint16_t digioutput;
+			uint32_t digioutput;
 			*(registers_0_addr + re) = 1;
 			digioutput = *(registers_0_addr + data_reg);
 			memlevel -= 1;
-			if ((j == 0) && ((digioutput&0x1000) != 0x1000)){
+			if ((j == 0) && ((digioutput&0x80000000) != 0x80000000)){
 				failed = 1;
 				fail_count++;
 				break;
 			}
-			lasthit[j] = digioutput;
+			lasthit[j] = (uint16_t) ((digioutput & 0x3FF00000)>>20);
 		}
 		if (fail_count >= readout_wordsPerTrigger*10)
 			break;

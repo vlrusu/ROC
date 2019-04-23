@@ -23,6 +23,8 @@
 
 #define LEDn             0
 
+#define NUMTDCWORDS      4
+
 //******************************************************************************
 //                             Command ID
 //******************************************************************************
@@ -38,6 +40,7 @@
 #define SETPULSERON 5
 #define SETPULSEROFF 6
 #define DUMPSETTINGS 7
+#define READHISTO 8
 #define READMONADCS 10
 #define READBMES 11
 #define MCPWRITEPIN 12
@@ -238,6 +241,7 @@ void read_data(int *delay_count, int *trigger_count);
 void read_data2(int *delay_count, int *trigger_count, uint16_t *lasthit);
 void get_rates(int num_delays, int num_samples);
 void get_mapped_channels();
+void read_histogram(uint8_t channel, uint8_t hv_or_cal, uint16_t *output);
 
 void adc_spi(uint8_t rw, uint8_t bytes, uint16_t address, uint8_t *data, uint16_t adc_mask_f);
 void adc_spi_core(uint8_t rw, uint8_t bytes, uint16_t address, uint8_t *data, uint8_t adc_mask_h, uint8_t hvcal);

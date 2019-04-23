@@ -418,7 +418,18 @@ int main()
 					outBuffer[bufcount++] = RESETROC;
 					bufWrite(outBuffer, &bufcount, 0, 2);
 				 	outBufSend(g_uart, outBuffer, bufcount);
+				 }else if (commandID == READHISTO){
+					 uint8_t channel = (uint8_t) buffer[4];
+					 uint8_t hv_or_cal = (uint8_t) buffer[5];
+					 uint16_t output[256];
+					 read_histogram(channel,hv_or_cal,output);
 
+					outBuffer[bufcount++] = READHISTO;
+					bufWrite(outBuffer, &bufcount, 512, 2);
+					for (int i=0;i<256;i++){
+						bufWrite(outBuffer, &bufcount, output[i], 2);
+					}
+					outBufSend(g_uart, outBuffer, bufcount);
 //				 }else if (commandID == TESTDDR){
 //				 	uint8_t ddrcs = (uint8_t) buffer[4];
 //				 	uint8_t ddrwen = (uint8_t) buffer[5];
@@ -751,14 +762,14 @@ int main()
 								readout_obloc = 0;
 								readout_maxDelay = 50;
 								readout_mode = 0;
-								readout_wordsPerTrigger = 13;
+								readout_wordsPerTrigger = NUMTDCWORDS+1;
 								readout_numTriggers = 11;
 								readout_totalTriggers = 0;
 
 								int delay_count = 0;
 								int trigger_count = 0;
 
-								uint16_t lasthit[13];
+								uint16_t lasthit[readout_wordsPerTrigger];
 
 								read_data2(&delay_count,&trigger_count,lasthit);
 								if (trigger_count != 11){
@@ -767,10 +778,12 @@ int main()
 									//									UART_polled_tx_string( &g_uart, outBuffer );
 									break;
 								}
-								results[iphase] = lasthit[12];
+								results[iphase] = lasthit[readout_wordsPerTrigger-1];
 							}
-							outBuffer[bufcount++] = ichan;
-							outBuffer[bufcount++] = iphase; // outputs the number of phases tested with enough triggers
+							bufWrite(outBuffer, &bufcount, ichan, 1);
+							bufWrite(outBuffer, &bufcount, iphase, 1);
+							//outBuffer[bufcount++] = ichan;
+							//outBuffer[bufcount++] = iphase; // outputs the number of phases tested with enough triggers
 
 							uint8_t maxdist = 0;
 							//int bestclock = -1;
@@ -889,14 +902,14 @@ int main()
 							readout_obloc = 0;
 							readout_maxDelay = 50;
 							readout_mode = 0;
-							readout_wordsPerTrigger = 13;
+							readout_wordsPerTrigger = NUMTDCWORDS+1;
 							readout_numTriggers = 11;
 							readout_totalTriggers = 0;
 
 							int delay_count = 0;
 							int trigger_count = 0;
 
-							uint16_t lasthit[13];
+							uint16_t lasthit[readout_wordsPerTrigger];
 
 							read_data2(&delay_count,&trigger_count,lasthit);
 							if (trigger_count != 11){
@@ -904,7 +917,7 @@ int main()
 								//								UART_polled_tx_string( &g_uart, outBuffer );
 								break;
 							}
-							if (lasthit[12] == 0x001){
+							if (lasthit[readout_wordsPerTrigger-1] == 0x001){
 								success = 1;
 								break;
 							}
@@ -1001,14 +1014,14 @@ int main()
 						readout_obloc = 0;
 						readout_maxDelay = 50;
 						readout_mode = 0;
-						readout_wordsPerTrigger = 13;
+						readout_wordsPerTrigger = NUMTDCWORDS+1;
 						readout_numTriggers = 11;
 						readout_totalTriggers = 0;
 
 						int delay_count = 0;
 						int trigger_count = 0;
 
-						uint16_t lasthit[13];
+						uint16_t lasthit[readout_wordsPerTrigger];
 
 						read_data2(&delay_count,&trigger_count,lasthit);
 						if (trigger_count != 11){
@@ -1016,7 +1029,7 @@ int main()
 							//UART_polled_tx_string( &g_uart, outBuffer );
 							break;
 						}
-						if (lasthit[12] != 0x319){
+						if (lasthit[readout_wordsPerTrigger-1] != 0x319){
 							error_mask[ichan/32]|= (((uint32_t)0x1)<<(ichan%32));
 							//sprintf(outBuffer,"%d FAILED final check: %02x (instead of 0x319)\n",ichan,lasthit[12]);
 							//UART_polled_tx_string( &g_uart, outBuffer );
@@ -1102,6 +1115,15 @@ int main()
 					digi_write(DG_ADDR_TRIGGER_MODE,tdc_mode,0);
 					digi_write(DG_ADDR_ENABLE_PULSER,enable_pulser,0);
 
+					*(registers_0_addr + 0x81) = 1;
+					//*(registers_0_addr + 0x82) = max_total_delay;
+					*(registers_0_addr + 0x82) = 0x0FFF;
+					digi_write(0x81,0x0000,0);
+					digi_write(0x82,0x3FFF,0);
+					digi_write(0x90,0,0);
+
+					max_total_delay = 1;
+
 					*(registers_0_addr + REG_ROC_FIFO_HOWMANY) = num_samples;
 
 					if ((mapped_channel_mask[2]!=0)||((mapped_channel_mask[1]>>16)!=0))
@@ -1164,7 +1186,7 @@ int main()
 					//sprintf(dataBuffer,"start\n");
 					readout_maxDelay = max_total_delay*50;
 					readout_mode = mode;
-					readout_wordsPerTrigger = 12 + num_samples;
+					readout_wordsPerTrigger = NUMTDCWORDS + num_samples;
 					readout_numTriggers = num_triggers;
 					readout_totalTriggers = 0;
 
