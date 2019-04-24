@@ -670,13 +670,15 @@ void findChThreshold(int num_delays, int num_samples, uint16_t channel, uint16_t
 	if (channel < 96)
 		threshold = default_threshs_cal[channel];
 	else
-		threshold = default_threshs_hv[channel];
+		threshold = default_threshs_hv[channel-96];
 	uint32_t lastrate = 10000000;
 	uint32_t thisrate = 0;
+	uint16_t initThreshold = threshold;
 	uint16_t lastThreshold = threshold;
 	uint8_t zerocounts = 0;
 	uint16_t nonzero = 0;
 	uint32_t nonzerorate = 0;
+	uint8_t n_iteration = 0;
 	while(1){
 		uint32_t thiscount = get_rates(num_delays, num_samples, channel, &timecounts);
 		thisrate = (uint32_t)(((uint64_t)thiscount)*50000000/timecounts);
@@ -684,6 +686,13 @@ void findChThreshold(int num_delays, int num_samples, uint16_t channel, uint16_t
 		if ((verbose==(1+channel/96))&&(bufcount<1900)){//buffer overflow protection
 			bufWrite(outBuffer, &bufcount, threshold, 2);
 			bufWrite(outBuffer, &bufcount, thisrate, 4);
+		}
+
+		if (n_iteration == 100){
+			setPreampThreshold(channel, initThreshold);
+			bufWrite(outBuffer, &bufcount, initThreshold, 2);
+			bufWrite(outBuffer, &bufcount, 0, 4);
+			break;
 		}
 
 		if (thisrate == 0){
@@ -727,6 +736,7 @@ void findChThreshold(int num_delays, int num_samples, uint16_t channel, uint16_t
 
 		lastThreshold = threshold;
 		lastrate = thisrate;
+		n_iteration++;
 		if (thisrate > target_rate){
 			threshold-=1;
 			setPreampThreshold(channel, threshold);
