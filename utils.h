@@ -24,6 +24,9 @@
 #define LEDn             0
 
 #define NUMTDCWORDS      4
+#define HVANDCAL         0
+#define CALONLY          1
+#define HVONLY           2
 
 //******************************************************************************
 //                             Command ID

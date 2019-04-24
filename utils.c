@@ -562,7 +562,8 @@ void get_rates(int num_delays, int num_samples)
 					(((uint64_t) digi_read(DG_ADDR_GT1,ihvcal))<<32) |
 					(((uint64_t) digi_read(DG_ADDR_GT2,ihvcal))<<16) |
 					((uint64_t) digi_read(DG_ADDR_GT3,ihvcal));
-			total_time_counts[ihvcal-1] += (uint32_t) (end_global_time - start_global_time);
+			total_time_counts[ihvcal-1] += (uint32_t) (end_global_time - start_global_time); //FIXME
+			//total_time_counts[ihvcal-1] += num_delays;
 
 			for (uint8_t k=(48*(ihvcal-1));k<48*ihvcal;k++){
 				uint8_t condition = 0;
@@ -581,6 +582,7 @@ void get_rates(int num_delays, int num_samples)
 					end_hv = digi_read(DG_ADDR_HV,ihvcal);
 					end_cal = digi_read(DG_ADDR_CAL,ihvcal);
 					end_coinc = digi_read(DG_ADDR_COINC,ihvcal);
+
 
 					total_hv[straw_num] += end_hv;
 					total_cal[straw_num] += end_cal;

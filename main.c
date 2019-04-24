@@ -155,6 +155,14 @@ int main()
 
 	digi_write(DG_ADDR_RESET,1,0);
 
+
+	digi_write(0x81,0x0000,HVANDCAL);
+	digi_write(0x82,0x3FFF,HVANDCAL);
+	*(registers_0_addr + 0x84) = 0x0001;
+	*(registers_0_addr + 0x85) = 0x0FFF;
+	digi_write(0x90,0,CALONLY);
+	digi_write(0x90,1,HVONLY);
+
 	writePtr = 0;
 
 	// set defaults
@@ -1118,9 +1126,6 @@ int main()
 					*(registers_0_addr + 0x81) = 1;
 					//*(registers_0_addr + 0x82) = max_total_delay;
 					*(registers_0_addr + 0x82) = 0x0FFF;
-					digi_write(0x81,0x0000,0);
-					digi_write(0x82,0x3FFF,0);
-					digi_write(0x90,0,0);
 
 					max_total_delay = 1;
 
