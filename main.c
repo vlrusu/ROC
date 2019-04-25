@@ -15,7 +15,7 @@
 #include "version.h"
 
 #define BAUD_VALUE                  57600
-#define ENABLED_ADCS				0xfffu
+#define ENABLED_ADCS				0xFFFu
 
 uint16_t default_gains_cal[96] = {271,275,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,269,269,269,269,269,269,269,268,269,269,269,264,269,269,269,270};
 uint16_t default_gains_hv[96] = {270,271,270,270,270,270,270,270,270,270,270,270,270,270,266,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,270,267,270,270,270,270,266,266,272,268,266,265,269,269,269,269,270};
@@ -56,7 +56,14 @@ int main()
 	//register address for bit banging
 	registers_0_addr = (volatile uint32_t *) REGISTERBASEADDR;
 
+
+	adc_write(ADC_ADDR_PWR,0x01,0xFFF);
+	adc_write(ADC_ADDR_PWR,0x00,ENABLED_ADCS);
+
 	uint8_t errors = init_adc(ENABLED_ADCS,0x02,0x03);
+
+	//adc_write(ADC_ADDR_PWR,0x01,0x8FF);
+
 
 	/*Initialize the CoreSysService_PF driver*/
 	SYS_init(CSS_PF_BASE_ADDRESS);
@@ -143,8 +150,6 @@ int main()
 
 	//adc_write(0x08,0x00,0x3F);
 
-	adc_write(ADC_ADDR_PWR,0x01,ENABLED_ADCS);
-	adc_write(ADC_ADDR_PWR,0x00,ENABLED_ADCS);
 
 	digi_write(DG_ADDR_BITSLIP0,0x0,0);
 	digi_write(DG_ADDR_BITSLIP1,0x0,0);
@@ -763,6 +768,10 @@ int main()
 							for (iphase=0;iphase<12;iphase++){
 								adc_write(ADC_ADDR_PHASE,iphase,(0x1<<(adc_number)));
 								adc_write(ADC_ADDR_TESTIO,9,(0x1<<(adc_number)));
+								//for (int iadc=0;iadc<12;iadc++){
+								//	adc_write(ADC_ADDR_PHASE,iphase,(0x1<<(iadc)));
+								//	adc_write(ADC_ADDR_TESTIO,9,(0x1<<(iadc)));
+								//}
 
 								// reset fifo
 								resetFIFO(hvcal);
@@ -823,6 +832,72 @@ int main()
 									bestclock = i;
 								}
 							}
+
+							// IF PROBLEM FINDING PHASE USE CHECKERBOARD
+
+							if (maxdist == 12){
+								bestclock = 0xFF;
+/*
+								for (iphase=0;iphase<12;iphase++){
+									adc_write(ADC_ADDR_PHASE,iphase,(0x1<<(adc_number)));
+									adc_write(ADC_ADDR_TESTIO,0xb,(0x1<<(adc_number)));
+
+									// reset fifo
+									resetFIFO(hvcal);
+
+									readout_obloc = 0;
+									readout_maxDelay = 50;
+									readout_mode = 0;
+									readout_wordsPerTrigger = NUMTDCWORDS+1;
+									readout_numTriggers = 11;
+									readout_totalTriggers = 0;
+
+									int delay_count = 0;
+									int trigger_count = 0;
+
+									uint16_t lasthit[readout_wordsPerTrigger];
+
+									read_data2(&delay_count,&trigger_count,lasthit);
+									if (trigger_count != 11){
+
+										//									sprintf(outBuffer,"Didn't get enough triggers: %d\n",trigger_count);
+										//									UART_polled_tx_string( &g_uart, outBuffer );
+										break;
+									}
+									results[iphase] = lasthit[readout_wordsPerTrigger-1];
+								}
+
+
+								for (uint8_t i=0;i<12;i++){
+									//if (results[i] != 0x2AA && results[i] != 0x155){
+									//	continue;
+									//} //find first occurrence of 0x2AA or 0x155
+									uint8_t thisdist = 1;
+									for (uint8_t j=1;j<12;j++){
+										uint8_t i2 = (i+j) % 12;
+										if ((results[i2] != results[i])){
+											break;
+										}
+										thisdist++;
+									}
+									uint8_t thisdist2 = 1;
+									for (uint8_t j=1;j<12;j++){
+										uint8_t i2 = (i-j+12) % 12;
+										if ((results[i2] != results[i])){
+											break;
+										}
+										thisdist2++;
+									}
+									if (thisdist2 < thisdist)
+										thisdist = thisdist2;
+									if (thisdist > maxdist){
+										maxdist = thisdist;
+										bestclock = i;
+									}
+								}
+							*/
+							}
+
 							//							sprintf(outBuffer,"%d: Best clock phase: %d\n",ichan,bestclock);
 							//							UART_polled_tx_string( &g_uart, outBuffer );
 
@@ -941,9 +1016,15 @@ int main()
 							else if ((ichan%48) < 32)
 								digi_write(DG_ADDR_BITSLIP3,((0x1<<((ichan%48)-24))), hvcal);
 							else if ((ichan%48) < 40)
-								digi_write(DG_ADDR_BITSLIP4,((0x1<<((ichan%48)-32))), hvcal);
+								if (hvcal == 2)
+									digi_write(DG_ADDR_BITSLIP5,((0x1<<((ichan%48)-32))), hvcal);
+								else
+									digi_write(DG_ADDR_BITSLIP4,((0x1<<((ichan%48)-32))), hvcal);
 							else if ((ichan%48) < 48)
-								digi_write(DG_ADDR_BITSLIP5,((0x1<<((ichan%48)-40))), hvcal);
+								if (hvcal == 2)
+									digi_write(DG_ADDR_BITSLIP4,((0x1<<((ichan%48)-40))), hvcal);
+								else
+									digi_write(DG_ADDR_BITSLIP5,((0x1<<((ichan%48)-40))), hvcal);
 							digi_write(DG_ADDR_BITSLIP0,0x0,hvcal);
 							digi_write(DG_ADDR_BITSLIP1,0x0,hvcal);
 							digi_write(DG_ADDR_BITSLIP2,0x0,hvcal);
@@ -1097,17 +1178,45 @@ int main()
 					uint16_t max_total_delay = readU16fromBytes(&buffer[28]);
 					uint8_t mode = buffer[30];
 
+
+					get_mapped_channels();
+					uint32_t used_adcs = 0x0;
+					for (int i=0;i<12;i++){
+						uint32_t test_mask = (0xFF<<(8*(i%4)));
+						if (mapped_channel_mask[i/4] & test_mask)
+							used_adcs |= (0x1<<i);
+					}
+					//used_adcs = 0x800;
 					for (uint8_t i=0;i<12;i++){
-						if ((0x1<<i) & ENABLED_ADCS){
+						if (((0x1<<i) & ENABLED_ADCS)){
 							if (clock < 99){
-								adc_write(ADC_ADDR_PHASE,clock,(0x1<<i));
+								if ((0x1<<i) & used_adcs)
+									adc_write(ADC_ADDR_PHASE,clock,(0x1<<i));
 								adc_write(ADC_ADDR_TESTIO,adc_mode,(0x1<<i));
 							}else{
 								adc_write(ADC_ADDR_PHASE,adc_phases[i],(0x1<<i));
 								adc_write(ADC_ADDR_TESTIO,adc_mode,(0x1<<i));
 							}
+							//uint8_t readbackphase = adc_read(ADC_ADDR_PHASE,i);
+							//uint8_t readbackphase2 = adc_read(ADC_ADDR_PHASE,i);
 						}
+
 					}
+					//adc_write(ADC_ADDR_TESTIO,2,(0x1<<10));
+					//adc_write(ADC_ADDR_TESTIO,9,(0x1<<11));
+					//uint8_t phase[12];
+					//phase[0] = adc_read(ADC_ADDR_PHASE,0);
+					//phase[1] = adc_read(ADC_ADDR_PHASE,1);
+					//phase[2] = adc_read(ADC_ADDR_PHASE,2);
+					//phase[3] = adc_read(ADC_ADDR_PHASE,3);
+					//phase[4] = adc_read(ADC_ADDR_PHASE,4);
+					//phase[5] = adc_read(ADC_ADDR_PHASE,5);
+					//phase[6] = adc_read(ADC_ADDR_PHASE,6);
+					//phase[7] = adc_read(ADC_ADDR_PHASE,7);
+					//phase[8] = adc_read(ADC_ADDR_PHASE,8);
+					//phase[9] = adc_read(ADC_ADDR_PHASE,9);
+					//phase[10] = adc_read(ADC_ADDR_PHASE,10);
+					//phase[11] = adc_read(ADC_ADDR_PHASE,11);
 
 					hvcal = 1;
 					get_mapped_channels();
@@ -1123,7 +1232,7 @@ int main()
 					digi_write(DG_ADDR_TRIGGER_MODE,tdc_mode,0);
 					digi_write(DG_ADDR_ENABLE_PULSER,enable_pulser,0);
 
-					*(registers_0_addr + 0x81) = 1;
+					*(registers_0_addr + 0x81) = 0;
 					//*(registers_0_addr + 0x82) = max_total_delay;
 					*(registers_0_addr + 0x82) = 0x0FFF;
 
@@ -1184,7 +1293,11 @@ int main()
 					delayUs(100);
 
 					// reset fifo
-					resetFIFO(hvcal);
+					//resetFIFO(hvcal);
+					resetFIFO(1);
+					resetFIFO(2);
+
+					*(registers_0_addr + 0x81) = 1;
 
 					//readout_obloc = 6;
 					readout_obloc = 0;

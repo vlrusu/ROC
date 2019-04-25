@@ -652,8 +652,9 @@ void outBufSend(UART_instance_t g_uart, char *outBuffer, uint16_t bufcount){
 }
 
 void resetFIFO(){
-	digi_write(DG_ADDR_RESET, 0, hvcal);
+	//digi_write(DG_ADDR_RESET, 0, hvcal);
+	digi_write(DG_ADDR_RESET, 0, 0);
 	*(registers_0_addr + REG_ROC_FIFO_RESET) = 1;
-	digi_write(DG_ADDR_RESET, 1, hvcal);
+	digi_write(DG_ADDR_RESET, 1, 0);
 //	reset_fabric();
 }
