@@ -742,6 +742,7 @@ int main()
 							if (ichan > 47)
 								hvcal =2;
 							uint16_t adc_number = adc_map[ichan/8];
+							uint16_t adcclk_number = adcclk_map[ichan/8];
 							thischanmask = (((uint32_t) 0x1)<<(ichan%32));
 							if ( ((ichan<32) && ((thischanmask & mapped_channel_mask[0]) == 0x0))||
 									((ichan>=32) && (ichan<64) && ((thischanmask & mapped_channel_mask[1]) == 0x0))||
@@ -766,7 +767,7 @@ int main()
 
 							uint8_t iphase=0;
 							for (iphase=0;iphase<12;iphase++){
-								adc_write(ADC_ADDR_PHASE,iphase,(0x1<<(adc_number)));
+								adc_write(ADC_ADDR_PHASE,iphase,(0x1<<(adcclk_number)));
 								adc_write(ADC_ADDR_TESTIO,9,(0x1<<(adc_number)));
 								//for (int iadc=0;iadc<12;iadc++){
 								//	adc_write(ADC_ADDR_PHASE,iphase,(0x1<<(iadc)));
@@ -833,69 +834,8 @@ int main()
 								}
 							}
 
-							// IF PROBLEM FINDING PHASE USE CHECKERBOARD
-
 							if (maxdist == 12){
 								bestclock = 0xFF;
-/*
-								for (iphase=0;iphase<12;iphase++){
-									adc_write(ADC_ADDR_PHASE,iphase,(0x1<<(adc_number)));
-									adc_write(ADC_ADDR_TESTIO,0xb,(0x1<<(adc_number)));
-
-									// reset fifo
-									resetFIFO(hvcal);
-
-									readout_obloc = 0;
-									readout_maxDelay = 50;
-									readout_mode = 0;
-									readout_wordsPerTrigger = NUMTDCWORDS+1;
-									readout_numTriggers = 11;
-									readout_totalTriggers = 0;
-
-									int delay_count = 0;
-									int trigger_count = 0;
-
-									uint16_t lasthit[readout_wordsPerTrigger];
-
-									read_data2(&delay_count,&trigger_count,lasthit);
-									if (trigger_count != 11){
-
-										//									sprintf(outBuffer,"Didn't get enough triggers: %d\n",trigger_count);
-										//									UART_polled_tx_string( &g_uart, outBuffer );
-										break;
-									}
-									results[iphase] = lasthit[readout_wordsPerTrigger-1];
-								}
-
-
-								for (uint8_t i=0;i<12;i++){
-									//if (results[i] != 0x2AA && results[i] != 0x155){
-									//	continue;
-									//} //find first occurrence of 0x2AA or 0x155
-									uint8_t thisdist = 1;
-									for (uint8_t j=1;j<12;j++){
-										uint8_t i2 = (i+j) % 12;
-										if ((results[i2] != results[i])){
-											break;
-										}
-										thisdist++;
-									}
-									uint8_t thisdist2 = 1;
-									for (uint8_t j=1;j<12;j++){
-										uint8_t i2 = (i-j+12) % 12;
-										if ((results[i2] != results[i])){
-											break;
-										}
-										thisdist2++;
-									}
-									if (thisdist2 < thisdist)
-										thisdist = thisdist2;
-									if (thisdist > maxdist){
-										maxdist = thisdist;
-										bestclock = i;
-									}
-								}
-							*/
 							}
 
 							//							sprintf(outBuffer,"%d: Best clock phase: %d\n",ichan,bestclock);
@@ -919,20 +859,40 @@ int main()
 						}
 
 						// get best phase for each adc
-						for (uint8_t i=0;i<12;i++){
+						uint8_t i=0;
+						while (i<12){
+						//for (uint8_t i=0;i<12;i++){
 							int phasecount[12] = {0};
-							for (uint8_t j=0;j<8;j++)
-								if (phases[i*8+j] >= 0)
-									phasecount[phases[i*8+j]]++;
+							uint8_t thisclk = adcclk_map[i];
+							uint8_t j=1;
+							while (adcclk_map[i+j] == adcclk_map[i]){j++;if (i+j >=12){break;}};
+							for (uint8_t ichan=i*8;ichan<(i+j)*8;ichan++)
+								if (phases[ichan] >= 0)
+									phasecount[phases[ichan]]++;
 							int maxcount = 0;
 							adc_phases[adc_map[i]] = 0;
-							for (uint8_t j=0;j<12;j++){
-								if (phasecount[j] > maxcount){
-									maxcount = phasecount[j];
-									adc_phases[adc_map[i]] = j;
+							for (uint8_t iphase=0;iphase<12;iphase++)
+								if (phasecount[iphase] > maxcount){
+									maxcount = phasecount[iphase];
+									for (int k=i;k<i+j;k++)
+										adc_phases[adc_map[k]] = iphase;
 								}
-							}
+							i += j;
 						}
+//						for (uint8_t i=0;i<12;i++){
+//							int phasecount[12] = {0};
+//							for (uint8_t j=0;j<8;j++)
+//								if (phases[i*8+j] >= 0)
+//									phasecount[phases[i*8+j]]++;
+//							int maxcount = 0;
+//							adc_phases[adc_map[i]] = 0;
+//							for (uint8_t j=0;j<12;j++){
+//								if (phasecount[j] > maxcount){
+//									maxcount = phasecount[j];
+//									adc_phases[adc_map[i]] = j;
+//								}
+//							}
+//						}
 					}else{
 						bufWrite(outBuffer, &bufcount, 0, 9*96);
 					}
@@ -1190,8 +1150,8 @@ int main()
 					for (uint8_t i=0;i<12;i++){
 						if (((0x1<<i) & ENABLED_ADCS)){
 							if (clock < 99){
-								if ((0x1<<i) & used_adcs)
-									adc_write(ADC_ADDR_PHASE,clock,(0x1<<i));
+								//if ((0x1<<i) & used_adcs)
+								adc_write(ADC_ADDR_PHASE,clock,(0x1<<i));
 								adc_write(ADC_ADDR_TESTIO,adc_mode,(0x1<<i));
 							}else{
 								adc_write(ADC_ADDR_PHASE,adc_phases[i],(0x1<<i));

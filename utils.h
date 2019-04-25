@@ -195,6 +195,7 @@ extern uint32_t thischanmask;
 
 extern uint8_t channel_map[96];
 extern uint8_t adc_map[12];
+extern uint8_t adcclk_map[12];
 extern uint8_t adc_phases[12];
 
 extern uint16_t bufcount;
