@@ -108,6 +108,10 @@
 #define DG_ADDR_TVS_VAL 0x40
 #define DG_ADDR_TVS_ADDR 0x41
 
+#define DG_ADDR_EWS 0x81 // (event window start 160MHz clock ticks)
+#define DG_ADDR_EWE 0x82 // (event window end 160 MHz clock ticks)
+#define DG_ADDR_DIGINUMBER 0x90 // (0=cal, 1=hv, gets added to channel number)
+
 //***********************REG_ROC_* are the ROC registers
 #define REG_ROC_RESET 0x10
 #define REG_ROC_RE 0x11
@@ -141,8 +145,14 @@
 #define REG_ROC_HV_ADDRESS_P 0x72
 #define REG_ROC_HV_INIT_P 0x70
 
-#define REG_ROC_TVS_VAL 0x80
-#define REG_ROC_TVS_ADDR 0x81
+#define REG_ROC_EWM_SINGLE 0x80 //(send a single event window marker)
+#define REG_ROC_EWW_PULSER 0x81 //(enable EWM pulser)
+#define REG_ROC_EWM_T 0x82 // (ewm period in 40MHz clock ticks) 
+#define REG_ROC_EWMSTART_PMT 0x84 // (event window start  for PMT)
+#define REG_ROC_EWMSTOP_PMT 0x85 // (event window stop for PMT)
+
+#define REG_ROC_TVS_VAL 0x90
+#define REG_ROC_TVS_ADDR 0x91
 
 //***********************ADC_ADDR_* are the ADC addresses
 										//AD9212 memory map:
