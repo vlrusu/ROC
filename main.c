@@ -15,7 +15,7 @@
 #include "version.h"
 
 #define BAUD_VALUE                  57600
-#define ENABLED_ADCS				0xfffu
+#define ENABLED_ADCS				0xFFFu
 
 const uint16_t default_caldac[8] = {1000,1000,1000,1000,1000,1000,1000,1000};
 
@@ -50,7 +50,14 @@ int main()
 	//register address for bit banging
 	registers_0_addr = (volatile uint32_t *) REGISTERBASEADDR;
 
+
+	adc_write(ADC_ADDR_PWR,0x01,0xFFF);
+	adc_write(ADC_ADDR_PWR,0x00,ENABLED_ADCS);
+
 	uint8_t errors = init_adc(ENABLED_ADCS,0x02,0x03);
+
+	//adc_write(ADC_ADDR_PWR,0x01,0x8FF);
+
 
 	/*Initialize the CoreSysService_PF driver*/
 	SYS_init(CSS_PF_BASE_ADDRESS);
@@ -137,9 +144,6 @@ int main()
 
 	//adc_write(0x08,0x00,0x3F);
 
-	adc_write(ADC_ADDR_PWR,0x01,ENABLED_ADCS);
-	adc_write(ADC_ADDR_PWR,0x00,ENABLED_ADCS);
-
 	digi_write(DG_ADDR_BITSLIP0,0x0,0);
 	digi_write(DG_ADDR_BITSLIP1,0x0,0);
 	digi_write(DG_ADDR_BITSLIP2,0x0,0);
@@ -149,8 +153,15 @@ int main()
 
 	digi_write(DG_ADDR_RESET,1,0);
 
-	writePtr = 0;
+	digi_write(DG_ADDR_EWS,0x0000,HVANDCAL);
+	digi_write(DG_ADDR_EWE,0x3FFF,HVANDCAL);
+	*(registers_0_addr + REG_ROC_EWMSTART_PMT) = 0x0001;
+	*(registers_0_addr + REG_ROC_EWMSTOP_PMT) = 0x0FFF;
+	digi_write(DG_ADDR_DIGINUMBER,0,CALONLY);
+	digi_write(DG_ADDR_DIGINUMBER,1,HVONLY);
 
+	writePtr = 0;
+	
 	// set defaults
 
 	I2C_setup(&i2c_ptscal[0], &preampMCP[MCPCAL0],1,&preampMCP[MCPCAL0],2);
@@ -284,7 +295,6 @@ int main()
 					bufWrite(outBuffer, &bufcount, value, 2);
 					outBufSend(g_uart, outBuffer, bufcount);
 
-
 					// Set preamp threshold
 				}else if (commandID == SETPREAMPTHRESHOLD){
 					uint16_t channel = readU16fromBytes(&buffer[4]);
@@ -393,7 +403,20 @@ int main()
 					outBuffer[bufcount++] = RESETROC;
 					bufWrite(outBuffer, &bufcount, 0, 2);
 				 	outBufSend(g_uart, outBuffer, bufcount);
+				
+				}else if (commandID == READHISTO){
+					 uint8_t channel = (uint8_t) buffer[4];
+					 uint8_t hv_or_cal = (uint8_t) buffer[5];
+					 uint16_t output[256];
+					 read_histogram(channel,hv_or_cal,output);
 
+					outBuffer[bufcount++] = READHISTO;
+					bufWrite(outBuffer, &bufcount, 512, 2);
+					for (int i=0;i<256;i++){
+						bufWrite(outBuffer, &bufcount, output[i], 2);
+					}
+					outBufSend(g_uart, outBuffer, bufcount);
+					
 				}else if (commandID == TESTDDR){
 				 	uint8_t ddrcs = (uint8_t) buffer[4];
 				 	uint8_t ddrwen = (uint8_t) buffer[5];
@@ -721,6 +744,7 @@ int main()
 							if (ichan > 47)
 								hvcal =2;
 							uint16_t adc_number = adc_map[ichan/8];
+							uint16_t adcclk_number = adcclk_map[ichan/8];
 							thischanmask = (((uint32_t) 0x1)<<(ichan%32));
 							if ( ((ichan<32) && ((thischanmask & mapped_channel_mask[0]) == 0x0))||
 									((ichan>=32) && (ichan<64) && ((thischanmask & mapped_channel_mask[1]) == 0x0))||
@@ -745,23 +769,29 @@ int main()
 
 							uint8_t iphase=0;
 							for (iphase=0;iphase<12;iphase++){
-								adc_write(ADC_ADDR_PHASE,iphase,(0x1<<(adc_number)));
+								adc_write(ADC_ADDR_PHASE,iphase,(0x1<<(adcclk_number)));
 								adc_write(ADC_ADDR_TESTIO,9,(0x1<<(adc_number)));
+								//for (int iadc=0;iadc<12;iadc++){
+								//	adc_write(ADC_ADDR_PHASE,iphase,(0x1<<(iadc)));
+								//	adc_write(ADC_ADDR_TESTIO,9,(0x1<<(iadc)));
+								//}
 
 								// reset fifo
 								resetFIFO(hvcal);
 
+								*(registers_0_addr + REG_ROC_EWW_PULSER) = 1;
+
 								readout_obloc = 0;
 								readout_maxDelay = 50;
 								readout_mode = 0;
-								readout_wordsPerTrigger = 13;
+								readout_wordsPerTrigger = NUMTDCWORDS+1;
 								readout_numTriggers = 11;
 								readout_totalTriggers = 0;
 
 								int delay_count = 0;
 								int trigger_count = 0;
 
-								uint16_t lasthit[13];
+								uint16_t lasthit[readout_wordsPerTrigger];
 
 								read_data2(&delay_count,&trigger_count,lasthit);
 								if (trigger_count != 11){
@@ -770,11 +800,11 @@ int main()
 									//									UART_polled_tx_string( &g_uart, outBuffer );
 									break;
 								}
-								results[iphase] = lasthit[12];
+								results[iphase] = lasthit[readout_wordsPerTrigger-1];
 							}
-							outBuffer[bufcount++] = ichan;
-							outBuffer[bufcount++] = iphase; // outputs the number of phases tested with enough triggers
-
+							bufWrite(outBuffer, &bufcount, ichan, 1);
+							bufWrite(outBuffer, &bufcount, iphase, 1);
+			
 							uint8_t maxdist = 0;
 							//int bestclock = -1;
 							uint8_t bestclock = 0xff;
@@ -805,6 +835,11 @@ int main()
 									bestclock = i;
 								}
 							}
+
+							if (maxdist == 12){
+								bestclock = 0xFF;
+							}
+
 							//							sprintf(outBuffer,"%d: Best clock phase: %d\n",ichan,bestclock);
 							//							UART_polled_tx_string( &g_uart, outBuffer );
 
@@ -825,21 +860,41 @@ int main()
 							}
 						}
 
-						// get best phase for each adc
-						for (uint8_t i=0;i<12;i++){
+						// get best phase for each adc		
+						uint8_t i=0;
+						while (i<12){
+						//for (uint8_t i=0;i<12;i++){
 							int phasecount[12] = {0};
-							for (uint8_t j=0;j<8;j++)
-								if (phases[i*8+j] >= 0)
-									phasecount[phases[i*8+j]]++;
+							uint8_t thisclk = adcclk_map[i];
+							uint8_t j=1;
+							while (adcclk_map[i+j] == adcclk_map[i]){j++;if (i+j >=12){break;}};
+							for (uint8_t ichan=i*8;ichan<(i+j)*8;ichan++)
+								if (phases[ichan] >= 0)
+									phasecount[phases[ichan]]++;
 							int maxcount = 0;
 							adc_phases[adc_map[i]] = 0;
-							for (uint8_t j=0;j<12;j++){
-								if (phasecount[j] > maxcount){
-									maxcount = phasecount[j];
-									adc_phases[adc_map[i]] = j;
+							for (uint8_t iphase=0;iphase<12;iphase++)
+								if (phasecount[iphase] > maxcount){
+									maxcount = phasecount[iphase];
+									for (int k=i;k<i+j;k++)
+										adc_phases[adc_map[k]] = iphase;
 								}
-							}
+							i += j;
 						}
+//						for (uint8_t i=0;i<12;i++){
+//							int phasecount[12] = {0};
+//							for (uint8_t j=0;j<8;j++)
+//								if (phases[i*8+j] >= 0)
+//									phasecount[phases[i*8+j]]++;
+//							int maxcount = 0;
+//							adc_phases[adc_map[i]] = 0;
+//							for (uint8_t j=0;j<12;j++){
+//								if (phasecount[j] > maxcount){
+//									maxcount = phasecount[j];
+//									adc_phases[adc_map[i]] = j;
+//								}
+//							}
+//						}
 					}else{
 						bufWrite(outBuffer, &bufcount, 0, 9*96);
 					}
@@ -892,14 +947,14 @@ int main()
 							readout_obloc = 0;
 							readout_maxDelay = 50;
 							readout_mode = 0;
-							readout_wordsPerTrigger = 13;
+							readout_wordsPerTrigger = NUMTDCWORDS+1;
 							readout_numTriggers = 11;
 							readout_totalTriggers = 0;
 
 							int delay_count = 0;
 							int trigger_count = 0;
 
-							uint16_t lasthit[13];
+							uint16_t lasthit[readout_wordsPerTrigger];
 
 							read_data2(&delay_count,&trigger_count,lasthit);
 							if (trigger_count != 11){
@@ -907,7 +962,7 @@ int main()
 								//								UART_polled_tx_string( &g_uart, outBuffer );
 								break;
 							}
-							if (lasthit[12] == 0x001){
+							if (lasthit[readout_wordsPerTrigger-1] == 0x001){
 								success = 1;
 								break;
 							}
@@ -923,9 +978,15 @@ int main()
 							else if ((ichan%48) < 32)
 								digi_write(DG_ADDR_BITSLIP3,((0x1<<((ichan%48)-24))), hvcal);
 							else if ((ichan%48) < 40)
-								digi_write(DG_ADDR_BITSLIP4,((0x1<<((ichan%48)-32))), hvcal);
+								if (hvcal == 2)
+									digi_write(DG_ADDR_BITSLIP5,((0x1<<((ichan%48)-32))), hvcal);
+								else
+									digi_write(DG_ADDR_BITSLIP4,((0x1<<((ichan%48)-32))), hvcal);
 							else if ((ichan%48) < 48)
-								digi_write(DG_ADDR_BITSLIP5,((0x1<<((ichan%48)-40))), hvcal);
+								if (hvcal == 2)
+									digi_write(DG_ADDR_BITSLIP4,((0x1<<((ichan%48)-40))), hvcal);
+								else
+									digi_write(DG_ADDR_BITSLIP5,((0x1<<((ichan%48)-40))), hvcal);
 							digi_write(DG_ADDR_BITSLIP0,0x0,hvcal);
 							digi_write(DG_ADDR_BITSLIP1,0x0,hvcal);
 							digi_write(DG_ADDR_BITSLIP2,0x0,hvcal);
@@ -1004,14 +1065,14 @@ int main()
 						readout_obloc = 0;
 						readout_maxDelay = 50;
 						readout_mode = 0;
-						readout_wordsPerTrigger = 13;
+						readout_wordsPerTrigger = NUMTDCWORDS+1;
 						readout_numTriggers = 11;
 						readout_totalTriggers = 0;
 
 						int delay_count = 0;
 						int trigger_count = 0;
 
-						uint16_t lasthit[13];
+						uint16_t lasthit[readout_wordsPerTrigger];
 
 						read_data2(&delay_count,&trigger_count,lasthit);
 						if (trigger_count != 11){
@@ -1019,7 +1080,7 @@ int main()
 							//UART_polled_tx_string( &g_uart, outBuffer );
 							break;
 						}
-						if (lasthit[12] != 0x319){
+						if (lasthit[readout_wordsPerTrigger-1] != 0x319){
 							error_mask[ichan/32]|= (((uint32_t)0x1)<<(ichan%32));
 							//sprintf(outBuffer,"%d FAILED final check: %02x (instead of 0x319)\n",ichan,lasthit[12]);
 							//UART_polled_tx_string( &g_uart, outBuffer );
@@ -1058,7 +1119,7 @@ int main()
 					outBuffer[bufcount++] = READRATESCMDID;
 					bufcount_place_holder = bufcount;
 					bufWrite(outBuffer, &bufcount, 0, 2);
-
+		
 					get_rates(num_lookback,num_samples,255,NULL);
 
 					bufWrite(outBuffer, &bufcount_place_holder, (bufcount-3), 2);
@@ -1079,17 +1140,45 @@ int main()
 					uint16_t max_total_delay = readU16fromBytes(&buffer[28]);
 					uint8_t mode = buffer[30];
 
+
+					get_mapped_channels();
+					uint32_t used_adcs = 0x0;
+					for (int i=0;i<12;i++){
+						uint32_t test_mask = (0xFF<<(8*(i%4)));
+						if (mapped_channel_mask[i/4] & test_mask)
+							used_adcs |= (0x1<<i);
+					}
+					//used_adcs = 0x800;
 					for (uint8_t i=0;i<12;i++){
 						if ((0x1<<i) & ENABLED_ADCS){
 							if (clock < 99){
+								//if ((0x1<<i) & used_adcs)
 								adc_write(ADC_ADDR_PHASE,clock,(0x1<<i));
 								adc_write(ADC_ADDR_TESTIO,adc_mode,(0x1<<i));
 							}else{
 								adc_write(ADC_ADDR_PHASE,adc_phases[i],(0x1<<i));
 								adc_write(ADC_ADDR_TESTIO,adc_mode,(0x1<<i));
 							}
+							//uint8_t readbackphase = adc_read(ADC_ADDR_PHASE,i);
+							//uint8_t readbackphase2 = adc_read(ADC_ADDR_PHASE,i);
 						}
+
 					}
+					//adc_write(ADC_ADDR_TESTIO,2,(0x1<<10));
+					//adc_write(ADC_ADDR_TESTIO,9,(0x1<<11));
+					//uint8_t phase[12];
+					//phase[0] = adc_read(ADC_ADDR_PHASE,0);
+					//phase[1] = adc_read(ADC_ADDR_PHASE,1);
+					//phase[2] = adc_read(ADC_ADDR_PHASE,2);
+					//phase[3] = adc_read(ADC_ADDR_PHASE,3);
+					//phase[4] = adc_read(ADC_ADDR_PHASE,4);
+					//phase[5] = adc_read(ADC_ADDR_PHASE,5);
+					//phase[6] = adc_read(ADC_ADDR_PHASE,6);
+					//phase[7] = adc_read(ADC_ADDR_PHASE,7);
+					//phase[8] = adc_read(ADC_ADDR_PHASE,8);
+					//phase[9] = adc_read(ADC_ADDR_PHASE,9);
+					//phase[10] = adc_read(ADC_ADDR_PHASE,10);
+					//phase[11] = adc_read(ADC_ADDR_PHASE,11);
 
 					hvcal = 1;
 					get_mapped_channels();
@@ -1104,6 +1193,12 @@ int main()
 					digi_write(DG_ADDR_MASK3,(uint16_t) ((mapped_channel_mask[2] & 0xFFFF0000)>>16), 2);
 					digi_write(DG_ADDR_TRIGGER_MODE,tdc_mode,0);
 					digi_write(DG_ADDR_ENABLE_PULSER,enable_pulser,0);
+
+					*(registers_0_addr + REG_ROC_EWW_PULSER) = 0;
+					//*(registers_0_addr + REG_ROC_EWM_T) = max_total_delay;
+					*(registers_0_addr + REG_ROC_EWM_T) = 0x0FFF;
+
+					max_total_delay = 1;
 
 					*(registers_0_addr + REG_ROC_FIFO_HOWMANY) = num_samples;
 
@@ -1160,14 +1255,18 @@ int main()
 					delayUs(100);
 
 					// reset fifo
-					resetFIFO(hvcal);
+					//resetFIFO(hvcal);
+					resetFIFO(1);
+					resetFIFO(2);
+
+					*(registers_0_addr + REG_ROC_EWW_PULSER) = 1;
 
 					//readout_obloc = 6;
 					readout_obloc = 0;
 					//sprintf(dataBuffer,"start\n");
 					readout_maxDelay = max_total_delay*50;
 					readout_mode = mode;
-					readout_wordsPerTrigger = 12 + num_samples;
+					readout_wordsPerTrigger = NUMTDCWORDS + num_samples;
 					readout_numTriggers = num_triggers;
 					readout_totalTriggers = 0;
 
@@ -1199,6 +1298,7 @@ int main()
 
 						//UART_polled_tx_string( &g_uart, outBuffer );
 
+						//get_rates(0,10);
 					}else{
 						readout_enabled = 1;
 						//sprintf(outBuffer,"Run started\n");
@@ -1242,7 +1342,7 @@ int main()
 					for (uint16_t i=0; i<458; i++)
 						outBuffer[bufcount++] = i%256;
 					outBufSend(g_uart, outBuffer, bufcount);
-
+							
 				}else if (commandID == FINDTHRESHOLDSCMDID){
 					uint16_t num_lookback = readU16fromBytes(&buffer[4]);
 					uint16_t num_samples = readU16fromBytes(&buffer[6]);
