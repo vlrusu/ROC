@@ -98,6 +98,11 @@
 #define DG_ADDR_COINC 0x1C
 #define DG_ADDR_LATCH 0x1D
 
+#define DG_ADDR_HISTO_RESET 0x20
+#define DG_ADDR_HISTO_BIN 0x21
+#define DG_ADDR_HISTO_VAL 0x22
+#define DG_ADDR_HISTO_CHANNEL 0x23
+
 #define DG_ADDR_BITSLIP0 0x30
 #define DG_ADDR_BITSLIP1 0x31
 #define DG_ADDR_BITSLIP2 0x32
@@ -108,6 +113,7 @@
 #define DG_ADDR_TVS_VAL 0x40
 #define DG_ADDR_TVS_ADDR 0x41
 
+//#define DG_ADDR_EWMCNTER 0x80
 #define DG_ADDR_EWS 0x81 // (event window start 160MHz clock ticks)
 #define DG_ADDR_EWE 0x82 // (event window end 160 MHz clock ticks)
 #define DG_ADDR_DIGINUMBER 0x90 // (0=cal, 1=hv, gets added to channel number)

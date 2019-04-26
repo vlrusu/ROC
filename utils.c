@@ -225,27 +225,27 @@ uint16_t digi_read(uint8_t address, uint8_t hvcal)//hvcal can only be 1 or 2
 
 void read_histogram(uint8_t channel, uint8_t hv_or_cal, uint16_t *output){
 	// select channel
-	digi_write(0x23,((channel << 1) | (hv_or_cal & 0x1)),1);
+	digi_write(DG_ADDR_HISTO_CHANNEL,((channel << 1) | (hv_or_cal & 0x1)),1);
 	// tell digi to write histogram to sram
-	digi_write(0x20,0x1,1);
-	digi_write(0x20,0x0,1);
+	digi_write(DG_ADDR_HISTO_RESET,0x1,1);
+	digi_write(DG_ADDR_HISTO_RESET,0x0,1);
 	delay_ms(1);
 	// read from sram
 	for (int i=0;i<256;i++){
-		digi_write(0x21,i,1);
-		output[i] = digi_read(0x22,1);
+		digi_write(DG_ADDR_HISTO_BIN,i,1);
+		output[i] = digi_read(DG_ADDR_HISTO_VAL,1);
 	}
 	/*
 	if (hv_or_cal == 1){
-	volatile uint32_t * ewm = registers_0_addr + 0x80;
+	volatile uint32_t * ewm = registers_0_addr + REG_ROC_EWM_SINGLE;
 	*ewm = 1;
 	*ewm = 0;
 	}else{
 	delay_ms(100);
-	uint16_t ewm_counter = digi_read(0x80,1);
+	uint16_t ewm_counter = digi_read(DG_ADDR_EWMCNTER,1);
 	output[0] = ewm_counter;
 	delay_ms(100);
-	ewm_counter = digi_read(0x80,1);
+	ewm_counter = digi_read(DG_ADDR_EWMCNTER,1);
 	output[1] = ewm_counter;
 	}
 	*/
@@ -406,7 +406,7 @@ uint8_t adc_read(uint16_t address, uint8_t adc_num){
 void read_data(int *delay_count, int *trigger_count)
 {
 
-	volatile uint32_t * ewm = registers_0_addr + 0x80;
+	volatile uint32_t * ewm = registers_0_addr + REG_ROC_EWM_SINGLE;
 	for (int i=0;i<1000;i++){
 	//	*ewm = 1;
 	//	*ewm = 0;
@@ -461,7 +461,7 @@ void read_data(int *delay_count, int *trigger_count)
 				//readout_obloc = 6;
 			}
 
-			uint32_t digioutput;
+			volatile uint32_t digioutput;
 			*(registers_0_addr + re) = 1;
 			digioutput = *(registers_0_addr + data_reg);
 			memlevel -= 1;
@@ -511,8 +511,6 @@ void read_data2(int *delay_count, int *trigger_count, uint16_t *lasthit)
 		// have enough data, see if can read
 		int failed = 0;
 		for (int j=0;j<readout_wordsPerTrigger;j++){
-
-
 
 			volatile uint32_t digioutput;
 			*(registers_0_addr + re) = 1;
