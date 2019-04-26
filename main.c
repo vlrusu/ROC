@@ -944,6 +944,8 @@ int main()
 						for (uint8_t i=0;i<10;i++){
 							resetFIFO(hvcal);
 
+							*(registers_0_addr + REG_ROC_EWW_PULSER) = 1;
+
 							readout_obloc = 0;
 							readout_maxDelay = 50;
 							readout_mode = 0;
@@ -1061,6 +1063,8 @@ int main()
 							digi_write(DG_ADDR_MASK3,(uint16_t) (0x1<<((ichan%48)-32)), hvcal);
 
 						resetFIFO(hvcal);
+
+						*(registers_0_addr + REG_ROC_EWW_PULSER) = 1;
 
 						readout_obloc = 0;
 						readout_maxDelay = 50;
