@@ -777,6 +777,8 @@ int main()
 								// reset fifo
 								resetFIFO(hvcal);
 
+								*(registers_0_addr + 0x81) = 1;
+
 								readout_obloc = 0;
 								readout_maxDelay = 50;
 								readout_mode = 0;

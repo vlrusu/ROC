@@ -508,7 +508,7 @@ void read_data2(int *delay_count, int *trigger_count, uint16_t *lasthit)
 
 
 
-			uint32_t digioutput;
+			volatile uint32_t digioutput;
 			*(registers_0_addr + re) = 1;
 			digioutput = *(registers_0_addr + data_reg);
 			memlevel -= 1;
