@@ -53,6 +53,7 @@
 //#define TOGGLECALHV 16
 #define DIGIRW 16
 #define READTVS 17
+#define ROCREADREG 18
 
 //"digi" command ID (1 byte)
 
@@ -140,6 +141,7 @@
 #define REG_ROC_FIFO_RESET 0x44
 #define REG_ROC_FIFO_RDCNT 0x45
 #define REG_ROC_FIFO_HOWMANY 0x46
+#define REG_ROC_READREG 0x47;
 
 #define REG_ROC_CAL_BUSY_P 0x61
 #define REG_ROC_CAL_DATA_P 0x63
@@ -287,7 +289,7 @@ void digi_write(uint8_t address, uint16_t data, uint8_t hvcal);
 uint16_t digi_read(uint8_t address, uint8_t hvcal);
 void bufWrite(char *outBuffer, uint16_t *bufcount, uint32_t data, uint16_t nbytes);
 void outBufSend(UART_instance_t g_uart, char *outBuffer, uint16_t bufcount);
-void resetFIFO(uint8_t hvcal);
+void resetFIFO();
 void setPreampGain(uint16_t channel, uint16_t value);
 void setPreampThreshold(uint16_t channel, uint16_t value);
 void findChThreshold(int num_delays, int num_samples, uint16_t channel, uint16_t target_rate, uint8_t verbose);

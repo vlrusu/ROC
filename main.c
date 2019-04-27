@@ -396,6 +396,16 @@ int main()
 				 	bufWrite(outBuffer, &bufcount, 0, 2);
 				 	outBufSend(g_uart, outBuffer, bufcount);
 
+				}else if (commandID == ROCREADREG){
+					outBuffer[bufcount++] = ROCREADREG;
+					bufWrite(outBuffer,&bufcount,5,2);
+					uint32_t retv = 0xFFFFFFFF;
+					uint8_t raddr = (uint8_t) buffer[4];
+					retv = *(registers_0_addr + raddr);
+					outBuffer[bufcount++] = raddr;
+					bufWrite(outBuffer, &bufcount, retv, 4);
+					outBufSend(g_uart, outBuffer, bufcount);
+
 				}else if (commandID == RESETROC){
 
 					digi_write(DG_ADDR_RESET,0,0);
@@ -777,7 +787,7 @@ int main()
 								//}
 
 								// reset fifo
-								resetFIFO(hvcal);
+								resetFIFO();
 
 								*(registers_0_addr + REG_ROC_EWW_PULSER) = 1;
 
@@ -942,7 +952,7 @@ int main()
 							digi_write(DG_ADDR_MASK3,(uint16_t) (0x1<<((ichan%48)-32)), hvcal);
 						uint8_t success = 0;
 						for (uint8_t i=0;i<10;i++){
-							resetFIFO(hvcal);
+							resetFIFO();
 
 							*(registers_0_addr + REG_ROC_EWW_PULSER) = 1;
 
@@ -1062,7 +1072,7 @@ int main()
 						else
 							digi_write(DG_ADDR_MASK3,(uint16_t) (0x1<<((ichan%48)-32)), hvcal);
 
-						resetFIFO(hvcal);
+						resetFIFO();
 
 						*(registers_0_addr + REG_ROC_EWW_PULSER) = 1;
 
@@ -1259,9 +1269,7 @@ int main()
 					delayUs(100);
 
 					// reset fifo
-					//resetFIFO(hvcal);
-					resetFIFO(1);
-					resetFIFO(2);
+					resetFIFO();
 
 					*(registers_0_addr + REG_ROC_EWW_PULSER) = 1;
 
