@@ -635,6 +635,96 @@ int main()
 					 }
 
 					 outBufSend(g_uart, outBuffer, bufcount);
+//***********************************begin of DDR commands****************************************************************************************
+				}else if (commandID == DDRTOGGLE){
+					uint8_t ddr_select = (uint8_t) buffer[4];
+					uint32_t page_no = readU32fromBytes(&buffer[5]);//maximum is 262144
+
+					if (ddr_select == 1)
+						*(registers_0_addr + REG_ROC_DDR_PAGENO) = page_no;
+					else
+						*(registers_0_addr + REG_ROC_DDR_DIGICLEAN) = 0;
+
+					*(registers_0_addr + REG_ROC_DDR_SEL) = ddr_select;
+
+					outBuffer[bufcount++] = DDRTOGGLE;
+					bufWrite(outBuffer, &bufcount, 5, 2);
+					bufWrite(outBuffer, &bufcount, ddr_select, 1);
+					bufWrite(outBuffer, &bufcount, page_no, 4);
+					outBufSend(g_uart, outBuffer, bufcount);
+
+				}else if (commandID == DDRREAD){
+					uint32_t page_no_to_read = readU32fromBytes(&buffer[4]);//maximum is 262144
+					uint8_t ifclean = (uint8_t) buffer[8];
+
+					//check DDR_FULL register
+					uint8_t iffull = *(registers_0_addr + REG_ROC_DDR_FULL);
+					uint32_t pages_written = *(registers_0_addr + REG_ROC_DDR_PAGEWR);
+					volatile uint32_t pages_read = *(registers_0_addr + REG_ROC_DDR_PAGERD);
+
+					if (page_no_to_read > (pages_written - pages_read))
+						page_no_to_read = pages_written - pages_read;
+
+					outBuffer[bufcount++] = DDRREAD;
+					bufWrite(outBuffer, &bufcount, 13, 2);
+					bufWrite(outBuffer, &bufcount, iffull, 1);
+					bufWrite(outBuffer, &bufcount, pages_written, 4);
+					bufWrite(outBuffer, &bufcount, pages_read, 4);
+					bufWrite(outBuffer, &bufcount, page_no_to_read, 4);
+					outBufSend(g_uart, outBuffer, bufcount);
+
+					//read...
+					//fix me: all pages are currently treated as a single trigger
+					for (uint32_t i= 0; i < page_no_to_read; i++){
+						//read one page
+						*(registers_0_addr + REG_ROC_DDR_FIFOREN) = 1;
+
+						readout_obloc = 0;
+						if (i == 0)
+							bufWrite(dataBuffer, &readout_obloc, STARTTRG, 2);
+						else
+							bufWrite(dataBuffer, &readout_obloc, STARTBUF, 2);
+						readout_obloc_place_holder = readout_obloc;
+						readout_obloc += 2;
+
+						for (uint8_t j=0;j<32;j++){ //1kb/32bit=32
+							volatile uint32_t digioutput;
+							*(registers_0_addr + REG_ROC_FIFO_RE) = 1;
+							digioutput = *(registers_0_addr + REG_ROC_FIFO_DATA);
+
+							bufWrite(dataBuffer, &readout_obloc, ((digioutput & 0xFFFF0000)>>16), 2);
+							bufWrite(dataBuffer, &readout_obloc, (digioutput & 0xFFFF), 2);
+							//delayTicks(5);
+						}
+
+						bufWrite(dataBuffer, &readout_obloc_place_holder, (readout_obloc-4), 2);
+						UART_send(&g_uart, dataBuffer ,readout_obloc);
+					}
+					readout_obloc = 0;
+					bufWrite(dataBuffer, &readout_obloc, ENDOFDATA, 2);
+					UART_send(&g_uart, dataBuffer ,2);
+
+					if (ifclean){
+						*(registers_0_addr + REG_ROC_DDR_DIGICLEAN) = 1;
+						delayTicks(2);
+						*(registers_0_addr + REG_ROC_DDR_DIGICLEAN) = 0;
+					}
+
+					pages_read = *(registers_0_addr + REG_ROC_DDR_PAGERD);
+
+					outBuffer[bufcount++] = DDRREAD;
+					bufWrite(outBuffer, &bufcount, 5, 2);
+					bufWrite(outBuffer, &bufcount, ifclean, 1);
+					bufWrite(outBuffer, &bufcount, pages_read, 4);
+					outBufSend(g_uart, outBuffer, bufcount);
+
+				}else if (commandID == DDRCLEAN){
+					*(registers_0_addr + REG_ROC_DDR_DIGICLEAN) = 1;
+					*(registers_0_addr + REG_ROC_DDR_DIGICLEAN) = 0;
+
+					outBuffer[bufcount++] = DDRCLEAN;
+					bufWrite(outBuffer, &bufcount, 0, 2);
+					outBufSend(g_uart, outBuffer, bufcount);
 
 //***********************************begin of control_digi commands*******************************************************************************
 				}else if (commandID == ADCRWCMDID){
