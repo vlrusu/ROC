@@ -59,6 +59,7 @@
 #define DDRTOGGLE 50
 #define DDRREAD 51
 #define DDRCLEAN 52
+#define DDRMEMFIFOFILL 53
 
 //"digi" command ID (1 byte)
 

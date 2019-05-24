@@ -426,7 +426,7 @@ int main()
 						bufWrite(outBuffer, &bufcount, output[i], 2);
 					}
 					outBufSend(g_uart, outBuffer, bufcount);
-					
+					/*
 				}else if (commandID == TESTDDR){
 				 	uint8_t ddrcs = (uint8_t) buffer[4];
 				 	uint8_t ddrwen = (uint8_t) buffer[5];
@@ -486,7 +486,7 @@ int main()
 //					outBuffer[bufcount++] = ddrwdata;
 //					bufWrite(outBuffer, &bufcount, retv, 2);
 //					outBufSend(g_uart, outBuffer, bufcount);
-
+*/
 				}else if (commandID == DUMPSETTINGS){
 					uint16_t channel = (uint16_t) buffer[4];
 					outBuffer[bufcount++] = DUMPSETTINGS;
@@ -653,6 +653,18 @@ int main()
 					bufWrite(outBuffer, &bufcount, page_no, 4);
 					outBufSend(g_uart, outBuffer, bufcount);
 
+				}else if (commandID == DDRMEMFIFOFILL){
+					outBuffer[bufcount++] = DDRMEMFIFOFILL;
+					bufWrite(outBuffer, &bufcount, 4, 2);
+					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_FIFO_EMPTY), 1);
+					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_FIFO_FULL), 1);
+					*(registers_0_addr + REG_ROC_DDR_FIFOREN) = 1;
+					delayTicks(1);
+					*(registers_0_addr + REG_ROC_DDR_FIFOREN) = 0;
+					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_FIFO_EMPTY), 1);
+					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_FIFO_FULL), 1);
+					outBufSend(g_uart, outBuffer, bufcount);
+
 				}else if (commandID == DDRREAD){
 					uint32_t page_no_to_read = readU32fromBytes(&buffer[4]);//maximum is 262144
 					uint8_t ifclean = (uint8_t) buffer[8];
@@ -673,13 +685,32 @@ int main()
 					bufWrite(outBuffer, &bufcount, page_no_to_read, 4);
 					outBufSend(g_uart, outBuffer, bufcount);
 
+					bufcount = 0;
+					outBuffer[bufcount++] = DDRREAD;
+					bufWrite(outBuffer, &bufcount, 11, 2);
+
 					//read...
 					//fix me: all pages are currently treated as a single trigger
 					for (uint32_t i= 0; i < page_no_to_read; i++){
 						//read one page
+
+						if (i==0){
+							bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_FIFO_EMPTY), 1);
+							bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_FIFO_FULL), 1);
+						}
+
 						*(registers_0_addr + REG_ROC_DDR_FIFOREN) = 1;
+						delayTicks(1);
+						*(registers_0_addr + REG_ROC_DDR_FIFOREN) = 0;
+
+						delayUs(10);
+						if (i==0){
+							bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_FIFO_EMPTY), 1);
+							bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_FIFO_FULL), 1);
+						}
 
 						readout_obloc = 0;
+
 						if (i == 0)
 							bufWrite(dataBuffer, &readout_obloc, STARTTRG, 2);
 						else
@@ -687,7 +718,7 @@ int main()
 						readout_obloc_place_holder = readout_obloc;
 						readout_obloc += 2;
 
-						for (uint8_t j=0;j<32;j++){ //1kb/32bit=32
+						for (uint16_t j=0;j<256;j++){ //8kb/32bit=256
 							volatile uint32_t digioutput;
 							*(registers_0_addr + REG_ROC_FIFO_RE) = 1;
 							digioutput = *(registers_0_addr + REG_ROC_FIFO_DATA);
@@ -695,10 +726,16 @@ int main()
 							bufWrite(dataBuffer, &readout_obloc, ((digioutput & 0xFFFF0000)>>16), 2);
 							bufWrite(dataBuffer, &readout_obloc, (digioutput & 0xFFFF), 2);
 							//delayTicks(5);
+
 						}
 
 						bufWrite(dataBuffer, &readout_obloc_place_holder, (readout_obloc-4), 2);
 						UART_send(&g_uart, dataBuffer ,readout_obloc);
+
+						if (i==0){
+							bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_FIFO_EMPTY), 1);
+							bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_FIFO_FULL), 1);
+						}
 					}
 					readout_obloc = 0;
 					bufWrite(dataBuffer, &readout_obloc, ENDOFDATA, 2);
@@ -712,11 +749,9 @@ int main()
 
 					pages_read = *(registers_0_addr + REG_ROC_DDR_PAGERD);
 
-					outBuffer[bufcount++] = DDRREAD;
-					bufWrite(outBuffer, &bufcount, 5, 2);
 					bufWrite(outBuffer, &bufcount, ifclean, 1);
 					bufWrite(outBuffer, &bufcount, pages_read, 4);
-					outBufSend(g_uart, outBuffer, bufcount);
+					UART_send(&g_uart, outBuffer ,bufcount );
 
 				}else if (commandID == DDRCLEAN){
 					*(registers_0_addr + REG_ROC_DDR_DIGICLEAN) = 1;
