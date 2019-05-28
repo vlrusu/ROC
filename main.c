@@ -232,6 +232,9 @@ int main()
 		AD5318_write(g_spi[3],1,i,default_caldac[i]);
 	*(registers_0_addr+12) = 0;
 
+
+	init_DIGIs();
+
 	UART_polled_tx_string( &g_uart, "Initialization completed" );
 
 	GPIO_set_output( &g_gpio, GPIO_0, 0);

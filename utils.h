@@ -284,6 +284,7 @@ void adc_spi_core(uint8_t rw, uint8_t bytes, uint16_t address, uint8_t *data, ui
 void adc_write(uint16_t address, uint8_t data, uint16_t adc_mask_f);
 uint8_t adc_read(uint16_t address, uint8_t adc_num);
 uint16_t init_adc(uint16_t adc_mask, uint8_t pattern, uint8_t phase);
+void init_DIGIs();
 
 void digi_write(uint8_t address, uint16_t data, uint8_t hvcal);
 uint16_t digi_read(uint8_t address, uint8_t hvcal);

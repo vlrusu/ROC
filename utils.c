@@ -581,7 +581,7 @@ uint32_t get_rates(int num_delays, int num_samples, uint8_t channel, uint32_t* t
 
 				if (condition){
 
-					digi_write(DG_ADDR_READCHANNEL, k, ihvcal);
+					digi_write(DG_ADDR_READCHANNEL, k%48, ihvcal);
 					delayUs(1);
 					end_hv = digi_read(DG_ADDR_HV,ihvcal);
 					end_cal = digi_read(DG_ADDR_CAL,ihvcal);
@@ -701,6 +701,42 @@ void setPreampThreshold(uint16_t channel, uint16_t value){
 		default_threshs_hv[channel-96] = value;
 	}
 }
+
+void init_DIGIs(){
+	for (uint8_t i=0;i<12;i++){
+
+		adc_write(ADC_ADDR_PHASE,0,(0x1<<i));
+		adc_write(ADC_ADDR_TESTIO,0,(0x1<<i));
+	}
+
+	digi_write(DG_ADDR_SAMPLE,10,0);
+	digi_write(DG_ADDR_LOOKBACK,5,0);
+	digi_write(DG_ADDR_MASK1,0xFFFF, 1);
+	digi_write(DG_ADDR_MASK2,0xFFFF, 1);
+	digi_write(DG_ADDR_MASK3,0xFFFF, 1);
+	digi_write(DG_ADDR_MASK1,0xFFFF, 2);
+	digi_write(DG_ADDR_MASK2,0xFFFF, 2);
+	digi_write(DG_ADDR_MASK3,0xFFFF, 2);
+	digi_write(DG_ADDR_TRIGGER_MODE,0,0);
+	digi_write(DG_ADDR_ENABLE_PULSER,1,0);
+
+	*(registers_0_addr + REG_ROC_EWW_PULSER) = 0;
+	//*(registers_0_addr + REG_ROC_EWM_T) = max_total_delay;
+	*(registers_0_addr + REG_ROC_EWM_T) = 0x0FFF;
+
+
+
+	*(registers_0_addr + REG_ROC_FIFO_HOWMANY) = 10;
+
+	delayUs(100);
+
+	// reset fifo
+	resetFIFO();
+
+	*(registers_0_addr + REG_ROC_EWW_PULSER) = 1;
+
+}
+
 
 void findChThreshold(int num_delays, int num_samples, uint16_t channel, uint16_t target_rate, uint8_t verbose){
 	uint16_t threshold = 0;
