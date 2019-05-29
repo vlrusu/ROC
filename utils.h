@@ -50,9 +50,7 @@
 #define GETDEVICEID 13
 #define TESTDDR 14
 #define RESETROC 15
-//#define TOGGLECALHV 16
 #define DIGIRW 16
-#define READTVS 17
 #define ROCREADREG 18
 
 //DDR command ID

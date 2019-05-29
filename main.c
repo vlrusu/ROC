@@ -520,15 +520,36 @@ int main()
 				 	uint32_t rx0;
 
 				 	outBuffer[bufcount++] = READMONADCS;
-				 	bufWrite(outBuffer, &bufcount, 32, 2);
+				 	bufWrite(outBuffer, &bufcount, 64, 2);
 				 	for (uint8_t i = 0 ; i < 2; i++){
-				 		for (uint8_t j = 0 ; j < 8; j++){
-				 			SPI_set_slave_select( &g_spi[i] , (j<4?SPI_SLAVE_0:SPI_SLAVE_1));
+				 		for (uint8_t j = 0 ; j < ((i==1)?8:12); j++){
+				 			SPI_set_slave_select( &g_spi[i] , ((j>=8)?SPI_SLAVE_2:(j<4?SPI_SLAVE_0:SPI_SLAVE_1)));
 				 			uint16_t addr = (j%4 <<11 );
 				 			SPI_transfer_frame( &g_spi[i], addr);
 				 			rx0 = SPI_transfer_frame( &g_spi[i], addr);
-				 			SPI_clear_slave_select( &g_spi[i] , (j<4?SPI_SLAVE_0:SPI_SLAVE_1));
+				 			SPI_clear_slave_select( &g_spi[i] , ((j>=8)?SPI_SLAVE_2:(j<4?SPI_SLAVE_0:SPI_SLAVE_1)));
 				 			bufWrite(outBuffer, &bufcount, rx0, 2);
+				 		}
+				 	}
+
+				 	uint16_t tvs_val[4] = {0};
+				 	*(registers_0_addr+REG_ROC_RE) = 1;
+
+				 	for (uint8_t i =0; i<4; i++){
+				 		*(registers_0_addr+REG_ROC_TVS_ADDR) = i;
+				 		delayUs(1);
+				 		tvs_val[i] = *(registers_0_addr + REG_ROC_TVS_VAL);
+				 		bufWrite(outBuffer, &bufcount, tvs_val[i], 2);
+				 		delayUs(1);
+				 	}
+
+				 	for (uint8_t ihvcal=1; ihvcal<3; ihvcal++){
+				 		for (uint8_t i =0; i<4; i++){
+				 			digi_write(DG_ADDR_TVS_ADDR, i, ihvcal);
+				 			delayUs(1);
+				 			tvs_val[i] = digi_read(DG_ADDR_TVS_VAL, ihvcal);
+				 			bufWrite(outBuffer, &bufcount, tvs_val[i], 2);
+				 			delayUs(1);
 				 		}
 				 	}
 
@@ -589,53 +610,27 @@ int main()
 				 	outBufSend(g_uart, outBuffer, bufcount);
 
 				}else if (commandID == DIGIRW){
-					 uint8_t rw = (uint8_t) buffer[4];
-					 uint8_t thishvcal = (uint8_t) buffer[5];
-					 uint8_t address = (uint8_t) buffer[6];
-					 uint16_t data = readU16fromBytes(&buffer[7]);
+					uint8_t rw = (uint8_t) buffer[4];
+					uint8_t thishvcal = (uint8_t) buffer[5];
+					uint8_t address = (uint8_t) buffer[6];
+					uint16_t data = readU16fromBytes(&buffer[7]);
 
-					 outBuffer[bufcount++] = DIGIRW;
-					 bufWrite(outBuffer, &bufcount, 5, 2);
+					outBuffer[bufcount++] = DIGIRW;
+					bufWrite(outBuffer, &bufcount, 5, 2);
 
-					 if ( rw == 0 ){//read
-						 data = digi_read(address, thishvcal);
-					 }
-					 else{
-						 digi_write(address, data, thishvcal);
-					 }
-					 bufWrite(outBuffer, &bufcount, rw, 1);
-					 bufWrite(outBuffer, &bufcount, thishvcal, 1);
-					 bufWrite(outBuffer, &bufcount, address, 1);
-					 bufWrite(outBuffer, &bufcount, data, 2);
-					 outBufSend(g_uart, outBuffer, bufcount);
+					if ( rw == 0 ){//read
+						data = digi_read(address, thishvcal);
+					}
+					else{
+						digi_write(address, data, thishvcal);
+					}
+					bufWrite(outBuffer, &bufcount, rw, 1);
+					bufWrite(outBuffer, &bufcount, thishvcal, 1);
+					bufWrite(outBuffer, &bufcount, address, 1);
+					bufWrite(outBuffer, &bufcount, data, 2);
+					outBufSend(g_uart, outBuffer, bufcount);
 
-				}else if (commandID == READTVS){
-					 uint16_t tvs_val[4] = {0};
-					 outBuffer[bufcount++] = READTVS;
-					 bufWrite(outBuffer, &bufcount, 24, 2);
-
-					 *(registers_0_addr+REG_ROC_RE) = 1;
-
-					 for (uint8_t i =0; i<4; i++){
-						 *(registers_0_addr+REG_ROC_TVS_ADDR) = i;
-						 delayUs(1);
-						 tvs_val[i] = *(registers_0_addr + REG_ROC_TVS_VAL);
-						 bufWrite(outBuffer, &bufcount, tvs_val[i], 2);
-						 delayUs(1);
-					 }
-
-					 for (uint8_t ihvcal=1; ihvcal<3; ihvcal++){
-						 for (uint8_t i =0; i<4; i++){
-							 digi_write(DG_ADDR_TVS_ADDR, i, ihvcal);
-							 delayUs(1);
-							 tvs_val[i] = digi_read(DG_ADDR_TVS_VAL, ihvcal);
-							 bufWrite(outBuffer, &bufcount, tvs_val[i], 2);
-							 delayUs(1);
-						 }
-					 }
-
-					 outBufSend(g_uart, outBuffer, bufcount);
-//***********************************begin of DDR commands****************************************************************************************
+				//***********************************begin of DDR commands****************************************************************************************
 				}else if (commandID == DDRTOGGLE){
 					uint8_t ddr_select = (uint8_t) buffer[4];
 					uint32_t page_no = readU32fromBytes(&buffer[5]);//maximum is 262144
