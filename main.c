@@ -399,7 +399,7 @@ int main()
 				}else if (commandID == ROCREADREG){
 					outBuffer[bufcount++] = ROCREADREG;
 					bufWrite(outBuffer,&bufcount,5,2);
-					uint32_t retv = 0xFFFFFFFF;
+					volatile uint32_t retv = 0xFFFFFFFF;
 					uint8_t raddr = (uint8_t) buffer[4];
 					retv = *(registers_0_addr + raddr);
 					outBuffer[bufcount++] = raddr;
