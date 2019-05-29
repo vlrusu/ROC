@@ -581,7 +581,7 @@ uint32_t get_rates(int num_delays, int num_samples, uint8_t channel, uint32_t* t
 
 				if (condition){
 
-					digi_write(DG_ADDR_READCHANNEL, k, ihvcal);
+					digi_write(DG_ADDR_READCHANNEL, k%48, ihvcal);
 					delayUs(1);
 					end_hv = digi_read(DG_ADDR_HV,ihvcal);
 					end_cal = digi_read(DG_ADDR_CAL,ihvcal);
