@@ -717,11 +717,16 @@ void findChThreshold(int num_delays, int num_samples, uint16_t channel, uint16_t
 	uint16_t nonzero = 0;
 	uint32_t nonzerorate = 0;
 	uint8_t n_iteration = 0;
+
+	uint16_t local_bufcount_place_holder = bufcount;
+	if (verbose==1)
+		bufWrite(outBuffer, &bufcount, 0, 2);
+
 	while(1){
 		uint32_t thiscount = get_rates(num_delays, num_samples, channel, &timecounts);
 		thisrate = (uint32_t)(((uint64_t)thiscount)*50000000/timecounts);
 
-		if ((verbose==(1+channel/96))&&(bufcount<1900)){//buffer overflow protection
+		if ((verbose==1)&&(bufcount<1900)){//buffer overflow protection
 			bufWrite(outBuffer, &bufcount, threshold, 2);
 			bufWrite(outBuffer, &bufcount, thisrate, 4);
 		}
@@ -786,4 +791,6 @@ void findChThreshold(int num_delays, int num_samples, uint16_t channel, uint16_t
 			continue;
 		}
 	}
+	if (verbose==1)
+		bufWrite(outBuffer, &local_bufcount_place_holder, (bufcount-local_bufcount_place_holder-2)/6, 2);
 }

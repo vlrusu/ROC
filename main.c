@@ -400,7 +400,7 @@ int main()
 					outBuffer[bufcount++] = ROCREADREG;
 					bufWrite(outBuffer,&bufcount,5,2);
 					volatile uint32_t retv = 0xFFFFFFFF;
-					uint8_t raddr = (uint8_t) buffer[4];
+					uint32_t raddr = (uint32_t) buffer[4];
 					retv = *(registers_0_addr + raddr);
 					outBuffer[bufcount++] = raddr;
 					bufWrite(outBuffer, &bufcount, retv, 4);
@@ -854,6 +854,13 @@ int main()
 					hvcal = 1;
 					get_mapped_channels();
 
+					uint16_t mask_ADC_in_use = 0;
+					for (uint8_t iadc=0;iadc<12;iadc++){
+						uint8_t this_8ch_mask = ((mapped_channel_mask[iadc/4])>>((iadc*8)%32)) & 0xff;
+						if (this_8ch_mask)
+							mask_ADC_in_use |= (0x1 << iadc);
+					}
+
 					digi_write(DG_ADDR_SAMPLE,1,0);
 					digi_write(DG_ADDR_LOOKBACK,1,0);
 
@@ -1032,7 +1039,7 @@ int main()
 					// now do bitslip
 					for (uint8_t i=0;i<12;i++){
 
-						if ((0x1<<i) & ENABLED_ADCS){
+						if ((0x1<<i) & mask_ADC_in_use){
 							if (clock < 99){
 								adc_write(ADC_ADDR_PHASE,clock,(0x1<<i));
 								adc_write(ADC_ADDR_TESTIO,1,(0x1<<i));
@@ -1151,7 +1158,7 @@ int main()
 					// check at the end with mixed frequency ADC
 					for (uint8_t i=0;i<12;i++){
 
-						if ((0x1<<i) & ENABLED_ADCS){
+						if ((0x1<<i) & mask_ADC_in_use){
 
 							if (clock < 99){
 								adc_write(ADC_ADDR_PHASE,clock,(0x1<<i));
@@ -1483,7 +1490,7 @@ int main()
 					channel_mask[2] = readU32fromBytes(&buffer[16]);
 					uint16_t target_rate = readU16fromBytes(&buffer[20]);
 					uint8_t verbose = (uint8_t) buffer[22];
-					//if single channel, verbose = 1/2 prints the detailed process for cal/hv
+					//if single channel, verbose = 1 prints the detailed process for cal/hv
 
 					outBuffer[bufcount++] = FINDTHRESHOLDSCMDID;
 					bufcount_place_holder = bufcount;
