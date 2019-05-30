@@ -50,10 +50,14 @@
 #define GETDEVICEID 13
 #define TESTDDR 14
 #define RESETROC 15
-//#define TOGGLECALHV 16
 #define DIGIRW 16
-#define READTVS 17
 #define ROCREADREG 18
+
+//DDR command ID
+#define DDRTOGGLE 50
+#define DDRREAD 51
+#define DDRCLEAN 52
+#define DDRMEMFIFOFILL 53
 
 //"digi" command ID (1 byte)
 
@@ -134,6 +138,14 @@
 #define REG_ROC_DDR_DATA 0x28
 #define REG_ROC_DDR_PATTERN 0x29
 
+#define REG_ROC_DDR_SEL 0x30
+#define REG_ROC_DDR_FULL 0x31
+#define REG_ROC_DDR_FIFOREN 0x32
+#define REG_ROC_DDR_DIGICLEAN 0x33
+#define REG_ROC_DDR_PAGENO 0x34
+#define REG_ROC_DDR_PAGEWR 0x35
+#define REG_ROC_DDR_PAGERD 0x36
+
 #define REG_ROC_FIFO_RE 0x40
 #define REG_ROC_FIFO_DATA 0x41
 #define REG_ROC_FIFO_FULL 0x42
@@ -141,7 +153,7 @@
 #define REG_ROC_FIFO_RESET 0x44
 #define REG_ROC_FIFO_RDCNT 0x45
 #define REG_ROC_FIFO_HOWMANY 0x46
-#define REG_ROC_READREG 0x47;
+#define REG_ROC_READREG 0x47
 
 #define REG_ROC_CAL_BUSY_P 0x61
 #define REG_ROC_CAL_DATA_P 0x63
