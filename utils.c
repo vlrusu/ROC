@@ -716,7 +716,7 @@ void findChThreshold(int num_delays, int num_samples, uint16_t channel, uint16_t
 	uint8_t zerocounts = 0;
 	uint16_t nonzero = 0;
 	uint32_t nonzerorate = 0;
-	uint8_t n_iteration = 0;
+	uint8_t panic_mode = 0;
 
 	uint16_t local_bufcount_place_holder = bufcount;
 	if (verbose==1)
@@ -726,12 +726,12 @@ void findChThreshold(int num_delays, int num_samples, uint16_t channel, uint16_t
 		uint32_t thiscount = get_rates(num_delays, num_samples, channel, &timecounts);
 		thisrate = (uint32_t)(((uint64_t)thiscount)*50000000/timecounts);
 
-		if ((verbose==1)&&(bufcount<1900)){//buffer overflow protection
+		if ((verbose==1)&&(bufcount<1950)){//buffer overflow protection
 			bufWrite(outBuffer, &bufcount, threshold, 2);
 			bufWrite(outBuffer, &bufcount, thisrate, 4);
 		}
 
-		if (n_iteration == 100){
+		if ( (panic_mode == 1)&&(threshold > (THRESHOLDEND-THRESHOLDSTEP)) ){
 			setPreampThreshold(channel, initThreshold);
 			bufWrite(outBuffer, &bufcount, initThreshold, 2);
 			bufWrite(outBuffer, &bufcount, 0, 4);
@@ -739,12 +739,14 @@ void findChThreshold(int num_delays, int num_samples, uint16_t channel, uint16_t
 		}
 
 		if (thisrate == 0){
-			zerocounts += 1;
+			if (panic_mode == 0) zerocounts += 1;
 			if (nonzero==0){
-				if (zerocounts==10){//if never see a rate for 10 iterations, exit
-					bufWrite(outBuffer, &bufcount, 0, 2);
-					bufWrite(outBuffer, &bufcount, 0, 4);
-					break;
+				if (zerocounts==15){
+					//if never see a rate for 15 iterations, go to panic mode
+					//and scan the whole range
+					panic_mode = 1;
+					threshold = THRESHOLDSTART-THRESHOLDSTEP;
+					zerocounts = 0;
 				}
 			}
 			else {
@@ -757,9 +759,14 @@ void findChThreshold(int num_delays, int num_samples, uint16_t channel, uint16_t
 			}
 		}
 		else {
-			nonzero = threshold;
-			nonzerorate = thisrate;
-			zerocounts = 0;
+			if (panic_mode == 0){
+				nonzero = threshold;
+				nonzerorate = thisrate;
+				zerocounts = 0;
+			}
+			else{
+				panic_mode = 0;
+			}
 		}
 
 		if (lastrate!=10000000){
@@ -774,21 +781,26 @@ void findChThreshold(int num_delays, int num_samples, uint16_t channel, uint16_t
 				bufWrite(outBuffer, &bufcount, thisrate, 4);
 				break;
 			}
-
 		}
 
 		lastThreshold = threshold;
 		lastrate = thisrate;
-		n_iteration++;
-		if (thisrate > target_rate){
-			threshold-=1;
-			setPreampThreshold(channel, threshold);
-			continue;
+
+		if (panic_mode == 0){
+			if (thisrate > target_rate){
+				threshold-=1;
+				setPreampThreshold(channel, threshold);
+				continue;
+			}
+			if (thisrate <= target_rate){
+				threshold+=1;
+				setPreampThreshold(channel, threshold);
+				continue;
+			}
 		}
-		if (thisrate <= target_rate){
-			threshold+=1;
+		else{
+			threshold+=THRESHOLDSTEP;
 			setPreampThreshold(channel, threshold);
-			continue;
 		}
 	}
 	if (verbose==1)
