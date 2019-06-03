@@ -769,7 +769,7 @@ void findChThreshold(int num_delays, int num_samples, uint16_t channel, uint16_t
 			}
 		}
 
-		if (lastrate!=10000000){
+		if ((lastrate!=10000000)&&(lastrate!=0)){
 			if ( ((lastrate<=target_rate)&&(thisrate>target_rate))||
 					((lastrate>target_rate)&&(thisrate<=target_rate)) ){
 				if (threshold>lastThreshold){

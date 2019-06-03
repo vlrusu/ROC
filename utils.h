@@ -29,7 +29,7 @@
 #define HVONLY           2
 
 #define THRESHOLDSTART   350
-#define THRESHOLDEND     480
+#define THRESHOLDEND     500
 #define THRESHOLDSTEP    5
 
 //******************************************************************************
