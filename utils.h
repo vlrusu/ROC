@@ -28,6 +28,10 @@
 #define CALONLY          1
 #define HVONLY           2
 
+#define THRESHOLDSTART   350
+#define THRESHOLDEND     500
+#define THRESHOLDSTEP    5
+
 //******************************************************************************
 //                             Command ID
 //******************************************************************************
