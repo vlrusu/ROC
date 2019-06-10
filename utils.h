@@ -129,7 +129,7 @@
 
 //***********************REG_ROC_* are the ROC registers
 #define REG_ROC_RESET 0x10
-#define REG_ROC_RE 0x11
+#define REG_INVERT_CAL_SPI_CLK 0x11
 
 #define REG_ROC_DDR_NHITS 0x20
 #define REG_ROC_DDR_OFFSET 0x21

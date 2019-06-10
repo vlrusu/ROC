@@ -317,12 +317,12 @@ int main()
 
 				 	uint8_t chan_mask = (uint8_t) buffer[4];
 				 	uint16_t value = readU16fromBytes(&buffer[5]);
-				 	*(registers_0_addr+REG_ROC_RE) = 1;
+				 	*(registers_0_addr+REG_INVERT_CAL_SPI_CLK) = 1;
 				 	for (uint8_t i=0;i<8;i++){
 				 		if (chan_mask & (0x1<<i))
 				 			AD5318_write(g_spi[3],1, i,value);
 				 	}
-				 	*(registers_0_addr+REG_ROC_RE) = 0;
+				 	*(registers_0_addr+REG_INVERT_CAL_SPI_CLK) = 0;
 				 	outBuffer[bufcount++] = SETCALDAC;
 				 	bufWrite(outBuffer, &bufcount, 3, 2);
 				 	outBuffer[bufcount++] = chan_mask;
@@ -536,7 +536,6 @@ int main()
 				 	}
 
 				 	uint16_t tvs_val[4] = {0};
-				 	*(registers_0_addr+REG_ROC_RE) = 1;
 
 				 	for (uint8_t i =0; i<4; i++){
 				 		*(registers_0_addr+REG_ROC_TVS_ADDR) = i;
