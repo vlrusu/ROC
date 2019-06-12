@@ -528,7 +528,16 @@ int main()
 				 		for (uint8_t j = 0 ; j < ((i==1)?8:12); j++){
 				 			SPI_set_slave_select( &g_spi[i] , ((j>=8)?SPI_SLAVE_2:(j<4?SPI_SLAVE_0:SPI_SLAVE_1)));
 				 			uint16_t addr = (j%4 <<11 );
+				 			if (j>=8){//for additional ADC
+				 				addr = (1 << 14)|(j%4 << 12)|(0x7 << 9)|(1 << 3);
+				 				//      INP-GND |INP CH     |FSR=0.256V|PULL_UP EN
+				 			}
 				 			SPI_transfer_frame( &g_spi[i], addr);
+				 			if (j>=8){
+				 				SPI_clear_slave_select( &g_spi[i] , SPI_SLAVE_2);
+				 				SPI_set_slave_select( &g_spi[i] , SPI_SLAVE_2);
+				 				//ensure 16-Bit Data Transmission Cycle
+				 			}
 				 			rx0 = SPI_transfer_frame( &g_spi[i], addr);
 				 			SPI_clear_slave_select( &g_spi[i] , ((j>=8)?SPI_SLAVE_2:(j<4?SPI_SLAVE_0:SPI_SLAVE_1)));
 				 			bufWrite(outBuffer, &bufcount, rx0, 2);
