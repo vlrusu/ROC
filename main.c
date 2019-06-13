@@ -235,6 +235,12 @@ int main()
 
 	init_DIGIs();
 
+	//initialize new ADC
+	SPI_set_slave_select( &g_spi[0] , SPI_SLAVE_2);
+	uint16_t addr = (1 << 14)|(  0 << 12)|(0x7 << 9)|(1 << 8)|(1 << 3)|(3);
+	//               INP-GND |INP CH     |FSR=0.256V|        |PULL_UP EN
+	SPI_transfer_frame( &g_spi[0], addr);
+
 	UART_polled_tx_string( &g_uart, "Initialization completed" );
 
 	GPIO_set_output( &g_gpio, GPIO_0, 0);
@@ -529,16 +535,19 @@ int main()
 				 			SPI_set_slave_select( &g_spi[i] , ((j>=8)?SPI_SLAVE_2:(j<4?SPI_SLAVE_0:SPI_SLAVE_1)));
 				 			uint16_t addr = (j%4 <<11 );
 				 			if (j>=8){//for additional ADC
-				 				addr = (1 << 14)|(j%4 << 12)|(0x7 << 9)|(1 << 3);
-				 				//      INP-GND |INP CH     |FSR=0.256V|PULL_UP EN
-				 			}
-				 			SPI_transfer_frame( &g_spi[i], addr);
-				 			if (j>=8){
-				 				SPI_clear_slave_select( &g_spi[i] , SPI_SLAVE_2);
-				 				SPI_set_slave_select( &g_spi[i] , SPI_SLAVE_2);
-				 				//ensure 16-Bit Data Transmission Cycle
+				 				addr = (1 << 14)|(j%4 << 12)|(0x7 << 9)|(1 << 8)|(1 << 3)|(3);
+				 				//      INP-GND |INP CH     |FSR=0.256V|        |PULL_UP EN
 				 			}
 				 			rx0 = SPI_transfer_frame( &g_spi[i], addr);
+//				 			if (j>=8){
+//				 				SPI_clear_slave_select( &g_spi[i] , SPI_SLAVE_2);
+//				 				SPI_set_slave_select( &g_spi[i] , SPI_SLAVE_2);
+//				 				//ensure 16-Bit Data Transmission Cycle
+//				 			}
+				 			if (j>=8)
+				 				SPI_transfer_frame( &g_spi[i], addr);
+				 			else
+				 				rx0 = SPI_transfer_frame( &g_spi[i], addr);
 				 			SPI_clear_slave_select( &g_spi[i] , ((j>=8)?SPI_SLAVE_2:(j<4?SPI_SLAVE_0:SPI_SLAVE_1)));
 				 			bufWrite(outBuffer, &bufcount, rx0, 2);
 				 		}
