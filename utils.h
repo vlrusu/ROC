@@ -56,6 +56,8 @@
 #define RESETROC 15
 #define DIGIRW 16
 #define ROCREADREG 18
+#define SETFUSEON 19
+#define SETFUSEOFF 20
 
 //DDR command ID
 #define DDRTOGGLE 50

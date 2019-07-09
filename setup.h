@@ -17,7 +17,7 @@
 #include "bme280_defs.h"
 #include "DS28CM00.h"
 
-enum MCPs{MCPCAL0, MCPCAL1, MCPCALIB, MCPCAL2, MCPCAL3, MCPHV0, MCPHV1, MCPHV2, MCPHV3};
+enum MCPs{MCPCAL0, MCPCAL1, MCPCALIB, MCPCAL2, MCPCAL3, MCPHV0, MCPHV1, MCPHV2, MCPHV3, MCPFC0, MCPFC1, MCPFC2};
 
 extern const uint8_t MCPCALIBCHAN[8];
 extern const uint8_t default_delay; // delay between calibration pulses in us (add 20 us for pulse time)
@@ -40,7 +40,7 @@ typedef struct {
 	uint8_t _gain;
 } Straw;
 
-MCP preampMCP[9];
+MCP preampMCP[12];
 
 LTC2634 dacs[96];
 

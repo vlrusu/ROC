@@ -85,11 +85,13 @@ int main()
 
 
 	//setup MCPs
-	for (int imcp = MCPCAL0; imcp<=MCPHV3; imcp++){
+	for (int imcp = MCPCAL0; imcp<=MCPFC2; imcp++){
 		if (imcp < MCPHV0)
 			MCP_setup(&preampMCP[imcp], g_spi[3], 0 , 0x20 + imcp);
-		else
+		else if (imcp < MCPFC0)
 			MCP_setup(&preampMCP[imcp], g_spi[2], 0 , 0x20 + imcp - MCPHV0);
+		else
+			MCP_setup(&preampMCP[imcp], g_spi[2], 1 , 0x20 + imcp - MCPFC0);
 	}
 
 
@@ -99,6 +101,15 @@ int main()
 		MCP_pinMode(&preampMCP[MCPCALIB], MCPCALIBCHAN[imcp], MCP_OUTPUT);
 	}
 
+	// outputs for fuse control enable, initial all to 0
+
+	for (uint8_t imcp = MCPFC0; imcp < MCPFC2; imcp++){
+		MCP_pinModeAll(&preampMCP[imcp], MCP_OUTPUT);
+	}
+
+	for (uint8_t i = 0; i < 48; i++){
+		MCP_pinWrite(&preampMCP[MCPFC0+i/16],i%16+1,0);
+	}
 
 	//setup LTC2634, preamp DACs
 	for (uint8_t idac = 0 ; idac < 96; idac++){
@@ -630,6 +641,37 @@ int main()
 					bufWrite(outBuffer, &bufcount, thishvcal, 1);
 					bufWrite(outBuffer, &bufcount, address, 1);
 					bufWrite(outBuffer, &bufcount, data, 2);
+					outBufSend(g_uart, outBuffer, bufcount);
+
+				}else if (commandID == SETFUSEON){
+					uint8_t preamp_number = (uint8_t) buffer[4];
+					uint8_t time = (uint8_t) buffer[5];
+
+					for (uint8_t i = 0; i < 48; i++){
+						MCP_pinWrite(&preampMCP[MCPFC0+i/16],i%16+1,0);
+					}
+
+					MCP_pinWrite(&preampMCP[MCPFC0+preamp_number/16],preamp_number%16+1,1);
+
+					if (time > 0){
+						delay_ms(time*1000);
+						MCP_pinWrite(&preampMCP[MCPFC0+preamp_number/16],preamp_number%16+1,0);
+					}
+
+					outBuffer[bufcount++] = SETFUSEON;
+					bufWrite(outBuffer, &bufcount, 2, 2);
+					bufWrite(outBuffer, &bufcount, preamp_number, 1);
+					bufWrite(outBuffer, &bufcount, time, 1);
+					outBufSend(g_uart, outBuffer, bufcount);
+
+				}else if (commandID == SETFUSEOFF){
+
+					for (uint8_t i = 0; i < 48; i++){
+						MCP_pinWrite(&preampMCP[MCPFC0+i/16],i%16+1,0);
+					}
+
+					outBuffer[bufcount++] = SETFUSEOFF;
+					bufWrite(outBuffer, &bufcount, 0, 2);
 					outBufSend(g_uart, outBuffer, bufcount);
 
 				//***********************************begin of DDR commands****************************************************************************************
