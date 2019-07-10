@@ -103,8 +103,8 @@ int main()
 
 	// outputs for fuse control enable, initial all to 0
 
-	for (uint8_t imcp = MCPFC0; imcp < MCPFC2; imcp++){
-		MCP_pinModeAll(&preampMCP[imcp], MCP_OUTPUT);
+	for (uint8_t i = 0; i < 48; i++){
+		MCP_pinMode(&preampMCP[MCPFC0+i/16], i%16+1, MCP_OUTPUT);
 	}
 
 	for (uint8_t i = 0; i < 48; i++){
