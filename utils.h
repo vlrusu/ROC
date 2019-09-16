@@ -267,6 +267,8 @@ extern int readout_mode;
 extern int readout_wordInTrigger;
 extern int readout_wordsPerTrigger;
 extern int readout_numTriggers;
+extern uint32_t readout_minMemLevel;
+extern int readout_minMemLevelFlag;
 extern int calibration_count[32];
 extern uint32_t calibration_done;
 
@@ -291,7 +293,7 @@ void delay_ms(uint32_t us);
 void delayTicks(uint8_t ticks);
 char * print_float(char *fchars, float value);
 
-void read_data(int *delay_count, int *trigger_count, uint16_t min_mem_level);
+void read_data(int *delay_count, int *trigger_count);
 void read_data2(int *delay_count, int *trigger_count, uint16_t *lasthit);
 uint32_t get_rates(int num_delays, int num_samples, uint8_t channel, uint32_t* timecounts);
 void get_mapped_channels();

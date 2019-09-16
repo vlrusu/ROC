@@ -258,7 +258,7 @@ int main()
 			int trigger_count = 0;
 			UART_polled_tx_string( &g_uart, "datastream\n" );
 
-			read_data(&delay_count,&trigger_count,0);
+			read_data(&delay_count,&trigger_count);
 			readout_totalTriggers += trigger_count;
 		}
 
@@ -1456,38 +1456,14 @@ int main()
 					readout_numTriggers = num_triggers;
 					readout_totalTriggers = 0;
 
+					readout_minMemLevelFlag = 0;
+					readout_minMemLevel = 0;
 
 					if (mode == 0){
 						int delay_count = 0;
 						int trigger_count = 0;
 
-						read_data(&delay_count,&trigger_count,0);
-
-						//sprintf(&dataBuffer[readout_obloc],"\nend\n");
-						//UART_polled_tx_string( &g_uart, dataBuffer );
-						bufcount = 0;
-						outBuffer[bufcount++] = READDATACMDID;
-						bufWrite(outBuffer, &bufcount, 5, 2);
-						outBuffer[bufcount++] = (uint8_t)(trigger_count == num_triggers);
-
-						if (trigger_count == num_triggers){
-							//sprintf(outBuffer,"SUCCESS! Delayed %d times\n",delay_count);
-							bufWrite(outBuffer, &bufcount, (uint32_t)delay_count, 4);
-						}else{
-							//sprintf(outBuffer,"FAILED! Read %d triggers\n",trigger_count);
-							bufWrite(outBuffer, &bufcount, (uint32_t)trigger_count, 4);
-						}
-
-						UART_send(&g_uart, outBuffer ,bufcount );
-
-						//UART_polled_tx_string( &g_uart, outBuffer );
-
-						//get_rates(0,10);
-					}else if (mode == 2){
-						int delay_count = 0;
-						int trigger_count = 0;
-
-						read_data(&delay_count,&trigger_count,num_triggers*readout_wordsPerTrigger);
+						read_data(&delay_count,&trigger_count);
 
 						//sprintf(&dataBuffer[readout_obloc],"\nend\n");
 						//UART_polled_tx_string( &g_uart, dataBuffer );
@@ -1515,6 +1491,53 @@ int main()
 						//UART_polled_tx_string( &g_uart, outBuffer );
 						outBuffer[0] = RUN_STARTED;
 						UART_send(&g_uart, outBuffer ,1);
+					}else if (mode < 100){
+						int delay_count = 0;
+						int trigger_count = 0;
+
+						readout_minMemLevel = mode*1000;
+						if (readout_minMemLevel > 64000)
+							readout_minMemLevel = 64000;
+						readout_minMemLevel -= (readout_minMemLevel % (readout_wordsPerTrigger));
+						readout_minMemLevelFlag = 1;
+
+						read_data(&delay_count,&trigger_count);
+
+						//sprintf(&dataBuffer[readout_obloc],"\nend\n");
+						//UART_polled_tx_string( &g_uart, dataBuffer );
+						bufcount = 0;
+						outBuffer[bufcount++] = READDATACMDID;
+						bufWrite(outBuffer, &bufcount, 5, 2);
+						outBuffer[bufcount++] = (uint8_t)(trigger_count == num_triggers);
+
+						if (trigger_count == num_triggers){
+							//sprintf(outBuffer,"SUCCESS! Delayed %d times\n",delay_count);
+							bufWrite(outBuffer, &bufcount, (uint32_t)delay_count, 4);
+						}else{
+							//sprintf(outBuffer,"FAILED! Read %d triggers\n",trigger_count);
+							bufWrite(outBuffer, &bufcount, (uint32_t)trigger_count, 4);
+						}
+
+						UART_send(&g_uart, outBuffer ,bufcount );
+
+						//UART_polled_tx_string( &g_uart, outBuffer );
+
+						//get_rates(0,10);
+					}else if (mode >= 100){
+
+						readout_minMemLevel = (mode-500)*1000;
+						if (readout_minMemLevel > 64000)
+							readout_minMemLevel = 64000;
+
+						readout_minMemLevel -= (readout_minMemLevel % (readout_wordsPerTrigger));
+						readout_minMemLevelFlag = 1;
+
+						readout_enabled = 1;
+						//sprintf(outBuffer,"Run started\n");
+						//UART_polled_tx_string( &g_uart, outBuffer );
+						outBuffer[0] = RUN_STARTED;
+						UART_send(&g_uart, outBuffer ,1);
+
 					}
 
 				}else if (commandID == STOPRUNCMDID){
