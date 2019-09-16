@@ -258,7 +258,7 @@ int main()
 			int trigger_count = 0;
 			UART_polled_tx_string( &g_uart, "datastream\n" );
 
-			read_data(&delay_count,&trigger_count);
+			read_data(&delay_count,&trigger_count,0);
 			readout_totalTriggers += trigger_count;
 		}
 
@@ -1437,7 +1437,10 @@ int main()
 					bufWrite(outBuffer, &bufcount, digi_read(DG_ADDR_MASK3,hvcal), 2);
 					bufWrite(outBuffer, &bufcount, digi_read(DG_ADDR_ENABLE_PULSER,hvcal), 2);
 
-					delayUs(100);
+					outBuffer[bufcount++] = mode;
+					outBufSend(g_uart, outBuffer, bufcount);
+
+					delayUs(10000);
 
 					// reset fifo
 					resetFIFO();
@@ -1453,14 +1456,12 @@ int main()
 					readout_numTriggers = num_triggers;
 					readout_totalTriggers = 0;
 
-					outBuffer[bufcount++] = mode;
-					outBufSend(g_uart, outBuffer, bufcount);
 
 					if (mode == 0){
 						int delay_count = 0;
 						int trigger_count = 0;
 
-						read_data(&delay_count,&trigger_count);
+						read_data(&delay_count,&trigger_count,0);
 
 						//sprintf(&dataBuffer[readout_obloc],"\nend\n");
 						//UART_polled_tx_string( &g_uart, dataBuffer );
@@ -1482,7 +1483,33 @@ int main()
 						//UART_polled_tx_string( &g_uart, outBuffer );
 
 						//get_rates(0,10);
-					}else{
+					}else if (mode == 2){
+						int delay_count = 0;
+						int trigger_count = 0;
+
+						read_data(&delay_count,&trigger_count,num_triggers*readout_wordsPerTrigger);
+
+						//sprintf(&dataBuffer[readout_obloc],"\nend\n");
+						//UART_polled_tx_string( &g_uart, dataBuffer );
+						bufcount = 0;
+						outBuffer[bufcount++] = READDATACMDID;
+						bufWrite(outBuffer, &bufcount, 5, 2);
+						outBuffer[bufcount++] = (uint8_t)(trigger_count == num_triggers);
+
+						if (trigger_count == num_triggers){
+							//sprintf(outBuffer,"SUCCESS! Delayed %d times\n",delay_count);
+							bufWrite(outBuffer, &bufcount, (uint32_t)delay_count, 4);
+						}else{
+							//sprintf(outBuffer,"FAILED! Read %d triggers\n",trigger_count);
+							bufWrite(outBuffer, &bufcount, (uint32_t)trigger_count, 4);
+						}
+
+						UART_send(&g_uart, outBuffer ,bufcount );
+
+						//UART_polled_tx_string( &g_uart, outBuffer );
+
+						//get_rates(0,10);
+					}else if (mode == 1){
 						readout_enabled = 1;
 						//sprintf(outBuffer,"Run started\n");
 						//UART_polled_tx_string( &g_uart, outBuffer );

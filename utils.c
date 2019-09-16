@@ -403,7 +403,7 @@ uint8_t adc_read(uint16_t address, uint8_t adc_num){
 	return data;
 }
 
-void read_data(int *delay_count, int *trigger_count)
+void read_data(int *delay_count, int *trigger_count, uint16_t min_mem_level)
 {
 
 	volatile uint32_t * ewm = registers_0_addr + REG_ROC_EWM_SINGLE;
@@ -417,6 +417,30 @@ void read_data(int *delay_count, int *trigger_count)
 	uint32_t rdcnt = REG_ROC_FIFO_RDCNT;
 	uint32_t re = REG_ROC_FIFO_RE;
 	uint32_t data_reg = REG_ROC_FIFO_DATA;
+
+	if (min_mem_level > 0){
+		while (1){
+			readout_obloc = 0;
+
+			if (memlevel < readout_wordsPerTrigger || memlevel < min_mem_level){
+				volatile uint32_t fifoinfo = *(registers_0_addr + rdcnt);
+				memlevel = fifoinfo & 0x1FFFF;
+				if (memlevel < readout_wordsPerTrigger || memlevel < min_mem_level){
+					(*delay_count)++;
+					if ((*delay_count) >= readout_maxDelay){
+						bufWrite(dataBuffer, &readout_obloc, EMPTY, 2);
+						UART_send(&g_uart, dataBuffer ,2);
+						return;
+					}
+					delayUs(1000);
+					continue;
+				}
+			}
+		}
+
+		// disable more triggers during uart readout
+		*(registers_0_addr + REG_ROC_EWW_PULSER) = 0;
+	}
 
 	while (1){
 

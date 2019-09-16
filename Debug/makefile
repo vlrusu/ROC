@@ -37,38 +37,38 @@ endif
 
 # Add inputs and outputs from these tool invocations to the build variables 
 SECONDARY_FLASH += \
-MyProj.hex \
+ROC_softconsole.hex \
 
 SECONDARY_SIZE += \
-MyProj.siz \
+ROC_softconsole.siz \
 
 
 # All Target
-all: MyProj.elf secondary-outputs
+all: ROC_softconsole.elf secondary-outputs
 
 # Tool invocations
-MyProj.elf: $(OBJS) $(USER_OBJS)
+ROC_softconsole.elf: $(OBJS) $(USER_OBJS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: GNU ARM Cross C Linker'
-	arm-none-eabi-gcc -mcpu=cortex-m1 -mthumb -O0 -fmessage-length=0 -fsigned-char -ffunction-sections -fdata-sections  -g3 -T "E:\UM-research\SoftConsole\ROCDIGI_02_25_19\SoftConsole\MyProj\blinky.ld" -Xlinker --gc-sections -Wl,-Map,"MyProj.map" -o "MyProj.elf" $(OBJS) $(USER_OBJS) $(LIBS)
+	arm-none-eabi-gcc -mcpu=cortex-m1 -mthumb -O0 -fmessage-length=0 -fsigned-char -ffunction-sections -fdata-sections  -g3 -T "C:\mu2e\polarfire\ROC_softconsole2\ROC_softconsole\blinky.ld" -Xlinker --gc-sections -Wl,-Map,"ROC_softconsole.map" -o "ROC_softconsole.elf" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
-MyProj.hex: MyProj.elf
+ROC_softconsole.hex: ROC_softconsole.elf
 	@echo 'Invoking: GNU ARM Cross Create Flash Image'
-	arm-none-eabi-objcopy -O ihex "MyProj.elf"  "MyProj.hex"
+	arm-none-eabi-objcopy -O ihex "ROC_softconsole.elf"  "ROC_softconsole.hex"
 	@echo 'Finished building: $@'
 	@echo ' '
 
-MyProj.siz: MyProj.elf
+ROC_softconsole.siz: ROC_softconsole.elf
 	@echo 'Invoking: GNU ARM Cross Print Size'
-	arm-none-eabi-size --format=berkeley "MyProj.elf"
+	arm-none-eabi-size --format=berkeley "ROC_softconsole.elf"
 	@echo 'Finished building: $@'
 	@echo ' '
 
 # Other Targets
 clean:
-	-$(RM) $(OBJS)$(SECONDARY_FLASH)$(SECONDARY_SIZE)$(ASM_DEPS)$(S_UPPER_DEPS)$(C_DEPS) MyProj.elf
+	-$(RM) $(OBJS)$(SECONDARY_FLASH)$(SECONDARY_SIZE)$(ASM_DEPS)$(S_UPPER_DEPS)$(C_DEPS) ROC_softconsole.elf
 	-@echo ' '
 
 secondary-outputs: $(SECONDARY_FLASH) $(SECONDARY_SIZE)
