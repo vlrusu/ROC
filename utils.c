@@ -424,7 +424,12 @@ void read_data(int *delay_count, int *trigger_count)
 	uint32_t data_reg = REG_ROC_FIFO_DATA;
 
 	if (readout_minMemLevel > 0 && readout_minMemLevelFlag == 1){
-		*(registers_0_addr + REG_ROC_EWW_PULSER) = 1;
+		digi_write(DG_ADDR_MASK1,(uint16_t) (mapped_channel_mask[0] & 0xFFFF), 1);
+		digi_write(DG_ADDR_MASK2,(uint16_t) ((mapped_channel_mask[0] & 0xFFFF0000)>>16), 1);
+		digi_write(DG_ADDR_MASK3,(uint16_t) (mapped_channel_mask[1] & 0xFFFF), 1);
+		digi_write(DG_ADDR_MASK1,(uint16_t) ((mapped_channel_mask[1] & 0xFFFF0000)>>16), 2);
+		digi_write(DG_ADDR_MASK2,(uint16_t) (mapped_channel_mask[2] & 0xFFFF), 2);
+		digi_write(DG_ADDR_MASK3,(uint16_t) ((mapped_channel_mask[2] & 0xFFFF0000)>>16), 2);
 		while (1){
 			readout_obloc = 0;
 
@@ -447,7 +452,13 @@ void read_data(int *delay_count, int *trigger_count)
 		}
 		readout_minMemLevelFlag = 0;
 		// disable more triggers during uart readout
-		*(registers_0_addr + REG_ROC_EWW_PULSER) = 0;
+
+		digi_write(DG_ADDR_MASK1,0x0, 1);
+		digi_write(DG_ADDR_MASK2,0x0, 1);
+		digi_write(DG_ADDR_MASK3,0x0, 1);
+		digi_write(DG_ADDR_MASK1,0x0, 2);
+		digi_write(DG_ADDR_MASK2,0x0, 2);
+		digi_write(DG_ADDR_MASK3,0x0, 2);
 	}
 
 	while (1){
