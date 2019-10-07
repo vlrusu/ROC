@@ -60,10 +60,10 @@
 #define SETFUSEOFF 20
 
 //DDR command ID
-#define DDRTOGGLE 50
+#define DDRSETUP 50
 #define DDRREAD 51
-#define DDRCLEAN 52
-#define DDRMEMFIFOFILL 53
+#define DDRSTATUS 52
+#define DDRFILL 53
 
 //"digi" command ID (1 byte)
 
@@ -139,18 +139,25 @@
 #define REG_ROC_DDR_WEN 0x23
 #define REG_ROC_DDR_REN 0x24
 #define REG_ROC_DDR_DMAEN 0x25
-#define REG_ROC_DDR_ERR 0x26
-#define REG_ROC_DDR_RADDR 0x27
-#define REG_ROC_DDR_DATA 0x28
+#define REG_ROC_DDR_DIAG0 0x26
+#define REG_ROC_DDR_IN 0x27
+#define REG_ROC_DDR_DIAG1 0x28
 #define REG_ROC_DDR_PATTERN 0x29
 
-#define REG_ROC_DDR_SEL 0x30
-#define REG_ROC_DDR_FULL 0x31
-#define REG_ROC_DDR_FIFOREN 0x32
-#define REG_ROC_DDR_DIGICLEAN 0x33
-#define REG_ROC_DDR_PAGENO 0x34
-#define REG_ROC_DDR_PAGEWR 0x35
-#define REG_ROC_DDR_PAGERD 0x36
+#define REG_ROC_DDR_SEL 0x30 	//RW toggle between DTC commands (if 0) or simulated commands (if 1)
+#define REG_ROC_DDR_FULL 0x31  	//RO  1 while number ROC_DDR_PAGENO pages are read from DDR memory
+#define REG_ROC_DDR_FIFO_RE 0x32//RW  send simulated read of DDR page into MEMFIFO  (need ROC_DDR_SEL = 1)
+#define REG_ROC_DDR_SET 0x33	//RW  enable simulation of ALGO_CLK (for when fiber to DTC not used)
+#define REG_ROC_DDR_PAGENO 0x34	//RW  set number of pages to write from DIGIFIFO to DDR memory
+#define REG_ROC_DDR_PAGEWR 0x35	//RO  number of pages written to DDR
+#define REG_ROC_DDR_PAGERD 0x36	//RO  number of pages read from DDR
+#define REG_ROC_DDR_MEMFIFO_DATA0 0x37	//RO  lsb 32 bits read from MEMFIFO DATA
+#define REG_ROC_DDR_MEMFIFO_DATA1 0x38	//RO  msb 32 bits read from MEMFIFO DATA
+#define REG_ROC_DDR_MEMFIFO_FULL 0x39	//RO  MEMFIFO FULL status
+#define REG_ROC_DDR_MEMFIFO_EMPTY 0x3A	//RO  MEMFIFO EMPTY status
+#define REG_ROC_DDR_MEMFIFO_RE 0x3B	//RW  send simulated read enables to MEMFIFO (need ROC_DDR_SEL = 1)
+#define REG_ROC_DDR_TEMPFIFO_FULL 0x3C	//RO  TEMPFIFO FULL status
+#define REG_ROC_DDR_TEMPFIFO_EMPTY 0x3D	//RO  TEMPFIFO EMPTY status
 
 #define REG_ROC_FIFO_RE 0x40
 #define REG_ROC_FIFO_DATA 0x41
