@@ -1422,6 +1422,10 @@ int main()
 					resetFIFO();
 
 					*(registers_0_addr + REG_ROC_EWW_PULSER) = 1;
+					
+					
+
+					digi_write(0x0F,1,0); // enable calibration
 
 					//readout_obloc = 6;
 					readout_obloc = 0;
