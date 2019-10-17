@@ -1425,7 +1425,7 @@ int main()
 					
 					
 
-					digi_write(0x0F,1,0); // enable calibration
+					digi_write(0x0F,enable_pulser,0); // enable calibration
 
 					//readout_obloc = 6;
 					readout_obloc = 0;
@@ -1472,8 +1472,7 @@ int main()
 						outBuffer[0] = RUN_STARTED;
 						UART_send(&g_uart, outBuffer ,1);
 					}else if (mode < 100){
-
-						digi_write(0x0F,0,0); // disable calibration
+						
 						int delay_count = 0;
 						int trigger_count = 0;
 
