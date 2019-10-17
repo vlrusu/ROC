@@ -1472,6 +1472,8 @@ int main()
 						outBuffer[0] = RUN_STARTED;
 						UART_send(&g_uart, outBuffer ,1);
 					}else if (mode < 100){
+
+						digi_write(0x0F,0,0); // disable calibration
 						int delay_count = 0;
 						int trigger_count = 0;
 
