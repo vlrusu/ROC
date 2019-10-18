@@ -1343,6 +1343,9 @@ int main()
 
 					hvcal = 1;
 					get_mapped_channels();
+					
+					
+					digi_write(0x0F,0,0); // enable calibration
 
 					digi_write(DG_ADDR_SAMPLE,num_samples,0);
 					digi_write(DG_ADDR_LOOKBACK,num_lookback,0);
