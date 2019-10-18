@@ -463,6 +463,11 @@ void read_data(int *delay_count, int *trigger_count)
 		digi_write(DG_ADDR_MASK3,0x0, 2);
 	}
 
+  uint32_t hit_buffer[10][readout_wordsPerTrigger];
+  int hits_read = 0;
+  int hit_buffer_pointer = 0;
+  int pmt_counter = 0;
+
 	while (1){
 
 		readout_obloc = 0;
@@ -491,30 +496,81 @@ void read_data(int *delay_count, int *trigger_count)
 
 
 
-			//if (readout_obloc > 600){//originally each package contains 1501=6+5*299 chars, which now becomes 2+2+299*2 bytes
-			if (readout_obloc > 1500){
-				//sprintf(&dataBuffer[readout_obloc],"\npause\n");
-				bufWrite(dataBuffer, &readout_obloc_place_holder, (readout_obloc-4), 2);
-				UART_send(&g_uart, dataBuffer ,readout_obloc);
-
-				readout_obloc = 0;
-				bufWrite(dataBuffer, &readout_obloc, STARTBUF, 2);
-				readout_obloc_place_holder = readout_obloc;
-				readout_obloc += 2;
-
-				//sprintf(dataBuffer,"start\n");
-				//readout_obloc = 6;
-			}
-
+			//if (readout_obloc > 600)//originally each package contains 1501=6+5*299 chars, which now becomes 2+2+299*2 bytes
 			volatile uint32_t digioutput;
 			*(registers_0_addr + re) = 1;
 			digioutput = *(registers_0_addr + data_reg);
 			memlevel -= 1;
-			//sprintf(&dataBuffer[readout_obloc],"%04x ",digioutput);
-			bufWrite(dataBuffer, &readout_obloc, ((digioutput & 0xFFFF0000)>>16), 2);
-			bufWrite(dataBuffer, &readout_obloc, (digioutput & 0xFFFF), 2);
-			//readout_obloc += 5;
+
+      hit_buffer[hit_buffer_pointer][j] = digioutput;      
+
+			////sprintf(&dataBuffer[readout_obloc],"%04x ",digioutput);
+			//bufWrite(dataBuffer, &readout_obloc, ((digioutput & 0xFFFF0000)>>16), 2);
+			//bufWrite(dataBuffer, &readout_obloc, (digioutput & 0xFFFF), 2);
+			////readout_obloc += 5;
 		}
+    if (hits_read < 10)
+      hits_read++;
+    int is_pmt = 0;
+    if ((hit_buffer[hit_buffer_pointer][0]&0x3F) == 0 && (hit_buffer[hit_buffer_pointer][0]&0x40) > 0)
+      is_pmt = 1;
+    //float th = (hit_buffer[hit_buffer_pointer][2]&0xFFFFFF)*0.0024414;
+    //float tg = (hit_buffer[hit_buffer_pointer][1]&0xEFFFFFFF)*10239.9737856;
+    if (is_pmt && (pmt_counter == 0)){
+      for (int k=hits_read-1;k>0;k--){
+        int pointer = (hit_buffer_pointer+10-k)%10;
+        for (int j=0;j<readout_wordsPerTrigger;j++){
+          if (readout_obloc > 1500){
+            //sprintf(&dataBuffer[readout_obloc],"\npause\n");
+            bufWrite(dataBuffer, &readout_obloc_place_holder, (readout_obloc-4), 2);
+            UART_send(&g_uart, dataBuffer ,readout_obloc);
+
+            readout_obloc = 0;
+            bufWrite(dataBuffer, &readout_obloc, STARTBUF, 2);
+            readout_obloc_place_holder = readout_obloc;
+            readout_obloc += 2;
+
+            //sprintf(dataBuffer,"start\n");
+            //readout_obloc = 6;
+          }
+
+
+          bufWrite(dataBuffer, &readout_obloc, ((hit_buffer[pointer][j] & 0xFFFF0000)>>16), 2);
+          bufWrite(dataBuffer, &readout_obloc, ((hit_buffer[pointer][j] & 0xFFFF)), 2);
+        }
+      }
+    }
+
+    if (is_pmt)
+      pmt_counter = 10;
+
+    if (pmt_counter > 0){
+      for (int j=0;j<readout_wordsPerTrigger;j++){
+        if (readout_obloc > 1500){
+          //sprintf(&dataBuffer[readout_obloc],"\npause\n");
+          bufWrite(dataBuffer, &readout_obloc_place_holder, (readout_obloc-4), 2);
+          UART_send(&g_uart, dataBuffer ,readout_obloc);
+
+          readout_obloc = 0;
+          bufWrite(dataBuffer, &readout_obloc, STARTBUF, 2);
+          readout_obloc_place_holder = readout_obloc;
+          readout_obloc += 2;
+
+          //sprintf(dataBuffer,"start\n");
+          //readout_obloc = 6;
+        }
+
+
+        bufWrite(dataBuffer, &readout_obloc, ((hit_buffer[hit_buffer_pointer][j] & 0xFFFF0000)>>16), 2);
+        bufWrite(dataBuffer, &readout_obloc, ((hit_buffer[hit_buffer_pointer][j] & 0xFFFF)), 2);
+      }
+      pmt_counter--;
+    }
+    hit_buffer_pointer = (hit_buffer_pointer+1)%10;
+
+      
+
+
 		bufWrite(dataBuffer, &readout_obloc_place_holder, (readout_obloc-4), 2);
 		UART_send(&g_uart, dataBuffer ,readout_obloc);
 
