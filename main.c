@@ -256,7 +256,7 @@ int main()
 		if (readout_enabled){
 			int delay_count = 0;
 			int trigger_count = 0;
-			UART_polled_tx_string( &g_uart, "datastream\n" );
+			//UART_polled_tx_string( &g_uart, "datastream\n" );
 
 			read_data(&delay_count,&trigger_count);
 			readout_totalTriggers += trigger_count;
@@ -1344,6 +1344,9 @@ int main()
 					hvcal = 1;
 					get_mapped_channels();
 
+					// DISABLE CALIBRATION BEFORE ANY CHANGES TO SETTINGS
+					digi_write(0x0F,0,0); // disable calibration
+
 					digi_write(DG_ADDR_SAMPLE,num_samples,0);
 					digi_write(DG_ADDR_LOOKBACK,num_lookback,0);
 					digi_write(DG_ADDR_MASK1,(uint16_t) (mapped_channel_mask[0] & 0xFFFF), 1);
@@ -1425,7 +1428,7 @@ int main()
 					
 					
 
-					digi_write(0x0F,enable_pulser,0); // enable calibration
+					digi_write(0x0F,enable_pulser,0); // enable calibration IF running internal pulser
 
 					//readout_obloc = 6;
 					readout_obloc = 0;
@@ -1436,12 +1439,17 @@ int main()
 					readout_numTriggers = num_triggers;
 					readout_totalTriggers = 0;
 
-					readout_minMemLevelFlag = 0;
-					readout_minMemLevel = 0;
+					readout_noUARTflag = 0;
 
-					if (mode == 0){
+					if (mode == 0 || mode == 2 || mode == 4 || mode == 6){
 						int delay_count = 0;
 						int trigger_count = 0;
+
+						if (mode == 2 || mode == 6){
+							// During this mode, readout is disabled while triggers are enabled
+							// readout occurs
+							readout_noUARTflag = 1;
+						}
 
 						read_data(&delay_count,&trigger_count);
 
@@ -1466,63 +1474,38 @@ int main()
 
 						//get_rates(0,10);
 					}else if (mode == 1){
-						readout_enabled = 1;
+						readout_mode = 1;
+						//outBuffer[0] = RUN_STARTED;
+						//UART_send(&g_uart, outBuffer ,1);
+					}else{
+
+						readout_noUARTflag = 1;
+
+						readout_mode = 1;
 						//sprintf(outBuffer,"Run started\n");
 						//UART_polled_tx_string( &g_uart, outBuffer );
-						outBuffer[0] = RUN_STARTED;
-						UART_send(&g_uart, outBuffer ,1);
-					}else if (mode < 100){
-						
-						int delay_count = 0;
-						int trigger_count = 0;
-
-						readout_minMemLevel = mode*1000;
-						if (readout_minMemLevel > 64000)
-							readout_minMemLevel = 64000;
-						readout_minMemLevel -= (readout_minMemLevel % (readout_wordsPerTrigger));
-						readout_minMemLevelFlag = 1;
-
-						read_data(&delay_count,&trigger_count);
-
-						//sprintf(&dataBuffer[readout_obloc],"\nend\n");
-						//UART_polled_tx_string( &g_uart, dataBuffer );
-						bufcount = 0;
-						outBuffer[bufcount++] = READDATACMDID;
-						bufWrite(outBuffer, &bufcount, 5, 2);
-						outBuffer[bufcount++] = (uint8_t)(trigger_count == num_triggers);
-
-						if (trigger_count == num_triggers){
-							//sprintf(outBuffer,"SUCCESS! Delayed %d times\n",delay_count);
-							bufWrite(outBuffer, &bufcount, (uint32_t)delay_count, 4);
-						}else{
-							//sprintf(outBuffer,"FAILED! Read %d triggers\n",trigger_count);
-							bufWrite(outBuffer, &bufcount, (uint32_t)trigger_count, 4);
-						}
-
-						UART_send(&g_uart, outBuffer ,bufcount );
-
-						//UART_polled_tx_string( &g_uart, outBuffer );
-
-						//get_rates(0,10);
-					}else if (mode >= 100){
-
-						readout_minMemLevel = (mode-500)*1000;
-						if (readout_minMemLevel > 64000)
-							readout_minMemLevel = 64000;
-
-						readout_minMemLevel -= (readout_minMemLevel % (readout_wordsPerTrigger));
-						readout_minMemLevelFlag = 1;
-
-						readout_enabled = 1;
-						//sprintf(outBuffer,"Run started\n");
-						//UART_polled_tx_string( &g_uart, outBuffer );
-						outBuffer[0] = RUN_STARTED;
-						UART_send(&g_uart, outBuffer ,1);
+						//outBuffer[0] = RUN_STARTED;
+						//UART_send(&g_uart, outBuffer ,1);
 
 					}
 
 				}else if (commandID == STOPRUNCMDID){
 
+					readout_mode = 0;
+					// first send end data flag to break out of loop on python
+					readout_obloc = 0;
+					bufWrite(dataBuffer, &readout_obloc, ENDOFDATA, 2);
+					UART_send(&g_uart, dataBuffer ,2);
+
+					// now send READDATACMDID response to finish there
+					bufcount = 0;
+					outBuffer[bufcount++] = READDATACMDID;
+					bufWrite(outBuffer, &bufcount, 5, 2);
+					outBuffer[bufcount++] = 0; // as a hack for now we have it fail so it tells us total number of triggers
+					bufWrite(outBuffer, &bufcount, (uint32_t)readout_totalTriggers, 4);
+					UART_send(&g_uart, outBuffer ,bufcount );
+
+					/*
 					outBuffer[bufcount++] = STOPRUNCMDID;
 					bufWrite(outBuffer, &bufcount, 3, 2);
 					outBuffer[bufcount++] = readout_enabled;
@@ -1540,6 +1523,7 @@ int main()
 						bufWrite(outBuffer, &bufcount, readout_totalTriggers, 2);
 					}
 					outBufSend(g_uart, outBuffer, bufcount);
+					*/
 
 				}else if (commandID == ADCINITINFOCMDID){
 

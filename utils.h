@@ -274,8 +274,7 @@ extern int readout_mode;
 extern int readout_wordInTrigger;
 extern int readout_wordsPerTrigger;
 extern int readout_numTriggers;
-extern uint32_t readout_minMemLevel;
-extern int readout_minMemLevelFlag;
+extern int readout_noUARTflag;
 extern int calibration_count[32];
 extern uint32_t calibration_done;
 
