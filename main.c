@@ -353,7 +353,8 @@ int main()
 					//					UART_send(&g_uart, outBuffer ,bufcount );
 					//
 
-				}else if (commandID == SETPULSERON){
+/*   MT commented
+				 }else if (commandID == SETPULSERON){
 
 
 					for (uint8_t i = 0; i < 16; i++){
@@ -392,7 +393,7 @@ int main()
 					outBuffer[bufcount++] = SETPULSEROFF;
 					bufWrite(outBuffer, &bufcount, 0, 2);
 					outBufSend(g_uart, outBuffer, bufcount);
-
+*/
 				}else if (commandID == WHOAREYOU){
 
 				 	outBuffer[bufcount++] = WHOAREYOU;
@@ -431,18 +432,18 @@ int main()
 						bufWrite(outBuffer, &bufcount, output[i], 2);
 					}
 					outBufSend(g_uart, outBuffer, bufcount);
-					/*
+
 				}else if (commandID == TESTDDR){
+// MT changed to test DDR with pattern generator
 				 	uint8_t ddrcs = (uint8_t) buffer[4];
 				 	uint8_t ddrwen = (uint8_t) buffer[5];
 				 	uint8_t ddrren = (uint8_t) buffer[6];
 				 	uint8_t ddrdmaen = (uint8_t) buffer[7];
 				 	uint8_t ddrnhits = (uint8_t) buffer[8];
 				 	uint8_t ddrpattern = (uint8_t) buffer[9];
-				 	uint16_t ddrraddr = readU16fromBytes(&buffer[10]);
-				 	uint32_t ddroffset = readU32fromBytes(&buffer[12]);
-				 	uint32_t retv = 0xF;
-
+				 	uint32_t ddrraddr = readU16fromBytes(&buffer[10]);
+				 	uint32_t ddroffset = readU32fromBytes(&buffer[14]);
+/*
 				 	*(registers_0_addr + REG_ROC_DDR_NHITS) = ddrnhits;
 				 	*(registers_0_addr + REG_ROC_DDR_OFFSET) = ddroffset;
 				 	*(registers_0_addr + REG_ROC_DDR_CS) = ddrcs;
@@ -450,48 +451,133 @@ int main()
 				 	*(registers_0_addr + REG_ROC_DDR_REN) = ddrren;
 				 	*(registers_0_addr + REG_ROC_DDR_DMAEN) = ddrdmaen;
 				 	*(registers_0_addr + REG_ROC_DDR_PATTERN) = ddrpattern;
-				 	*(registers_0_addr + REG_ROC_DDR_RADDR) = ddrraddr;
-				 	retv = *(registers_0_addr + REG_ROC_DDR_ERR);
-				 	uint32_t dataddr = *(registers_0_addr + REG_ROC_DDR_DATA);
+				 	//*(registers_0_addr + REG_ROC_DDR_RADDR) = ddrraddr;
+				 	*(registers_0_addr + REG_ROC_DDR_IN) = ddrraddr;
+				 	//retv = *(registers_0_addr + REG_ROC_DDR_ERR);
+				 	//uint32_t dataddr = *(registers_0_addr + REG_ROC_DDR_DATA);
+				 	uint32_t dataddr = *(registers_0_addr + REG_ROC_DDR_RAM);
+*/
+
+				 	*(registers_0_addr + REG_ROC_DDR_NHITS) = ddrnhits;
+				 	volatile uint32_t delay_count = 100;
+				 	while (delay_count > 0) --delay_count;
+
+				 	*(registers_0_addr + REG_ROC_DDR_CS) = ddrcs;
+				 	delay_count = 100;
+				 	while (delay_count > 0) --delay_count;
+
+				 	//*(registers_0_addr + REG_ROC_DDR_WEN) = ddrwen;
+				 	//*(registers_0_addr + REG_ROC_DDR_REN) = ddrren;
+				 	//*(registers_0_addr + REG_ROC_DDR_DMAEN) = ddrdmaen;
+				 	*(registers_0_addr + REG_ROC_DDR_PATTERN) = ddrpattern;
+				 	delay_count = 100;
+				 	while (delay_count > 0) --delay_count;
+
+				 	*(registers_0_addr + REG_ROC_DDR_OFFSET) = ddroffset;
+				 	delay_count = 100;
+				 	while (delay_count > 0) --delay_count;
+
+				 	// write pattern to DDR memory
+				 	*(registers_0_addr + REG_ROC_DDR_WEN) = 1;
+				 	delay_count = 10000;
+				 	while (delay_count > 0) --delay_count;
+
+				 	//read pattern from DDR memory to RAM
+				 	*(registers_0_addr + REG_ROC_DDR_REN) = 1;
+				 	delay_count = 10000;
+				 	while (delay_count > 0) --delay_count;
+				 	//delayUs(1000);
+
+				 	// do nothing with DMA
+				 	*(registers_0_addr + REG_ROC_DDR_DMAEN) = 0;
+
+				 	*(registers_0_addr + REG_ROC_DDR_IN) = ddrraddr;
+				 	delay_count = 10;
+				 	while (delay_count > 0) --delay_count;
+
+				 	uint32_t dataddr = *(registers_0_addr + REG_ROC_DDR_RAM);
+
+/*
 				 	outBuffer[bufcount++] = TESTDDR;
-				 	bufWrite(outBuffer, &bufcount, 20, 2);
+				 	bufWrite(outBuffer, &bufcount, 18, 2);
 				 	outBuffer[bufcount++] = ddrnhits;
 				 	outBuffer[bufcount++] = ddrcs;
 				 	outBuffer[bufcount++] = ddrwen;
 				 	outBuffer[bufcount++] = ddrren;
 				 	outBuffer[bufcount++] = ddrdmaen;
 				 	outBuffer[bufcount++] = ddrpattern;
-				 	bufWrite(outBuffer, &bufcount, retv, 4);
-				 	bufWrite(outBuffer, &bufcount, ddrraddr, 2);
+				 	bufWrite(outBuffer, &bufcount, ddrraddr, 4);
+				 	bufWrite(outBuffer, &bufcount, dataddr, 4);
+				 	bufWrite(outBuffer, &bufcount, ddroffset, 4);
+				 	outBufSend(g_uart, outBuffer, bufcount);
+*/
+				 	outBuffer[bufcount++] = TESTDDR;
+				 	bufWrite(outBuffer, &bufcount, 12, 2);
+				 	bufWrite(outBuffer, &bufcount, ddrraddr, 4);
 				 	bufWrite(outBuffer, &bufcount, dataddr, 4);
 				 	bufWrite(outBuffer, &bufcount, ddroffset, 4);
 				 	outBufSend(g_uart, outBuffer, bufcount);
 
-//				}else if (commandID == TESTDDR){
-//					uint8_t ddrwen = (uint8_t) buffer[4];
-//					uint8_t ddrren = (uint8_t) buffer[5];
-//					uint8_t ddrwaddr = (uint8_t) buffer[6];
-//					uint8_t ddrraddr = (uint8_t) buffer[7];
-//					uint8_t ddrwdata = (uint8_t) buffer[8];
-//					uint16_t retv = 0xF;
-//
-//					*(registers_0_addr + 0x03) = ddrwen;
-//					*(registers_0_addr + 0x04) = ddrren;
-//					*(registers_0_addr + 0x21) = ddrwaddr;
-//					*(registers_0_addr + 0x22) = ddrraddr;
-//					*(registers_0_addr + 0x0b) = ddrwdata;
-//					retv = *(registers_0_addr + 0x1B);
-//
-//					outBuffer[bufcount++] = TESTDDR;
-//					bufWrite(outBuffer, &bufcount, 7, 2);
-//					outBuffer[bufcount++] = ddrwen;
-//					outBuffer[bufcount++] = ddrren;
-//					outBuffer[bufcount++] = ddrwaddr;
-//					outBuffer[bufcount++] = ddrraddr;
-//					outBuffer[bufcount++] = ddrwdata;
-//					bufWrite(outBuffer, &bufcount, retv, 2);
-//					outBufSend(g_uart, outBuffer, bufcount);
-*/
+				}else if (commandID == DDRRAMREAD){
+// MT -- command to test write to full memory
+//     - has only one parameter (ddroffset = memory offset in multiple of 1 kB).
+//     - All other testDDR parameters fixed to write to DDR 1kB of increasing one data bits
+					uint32_t ddroffset = readU32fromBytes(&buffer[4]);
+				 	volatile uint32_t delay_count = 100;
+				 	while (delay_count > 0) --delay_count;
+
+				 	*(registers_0_addr + REG_ROC_DDR_OFFSET) = ddroffset;
+				 	*(registers_0_addr + REG_ROC_DDR_CS) = 0;
+				 	*(registers_0_addr + REG_ROC_DDR_NHITS) = 1;
+				 	*(registers_0_addr + REG_ROC_DDR_PATTERN) = 0;
+				 	*(registers_0_addr + REG_ROC_DDR_DMAEN) = 0;
+
+				 	// write pattern to DDR memory
+				 	*(registers_0_addr + REG_ROC_DDR_WEN) = 1;
+				 	delay_count = 10000;
+				 	while (delay_count > 0) --delay_count;
+
+				 	//read pattern from DDR memory to RAM
+				 	*(registers_0_addr + REG_ROC_DDR_REN) = 1;
+				 	delay_count = 10000;
+				 	while (delay_count > 0) --delay_count;
+				 	//delayUs(1000);
+					volatile uint32_t errloc = *(registers_0_addr + REG_ROC_DDR_ERRLOC);
+
+
+				 	// read the full 1kB page in the SRAM ( => 256 addresses of 32 bits each)
+				 	// and write it to file
+					readout_obloc = 0;
+					bufWrite(dataBuffer, &readout_obloc, STARTTRG, 2);
+					readout_obloc_place_holder = readout_obloc;
+					readout_obloc += 2;
+
+					for (uint32_t i= 0; i < 256; i++){
+						*(registers_0_addr + REG_ROC_DDR_IN) = i;
+					 	delay_count = 10;
+					 	while (delay_count > 0) --delay_count;
+
+					 	volatile uint32_t ramdata = *(registers_0_addr + REG_ROC_DDR_RAM);
+						bufWrite(dataBuffer, &readout_obloc, ramdata, 4);
+					}
+					// insert error location at top of file
+					//bufWrite(dataBuffer, &readout_obloc_place_holder, errloc, 4);
+					bufWrite(dataBuffer, &readout_obloc_place_holder, (readout_obloc-4), 2);
+					UART_polled_tx_string( &g_uart, "datastream\n");
+					UART_send(&g_uart, dataBuffer, readout_obloc);
+
+					readout_obloc = 0;
+					bufWrite(dataBuffer, &readout_obloc, ENDOFDATA, 2);
+					UART_polled_tx_string( &g_uart, "datastream\n");
+					UART_send(&g_uart, dataBuffer ,2);
+
+					// write on screen error detection and error location
+					outBuffer[bufcount++] = DDRRAMREAD;
+					bufWrite(outBuffer, &bufcount, 5, 2);
+					outBuffer[bufcount++] = *(registers_0_addr + REG_ROC_DDR_ISERR);
+					bufWrite(outBuffer, &bufcount, errloc, 4);
+				 	outBufSend(g_uart, outBuffer, bufcount);
+
 				}else if (commandID == DUMPSETTINGS){
 					uint16_t channel = (uint16_t) buffer[4];
 					outBuffer[bufcount++] = DUMPSETTINGS;

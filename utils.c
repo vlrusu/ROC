@@ -444,8 +444,6 @@ void read_data(int *delay_count, int *trigger_count)
 		// have enough data, see if can read
 		for (int j=0;j<readout_wordsPerTrigger;j++){
 
-
-
 			//if (readout_obloc > 600){//originally each package contains 1501=6+5*299 chars, which now becomes 2+2+299*2 bytes
 			if (readout_obloc > 1500){
 				//sprintf(&dataBuffer[readout_obloc],"\npause\n");

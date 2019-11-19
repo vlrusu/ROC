@@ -62,9 +62,9 @@
 #define DDRREAD 51
 #define DDRSTATUS 52
 #define DDRFILL 53
+#define DDRRAMREAD 54
 
-//"digi" command ID (1 byte)
-
+// DIGI commands
 #define ADCRWCMDID 101
 #define BITSLIPCMDID 102
 #define AUTOBITSLIPCMDID 103
@@ -138,9 +138,12 @@
 #define REG_ROC_DDR_REN 0x24
 #define REG_ROC_DDR_DMAEN 0x25
 #define REG_ROC_DDR_DIAG0 0x26
-#define REG_ROC_DDR_IN 0x27
+#define REG_ROC_DDR_IN 0x27		//RW  bit [9:0] are Pattern generator RAM address
 #define REG_ROC_DDR_DIAG1 0x28
 #define REG_ROC_DDR_PATTERN 0x29
+#define REG_ROC_DDR_RAM 0x2A	//RO  32 bits RAM output saving data after DDR3 memory read
+#define REG_ROC_DDR_ISERR 0x2B
+#define REG_ROC_DDR_ERRLOC 0x2C
 
 #define REG_ROC_DDR_SEL 0x30 	//RW toggle between DTC commands (if 0) or simulated commands (if 1)
 #define REG_ROC_DDR_FULL 0x31  	//RO  1 while number ROC_DDR_PAGENO pages are read from DDR memory
