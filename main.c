@@ -353,7 +353,7 @@ int main()
 					//					UART_send(&g_uart, outBuffer ,bufcount );
 					//
 
-/*   MT commented
+// /*   MT commented
 				 }else if (commandID == SETPULSERON){
 
 
@@ -393,7 +393,7 @@ int main()
 					outBuffer[bufcount++] = SETPULSEROFF;
 					bufWrite(outBuffer, &bufcount, 0, 2);
 					outBufSend(g_uart, outBuffer, bufcount);
-*/
+/*
 				}else if (commandID == WHOAREYOU){
 
 				 	outBuffer[bufcount++] = WHOAREYOU;
@@ -409,7 +409,7 @@ int main()
 					outBuffer[bufcount++] = raddr;
 					bufWrite(outBuffer, &bufcount, retv, 4);
 					outBufSend(g_uart, outBuffer, bufcount);
-
+*/
 				}else if (commandID == RESETROC){
 
 					digi_write(DG_ADDR_RESET,0,0);
@@ -419,7 +419,7 @@ int main()
 					outBuffer[bufcount++] = RESETROC;
 					bufWrite(outBuffer, &bufcount, 0, 2);
 				 	outBufSend(g_uart, outBuffer, bufcount);
-				
+/*
 				}else if (commandID == READHISTO){
 					 uint8_t channel = (uint8_t) buffer[4];
 					 uint8_t hv_or_cal = (uint8_t) buffer[5];
@@ -432,7 +432,7 @@ int main()
 						bufWrite(outBuffer, &bufcount, output[i], 2);
 					}
 					outBufSend(g_uart, outBuffer, bufcount);
-
+*/
 				}else if (commandID == TESTDDR){
 // MT changed to test DDR with pattern generator
 				 	uint8_t ddrcs = (uint8_t) buffer[4];
@@ -459,41 +459,33 @@ int main()
 */
 
 				 	*(registers_0_addr + REG_ROC_DDR_NHITS) = ddrnhits;
-				 	volatile uint32_t delay_count = 100;
-				 	while (delay_count > 0) --delay_count;
+				 	delayTicks(100);
 
 				 	*(registers_0_addr + REG_ROC_DDR_CS) = ddrcs;
-				 	delay_count = 100;
-				 	while (delay_count > 0) --delay_count;
+				 	delayTicks(100);
 
 				 	//*(registers_0_addr + REG_ROC_DDR_WEN) = ddrwen;
 				 	//*(registers_0_addr + REG_ROC_DDR_REN) = ddrren;
 				 	//*(registers_0_addr + REG_ROC_DDR_DMAEN) = ddrdmaen;
 				 	*(registers_0_addr + REG_ROC_DDR_PATTERN) = ddrpattern;
-				 	delay_count = 100;
-				 	while (delay_count > 0) --delay_count;
+				 	delayTicks(100);
 
 				 	*(registers_0_addr + REG_ROC_DDR_OFFSET) = ddroffset;
-				 	delay_count = 100;
-				 	while (delay_count > 0) --delay_count;
+				 	delayTicks(100);
 
 				 	// write pattern to DDR memory
 				 	*(registers_0_addr + REG_ROC_DDR_WEN) = 1;
-				 	delay_count = 10000;
-				 	while (delay_count > 0) --delay_count;
+				 	delay_ms(10);
 
 				 	//read pattern from DDR memory to RAM
 				 	*(registers_0_addr + REG_ROC_DDR_REN) = 1;
-				 	delay_count = 10000;
-				 	while (delay_count > 0) --delay_count;
-				 	//delayUs(1000);
+				 	delay_ms(10);
 
 				 	// do nothing with DMA
 				 	*(registers_0_addr + REG_ROC_DDR_DMAEN) = 0;
 
 				 	*(registers_0_addr + REG_ROC_DDR_IN) = ddrraddr;
-				 	delay_count = 10;
-				 	while (delay_count > 0) --delay_count;
+				 	delayTicks(10);
 
 				 	uint32_t dataddr = *(registers_0_addr + REG_ROC_DDR_RAM);
 
@@ -523,8 +515,6 @@ int main()
 //     - has only one parameter (ddroffset = memory offset in multiple of 1 kB).
 //     - All other testDDR parameters fixed to write to DDR 1kB of increasing one data bits
 					uint32_t ddroffset = readU32fromBytes(&buffer[4]);
-				 	volatile uint32_t delay_count = 100;
-				 	while (delay_count > 0) --delay_count;
 
 				 	*(registers_0_addr + REG_ROC_DDR_OFFSET) = ddroffset;
 				 	*(registers_0_addr + REG_ROC_DDR_CS) = 0;
@@ -534,16 +524,12 @@ int main()
 
 				 	// write pattern to DDR memory
 				 	*(registers_0_addr + REG_ROC_DDR_WEN) = 1;
-				 	delay_count = 10000;
-				 	while (delay_count > 0) --delay_count;
+				 	delay_ms(10);
 
 				 	//read pattern from DDR memory to RAM
 				 	*(registers_0_addr + REG_ROC_DDR_REN) = 1;
-				 	delay_count = 10000;
-				 	while (delay_count > 0) --delay_count;
-				 	//delayUs(1000);
+				 	delay_ms(10);
 					volatile uint32_t errloc = *(registers_0_addr + REG_ROC_DDR_ERRLOC);
-
 
 				 	// read the full 1kB page in the SRAM ( => 256 addresses of 32 bits each)
 				 	// and write it to file
@@ -554,22 +540,13 @@ int main()
 
 					for (uint32_t i= 0; i < 256; i++){
 						*(registers_0_addr + REG_ROC_DDR_IN) = i;
-					 	delay_count = 10;
-					 	while (delay_count > 0) --delay_count;
+						delayTicks(10);
 
 					 	volatile uint32_t ramdata = *(registers_0_addr + REG_ROC_DDR_RAM);
 						bufWrite(dataBuffer, &readout_obloc, ramdata, 4);
 					}
 					// insert error location at top of file
 					//bufWrite(dataBuffer, &readout_obloc_place_holder, errloc, 4);
-					bufWrite(dataBuffer, &readout_obloc_place_holder, (readout_obloc-4), 2);
-					UART_polled_tx_string( &g_uart, "datastream\n");
-					UART_send(&g_uart, dataBuffer, readout_obloc);
-
-					readout_obloc = 0;
-					bufWrite(dataBuffer, &readout_obloc, ENDOFDATA, 2);
-					UART_polled_tx_string( &g_uart, "datastream\n");
-					UART_send(&g_uart, dataBuffer ,2);
 
 					// write on screen error detection and error location
 					outBuffer[bufcount++] = DDRRAMREAD;
@@ -577,6 +554,14 @@ int main()
 					outBuffer[bufcount++] = *(registers_0_addr + REG_ROC_DDR_ISERR);
 					bufWrite(outBuffer, &bufcount, errloc, 4);
 				 	outBufSend(g_uart, outBuffer, bufcount);
+
+				 	bufWrite(dataBuffer, &readout_obloc_place_holder, (readout_obloc-4), 2);
+				 	UART_send(&g_uart, dataBuffer, readout_obloc);
+
+				 	readout_obloc = 0;
+				 	bufWrite(dataBuffer, &readout_obloc, ENDOFDATA, 2);
+				 	UART_send(&g_uart, dataBuffer ,2);
+
 
 				}else if (commandID == DUMPSETTINGS){
 					uint16_t channel = (uint16_t) buffer[4];
@@ -665,7 +650,7 @@ int main()
 					//					outBuffer[bufcount++] = channel >> 8;
 					//
 					//					UART_send(&g_uart, outBuffer ,bufcount );
-				}else if (commandID == GETDEVICEID){
+/*				}else if (commandID == GETDEVICEID){
 
 				 	uint8_t data_buffer[16];
 				 	uint8_t status;
@@ -675,7 +660,7 @@ int main()
 				 	for (uint8_t i = 0 ; i < 16; i++)
 				 		outBuffer[bufcount++] = data_buffer[i];
 				 	outBufSend(g_uart, outBuffer, bufcount);
-
+*/
 				}else if (commandID == READBMES){
 
 				 	outBuffer[bufcount++] = READBMES;
@@ -698,7 +683,7 @@ int main()
 				 	//					sprintf(outBuffer,"HV %d %d %d\n",comp_data.temperature, comp_data.pressure, comp_data.humidity);
 				 	//					MSS_UART_polled_tx( &g_mss_uart1, outBuffer, strlen(outBuffer) );
 				 	outBufSend(g_uart, outBuffer, bufcount);
-
+/*
 				}else if (commandID == DIGIRW){
 					uint8_t rw = (uint8_t) buffer[4];
 					uint8_t thishvcal = (uint8_t) buffer[5];
@@ -719,7 +704,7 @@ int main()
 					bufWrite(outBuffer, &bufcount, address, 1);
 					bufWrite(outBuffer, &bufcount, data, 2);
 					outBufSend(g_uart, outBuffer, bufcount);
-
+*/
 				//***********************************begin of DDR commands****************************************************************************************
 				}else if (commandID == DDRSTATUS){
 					outBuffer[bufcount++] = DDRSTATUS;
@@ -904,8 +889,7 @@ int main()
 				}else if (commandID == AUTOBITSLIPCMDID){
 					// auto bitslip
 
-//
-					/* Monica commented to fit
+//					/* Monica commented to fit
 					uint8_t clock = (uint8_t) buffer[4];
 					uint8_t dophase = (uint8_t) buffer[5];
 					channel_mask[0] = readU32fromBytes(&buffer[6]);
@@ -1311,9 +1295,8 @@ int main()
 					for (uint8_t i=0; i<3; i++)
 						bufWrite(outBuffer, &bufcount, error_mask[i], 4);
 					outBufSend(g_uart, outBuffer, bufcount);
-// end of Monica commented to fit
-					*/
-				}else if (commandID == READRATESCMDID){
+// end of Monica commented to fit					*/
+/*				}else if (commandID == READRATESCMDID){
 					uint16_t num_lookback = readU16fromBytes(&buffer[4]);
 					uint16_t num_samples = readU16fromBytes(&buffer[6]);
 					channel_mask[0] = readU32fromBytes(&buffer[8]);
@@ -1328,7 +1311,7 @@ int main()
 
 					bufWrite(outBuffer, &bufcount_place_holder, (bufcount-3), 2);
 					outBufSend(g_uart, outBuffer, bufcount);
-
+*/
 				} else if (commandID == READDATACMDID){
 
 					uint16_t adc_mode = (uint16_t) ((uint8_t) buffer[4]);
@@ -1528,7 +1511,7 @@ int main()
 						bufWrite(outBuffer, &bufcount, readout_totalTriggers, 2);
 					}
 					outBufSend(g_uart, outBuffer, bufcount);
-
+/*
 				}else if (commandID == ADCINITINFOCMDID){
 
 					outBuffer[bufcount++] = ADCINITINFOCMDID;
@@ -1586,7 +1569,7 @@ int main()
 
 					bufWrite(outBuffer, &bufcount_place_holder, (bufcount-3), 2);
 					outBufSend(g_uart, outBuffer, bufcount);
-
+*/
 				}
 
 				// If we didn't use the whole buffer, the rest must be the next command
