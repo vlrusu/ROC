@@ -8,6 +8,9 @@
 #include "drivers/CorePWM/core_pwm.h"
 #include "hw_platform.h"
 
+
+#define ENABLED_ADCS				0xFFFu
+
 //******************************************************************************
 //                             Parameters
 //******************************************************************************
@@ -178,6 +181,8 @@
 #define REG_ROC_HV_ADDRESS_P 0x72
 #define REG_ROC_HV_INIT_P 0x70
 
+#define REG_ROC_BOTH_INIT_P 0x76
+
 #define REG_ROC_EWM_SINGLE 0x80 //(send a single event window marker)
 #define REG_ROC_EWW_PULSER 0x81 //(enable EWM pulser)
 #define REG_ROC_EWM_T 0x82 // (ewm period in 40MHz clock ticks) 
@@ -315,8 +320,9 @@ void init_DIGIs();
 void digi_write(uint8_t address, uint16_t data, uint8_t hvcal);
 uint16_t digi_read(uint8_t address, uint8_t hvcal);
 void bufWrite(char *outBuffer, uint16_t *bufcount, uint32_t data, uint16_t nbytes);
+void bufWriteN(char *outBuffer, uint16_t bufaddr, uint32_t data, uint16_t nbytes);
 void outBufSend(UART_instance_t g_uart, char *outBuffer, uint16_t bufcount);
-void resetFIFO();
+int resetFIFO();
 void setPreampGain(uint16_t channel, uint16_t value);
 void setPreampThreshold(uint16_t channel, uint16_t value);
 void findChThreshold(int num_delays, int num_samples, uint16_t channel, uint16_t target_rate, uint8_t verbose);

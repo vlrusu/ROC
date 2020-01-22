@@ -26,14 +26,22 @@ uint8_t channel_map[96]={
 		93,87,81,75,69,63,57,51,
 		45,39,33,27,21,15,9,3,
 
+		94,88,82,76,70,64,58,52,
+		46,40,34,28,22,16,10,4,
+		95,89,83,77,71,65,59,53,
 		44,38,32,26,20,14,8,2,
 		92,86,80,74,68,62,56,50,
-		47,41,35,29,23,17,11,5,
-		95,89,83,77,71,65,59,53,
-		46,40,34,28,22,16,10,4,
-		94,88,82,76,70,64,58,52};
+		47,41,35,29,23,17,11,5};
+
+		//44,38,32,26,20,14,8,2,
+		//92,86,80,74,68,62,56,50,
+		//47,41,35,29,23,17,11,5,
+		//95,89,83,77,71,65,59,53,
+		//46,40,34,28,22,16,10,4,
+		//94,88,82,76,70,64,58,52};
 uint8_t adc_map[12] = {0,1,2,3,4,5,6,7,8,9,10,11};
-uint8_t adcclk_map[12] = {1,1,2,3,3,3,6,6,6,9,11,11};
+//uint8_t adcclk_map[12] = {1,1,2,3,3,3,6,6,6,9,11,11};
+uint8_t adcclk_map[12] = {1,1,2,3,3,3,6,6,8,9,9,9};
 
 uint8_t adc_phases[12] = {0};
 
@@ -167,6 +175,7 @@ void digi_write(uint8_t address, uint16_t data, uint8_t hvcal)
 	volatile uint32_t * data_p_hv;
 	volatile uint32_t * address_p_hv;
 	volatile uint32_t * init_p_hv;
+	volatile uint32_t * init_p_both;
 
 	if ((hvcal==1)||(hvcal==0)){
 		busy_p_cal = registers_0_addr+REG_ROC_CAL_BUSY_P;
@@ -189,6 +198,28 @@ void digi_write(uint8_t address, uint16_t data, uint8_t hvcal)
 		*(address_p_hv) = address;
 		*(init_p_hv) = 1;
 		while (*(busy_p_hv) != 0){};
+	}
+	if (hvcal==0){
+		busy_p_cal = registers_0_addr+REG_ROC_CAL_BUSY_P;
+		data_p_cal = registers_0_addr+REG_ROC_CAL_DATA_P;
+		address_p_cal = registers_0_addr+REG_ROC_CAL_ADDRESS_P;
+		init_p_cal = registers_0_addr+REG_ROC_CAL_INIT_P;
+
+		*(data_p_cal) = data;
+		*(address_p_cal) = address;
+		busy_p_hv = registers_0_addr+REG_ROC_HV_BUSY_P;
+		data_p_hv = registers_0_addr+REG_ROC_HV_DATA_P;
+		address_p_hv = registers_0_addr+REG_ROC_HV_ADDRESS_P;
+		init_p_hv = registers_0_addr+REG_ROC_HV_INIT_P;
+
+		init_p_both = registers_0_addr+REG_ROC_BOTH_INIT_P;
+
+		*(data_p_hv) = data;
+		*(address_p_hv) = address;
+		*(init_p_both) = 1;
+		while (*(busy_p_hv) != 0){};
+		while (*(busy_p_cal) != 0){};
+
 	}
 }
 
@@ -488,11 +519,11 @@ void read_data(int *delay_count, int *trigger_count)
 				(*delay_count)++;
 				if ((*delay_count) >= readout_maxDelay){
 					// if not doing continuous readout, tell python to end the run now
-					if (readout_mode != 1){
+					//if (readout_mode != 1){
 						readout_obloc = 0;
 						bufWrite(dataBuffer, &readout_obloc, EMPTY, 2);
 						UART_send(&g_uart, dataBuffer ,2);
-					}
+					//}
 					break;
 				}
 				delayUs(1000);
@@ -510,10 +541,22 @@ void read_data(int *delay_count, int *trigger_count)
 			hit_buffer[hit_ptr][j] = digioutput;
 		}
 		total_reads += readout_wordsPerTrigger;
+/*
+		if (total_reads > 64000){
+			readout_wordsPerTrigger = 9;
+		}
 
+		if (total_reads > 32000){
+			readout_wordsPerTrigger = 9;
+		}
+
+		if (total_reads > 63900){
+			readout_wordsPerTrigger = 9;
+		}
+		*/
 
 		// if not requiring coincidence, immediately send out this hit
-		if (readout_mode == 0 || readout_mode == 1 || readout_mode == 2 || readout_mode == 3){
+		if (readout_mode < 4){
 			readout_obloc = 0;
 			bufWrite(dataBuffer, &readout_obloc, STARTTRG, 2);
 			bufWrite(dataBuffer, &readout_obloc, 4*readout_wordsPerTrigger,2);
@@ -555,8 +598,8 @@ void read_data(int *delay_count, int *trigger_count)
 				bufWrite(dataBuffer, &readout_obloc, STARTTRG, 2);
 				bufWrite(dataBuffer, &readout_obloc, 4*readout_wordsPerTrigger,2);
 				for (int j=0;j<readout_wordsPerTrigger;j++){
-					if (j == 0 && ((hit_buffer[hit_ptr][0]&0x3F) == 0 && (hit_buffer[hit_ptr][0]&0x40) > 0))
-						readout_wordsPerTrigger = 9;
+				//	if (j == 0 && ((hit_buffer[hit_ptr][0]&0x3F) == 0 && (hit_buffer[hit_ptr][0]&0x40) > 0))
+				//		readout_wordsPerTrigger = 9;
 					bufWrite(dataBuffer, &readout_obloc, ((hit_buffer[hit_ptr][j] & 0xFFFF0000)>>16), 2);
 					bufWrite(dataBuffer, &readout_obloc, (hit_buffer[hit_ptr][j] & 0xFFFF), 2);
 				}
@@ -573,22 +616,21 @@ void read_data(int *delay_count, int *trigger_count)
 		hit_ptr = (hit_ptr+1)%max_buffer;
 
 
-		if (total_reads >= (64000 - (64000 % readout_wordsPerTrigger))){
-			// if we read any more we will get junk right now
-			if (readout_mode != 1){
-				bufWrite(dataBuffer, &readout_obloc, EMPTY, 2);
-				UART_send(&g_uart, dataBuffer ,2);
-			}
-			break;
-		}
+//		if (total_reads >= (64000 - (64000 % readout_wordsPerTrigger))){
+//			// if we read any more we will get junk right now
+//			if (readout_mode != 1){
+//				readout_obloc = 0;
+//				bufWrite(dataBuffer, &readout_obloc, EMPTY, 2);
+//				UART_send(&g_uart, dataBuffer ,2);
+//			}
+//			break;
+//		}
+
 
 		if ((*trigger_count) >= readout_numTriggers){
-			// if not doing continuous readout, tell python to end the run now
-			if (readout_mode != 1){
-				readout_obloc = 0;
-				bufWrite(dataBuffer, &readout_obloc, ENDOFDATA, 2);
-				UART_send(&g_uart, dataBuffer ,2);
-			}
+			readout_obloc = 0;
+			bufWrite(dataBuffer, &readout_obloc, ENDOFDATA, 2);
+			UART_send(&g_uart, dataBuffer ,2);
 			break;
 		}
 	}
@@ -770,15 +812,31 @@ void bufWrite(char *outBuffer, uint16_t *bufcount, uint32_t data, uint16_t nbyte
 	}
 }
 
+void bufWriteN(char *outBuffer, uint16_t bufaddr, uint32_t data, uint16_t nbytes){
+	for (uint8_t i=0; i<nbytes; i++){
+		outBuffer[bufaddr+i] = (data>>(i*8)) & 0xff;
+	}
+}
+
 void outBufSend(UART_instance_t g_uart, char *outBuffer, uint16_t bufcount){
 	UART_polled_tx_string( &g_uart, "monitoring\n" );
 	UART_send(&g_uart, outBuffer ,bufcount );
 }
 
-void resetFIFO(){
-	digi_write(DG_ADDR_RESET, 0, 0);
-	*(registers_0_addr + REG_ROC_FIFO_RESET) = 1;
-	digi_write(DG_ADDR_RESET, 1, 0);
+int resetFIFO(){
+	for (int i=0;i<10;i++){
+	  digi_write(DG_ADDR_RESET, 0, 0);
+	  *(registers_0_addr + REG_ROC_FIFO_RESET) = 1;
+	  digi_write(DG_ADDR_RESET, 1, 0);
+
+	  delayUs(1);
+	  uint16_t is_aligned = *(registers_0_addr + 0x47);
+	  if (is_aligned == 0xF){
+		return 0;
+	  }
+	}
+	// failed to align correctly
+	return 1;
 //	reset_fabric();
 }
 
