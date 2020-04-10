@@ -15,6 +15,7 @@
 #include "LTC2634.h"
 #include "BME280.h"
 #include "bme280_defs.h"
+#include "HDC2080.h"
 #include "DS28CM00.h"
 
 enum MCPs{MCPCAL0, MCPCAL1, MCPCALIB, MCPCAL2, MCPCAL3, MCPHV0, MCPHV1, MCPHV2, MCPHV3, MCPFC0, MCPFC1, MCPFC2};

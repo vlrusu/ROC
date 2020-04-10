@@ -178,7 +178,8 @@ int main()
 	I2C_setup(&i2c_ptscal[0], &preampMCP[MCPCAL0],1,&preampMCP[MCPCAL0],2);
 	I2C_setup(&i2c_ptshv[0], &preampMCP[MCPHV0],1,&preampMCP[MCPHV0],2);
 
-
+	//Old sensor codes with BME 280
+	///*
 	struct bme280_dev ptscal;
 	int8_t rslt = BME280_OK;
 	ptscal.dev_id = BME280_I2C_ADDR_PRIM;
@@ -195,7 +196,7 @@ int main()
 	uint8_t settings_sel;
 	struct bme280_data comp_data;
 
-	/* Recommended mode of operation: Indoor navigation */
+	// Recommended mode of operation: Indoor navigation
 	ptscal.settings.osr_h = BME280_OVERSAMPLING_1X;
 	ptscal.settings.osr_p = BME280_OVERSAMPLING_16X;
 	ptscal.settings.osr_t = BME280_OVERSAMPLING_2X;
@@ -223,7 +224,7 @@ int main()
 	//		UART_polled_tx_string( &g_uart, outBuffer );
 
 
-	/* Recommended mode of operation: Indoor navigation */
+	// Recommended mode of operation: Indoor navigation
 	ptshv.settings.osr_h = BME280_OVERSAMPLING_1X;
 	ptshv.settings.osr_p = BME280_OVERSAMPLING_16X;
 	ptshv.settings.osr_t = BME280_OVERSAMPLING_2X;
@@ -232,7 +233,13 @@ int main()
 	settings_sel = BME280_OSR_PRESS_SEL | BME280_OSR_TEMP_SEL | BME280_OSR_HUM_SEL | BME280_FILTER_SEL;
 
 	rslt = bme280_set_sensor_settings(settings_sel, &ptshv);
+	//*/
 
+	//Set up HDC2080 chips
+	HDC2080 hdchv;
+	HDC2080 hdccal;
+	hdc2080_setup(&hdchv, HDC2080_I2C_ADDR_PRIM, &i2c_ptshv[0]);
+	hdc2080_setup(&hdccal, HDC2080_I2C_ADDR_PRIM, &i2c_ptscal[0]);
 
 
 	//		sprintf(outBuffer,"Data Sensor HV: %d %d %d\n",comp_data.temperature, comp_data.pressure, comp_data.humidity);
@@ -602,9 +609,9 @@ int main()
 //				 	outBufSend(g_uart, outBuffer, bufcount);
 
 				}else if (commandID == READBMES){
-
+					//Old sensor codes with BME 280
 				 	outBuffer[bufcount++] = READBMES;
-				 	bufWrite(outBuffer, &bufcount, 24, 2);
+				 	bufWrite(outBuffer, &bufcount, 32, 2);
 				 	rslt = bme280_set_sensor_mode(BME280_FORCED_MODE, &ptscal);
 				 	ptscal.delay_ms(40);
 				 	rslt = bme280_get_sensor_data(BME280_ALL, &comp_data, &ptscal);
@@ -622,7 +629,29 @@ int main()
 				 	bufWrite(outBuffer, &bufcount, comp_data.humidity, 4);
 				 	//					sprintf(outBuffer,"HV %d %d %d\n",comp_data.temperature, comp_data.pressure, comp_data.humidity);
 				 	//					MSS_UART_polled_tx( &g_mss_uart1, outBuffer, strlen(outBuffer) );
+
+				 	//Also take measurements from HDC 2080 chips
+				 	uint16_t this_temp = 0;
+				 	uint16_t this_humidity = 0;
+
+				 	rslt = hdc2080_reset(&hdchv);
+				 	rslt = hdc2080_reset(&hdccal);
+				 	delay_ms(10);
+
+				 	rslt = hdc2080_trigger_measurement(&hdccal);
+				 	rslt = hdc2080_read_temp(&hdccal, &this_temp);
+				 	rslt = hdc2080_read_humidity(&hdccal, &this_humidity);
+				 	bufWrite(outBuffer, &bufcount, this_temp, 2);
+				 	bufWrite(outBuffer, &bufcount, this_humidity, 2);
+
+				 	rslt = hdc2080_trigger_measurement(&hdchv);
+				 	rslt = hdc2080_read_temp(&hdchv, &this_temp);
+				 	rslt = hdc2080_read_humidity(&hdchv, &this_humidity);
+				 	bufWrite(outBuffer, &bufcount, this_temp, 2);
+				 	bufWrite(outBuffer, &bufcount, this_humidity, 2);
+
 				 	outBufSend(g_uart, outBuffer, bufcount);
+
 
 				}else if (commandID == DIGIRW){
 					uint8_t rw = (uint8_t) buffer[4];
