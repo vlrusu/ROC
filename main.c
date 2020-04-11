@@ -178,6 +178,9 @@ int main()
 	I2C_setup(&i2c_ptscal[0], &preampMCP[MCPCAL0],1,&preampMCP[MCPCAL0],2);
 	I2C_setup(&i2c_ptshv[0], &preampMCP[MCPHV0],1,&preampMCP[MCPHV0],2);
 
+	I2C_setup(&i2c_ptscal[1], &preampMCP[MCPCAL0],5,&preampMCP[MCPCAL0],6);
+	I2C_setup(&i2c_ptshv[1], &preampMCP[MCPHV0],5,&preampMCP[MCPHV0],6);
+
 	//Old sensor codes with BME 280
 	///*
 	struct bme280_dev ptscal;
@@ -238,8 +241,8 @@ int main()
 	//Set up HDC2080 chips
 	HDC2080 hdchv;
 	HDC2080 hdccal;
-	hdc2080_setup(&hdchv, HDC2080_I2C_ADDR_PRIM, &i2c_ptshv[0]);
-	hdc2080_setup(&hdccal, HDC2080_I2C_ADDR_PRIM, &i2c_ptscal[0]);
+	hdc2080_setup(&hdchv, HDC2080_I2C_ADDR_PRIM, &i2c_ptshv[1]);
+	hdc2080_setup(&hdccal, HDC2080_I2C_ADDR_PRIM, &i2c_ptscal[1]);
 
 
 	//		sprintf(outBuffer,"Data Sensor HV: %d %d %d\n",comp_data.temperature, comp_data.pressure, comp_data.humidity);
