@@ -174,7 +174,8 @@ int main()
 	writePtr = 0;
 	
 	// set defaults
-
+	//!!! I2C configuration for an older version of DRAC !!!
+	//!!! Newer version uses pin 9 and 10                !!!
 	I2C_setup(&i2c_ptscal[0], &preampMCP[MCPCAL0],1,&preampMCP[MCPCAL0],2);
 	I2C_setup(&i2c_ptshv[0], &preampMCP[MCPHV0],1,&preampMCP[MCPHV0],2);
 
