@@ -64,8 +64,8 @@
 //#define TWO_HZ			6
 //#define FIVE_HZ			7
 
-#define HDC2080_I2C_ADDR_PRIM 40
-//#define HDC2080_I2C_ADDR_SEC  41
+#define HDC2080_I2C_ADDR_PRIM 0x40
+//#define HDC2080_I2C_ADDR_SEC  0x41
 
 typedef struct {
 	uint8_t _addr;
