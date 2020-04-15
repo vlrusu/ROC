@@ -55,11 +55,10 @@ uint8_t hdc2080_read_temp(HDC2080 *self, uint16_t *result){
 	uint16_t temp = 0;
 	uint8_t buf;
 
-	if (hdc2080_get_reg(self, TEMP_HIGH, &buf)!=0) return 1;
-	temp = (uint16_t)buf;
-	temp = (temp << 8) & 0xFF00;
 	if (hdc2080_get_reg(self, TEMP_LOW, &buf)!=0) return 1;
-	temp |= ((uint16_t)buf & 0x00FF);
+	temp = (uint16_t)buf & 0x00FF;
+	if (hdc2080_get_reg(self, TEMP_HIGH, &buf)!=0) return 1;
+	temp |= ((uint16_t)buf << 8) & 0xFF00;
 
 	*result = temp;
 
