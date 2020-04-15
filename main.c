@@ -179,8 +179,8 @@ int main()
 	I2C_setup(&i2c_ptscal[0], &preampMCP[MCPCAL0],1,&preampMCP[MCPCAL0],2);
 	I2C_setup(&i2c_ptshv[0], &preampMCP[MCPHV0],1,&preampMCP[MCPHV0],2);
 
-	I2C_setup(&i2c_ptscal[1], &preampMCP[MCPCAL0],5,&preampMCP[MCPCAL0],6);
-	I2C_setup(&i2c_ptshv[1], &preampMCP[MCPHV0],5,&preampMCP[MCPHV0],6);
+	//I2C_setup(&i2c_ptscal[1], &preampMCP[MCPCAL0],5,&preampMCP[MCPCAL0],6);
+	I2C_setup(&i2c_ptshv[1], &preampMCP[MCPHV3],15,&preampMCP[MCPHV3],14);
 
 	//Old sensor codes with BME 280
 	///*
@@ -639,14 +639,14 @@ int main()
 				 	uint16_t this_humidity = 0;
 
 				 	rslt = hdc2080_reset(&hdchv);
-				 	rslt = hdc2080_reset(&hdccal);
+				 	//rslt = hdc2080_reset(&hdccal);
 				 	delay_ms(10);
 
-				 	rslt = hdc2080_trigger_measurement(&hdccal);
-				 	rslt = hdc2080_read_temp(&hdccal, &this_temp);
-				 	rslt = hdc2080_read_humidity(&hdccal, &this_humidity);
-				 	bufWrite(outBuffer, &bufcount, this_temp, 2);
-				 	bufWrite(outBuffer, &bufcount, this_humidity, 2);
+				 	//rslt = hdc2080_trigger_measurement(&hdccal);
+				 	//rslt = hdc2080_read_temp(&hdccal, &this_temp);
+				 	//rslt = hdc2080_read_humidity(&hdccal, &this_humidity);
+				 	//bufWrite(outBuffer, &bufcount, this_temp, 2);
+				 	//bufWrite(outBuffer, &bufcount, this_humidity, 2);
 
 				 	rslt = hdc2080_trigger_measurement(&hdchv);
 				 	rslt = hdc2080_read_temp(&hdchv, &this_temp);
