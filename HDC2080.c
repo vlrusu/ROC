@@ -69,16 +69,16 @@ uint8_t hdc2080_read_humidity(HDC2080 *self, uint16_t *result){
 	uint16_t humidity = 0;
 	uint8_t buf;
 
-	if (hdc2080_get_reg(self, HUMID_HIGH, &buf)!=0) return 1;
-	humidity = (uint16_t)buf;
-	humidity = (humidity << 8) & 0xFF00;
 	if (hdc2080_get_reg(self, HUMID_LOW, &buf)!=0) return 1;
-	humidity |= ((uint16_t)buf & 0x00FF);
+	humidity = (uint16_t)buf & 0x00FF;
+	if (hdc2080_get_reg(self, HUMID_HIGH, &buf)!=0) return 1;
+	humidity |= ((uint16_t)buf << 8) & 0xFF00;
 
 	*result = humidity;
 
 	return 0;
 }
+
 /*
 uint8_t hdc2080_enable_heater(HDC2080 *self){
 	uint8_t configContents;	//Stores current contents of config register
