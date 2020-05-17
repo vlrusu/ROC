@@ -1232,13 +1232,13 @@ int main()
 					bufWrite(outBuffer, &bufcount_place_holder, (bufcount-3), 2);
 					outBufSend(g_uart, outBuffer, bufcount);
 
-				}else if (commandID == MEASURETHRESHOLD){
+				}else if (commandID == MEASURETHRESHOLDCMDID){
 					channel_mask[0] = readU32fromBytes(&buffer[4]);
 					channel_mask[1] = readU32fromBytes(&buffer[8]);
 					channel_mask[2] = readU32fromBytes(&buffer[12]);
 					get_mapped_channels();
 
-					outBuffer[bufcount++] = MEASURETHRESHOLD;
+					outBuffer[bufcount++] = MEASURETHRESHOLDCMDID;
 					bufcount_place_holder = bufcount;
 					bufWrite(outBuffer, &bufcount, 0, 2);
 
