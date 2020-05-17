@@ -1242,8 +1242,8 @@ int main()
 					bufcount_place_holder = bufcount;
 					bufWrite(outBuffer, &bufcount, 0, 2);
 
-					//disable pulser
-					digi_write(DG_ADDR_ENABLE_PULSER,0,0);
+					//enable pulser as readstrawcmd does
+					digi_write(DG_ADDR_ENABLE_PULSER,1,0);
 
 					uint16_t threshold_array[288] = {0xFFFF};
 
