@@ -1232,6 +1232,57 @@ int main()
 					bufWrite(outBuffer, &bufcount_place_holder, (bufcount-3), 2);
 					outBufSend(g_uart, outBuffer, bufcount);
 
+				}else if (commandID == MEASURETHRESHOLD){
+					channel_mask[0] = readU32fromBytes(&buffer[4]);
+					channel_mask[1] = readU32fromBytes(&buffer[8]);
+					channel_mask[2] = readU32fromBytes(&buffer[12]);
+					get_mapped_channels();
+
+					outBuffer[bufcount++] = MEASURETHRESHOLD;
+					bufcount_place_holder = bufcount;
+					bufWrite(outBuffer, &bufcount, 0, 2);
+
+					//disable pulser
+					digi_write(DG_ADDR_ENABLE_PULSER,0,0);
+
+					uint16_t threshold_array[288] = {0xFFFF};
+
+					for (uint8_t ihvcal=1; ihvcal<3; ihvcal++){
+						for (uint8_t k=(48*(ihvcal-1));k<48*ihvcal;k++){
+							uint8_t condition = 0;
+							uint8_t straw_num = channel_map[k];
+							if (ihvcal == 1)
+								condition =((k<32 && ((0x1<<k) & mapped_channel_mask[0])) || (k>=32 && ((0x1<<(k-32)) & mapped_channel_mask[1])));
+							else if (ihvcal == 2)
+								condition =((k<64 && ((0x1<<(k-32)) & mapped_channel_mask[1])) || (k>=64 && ((0x1<<(k-64)) & mapped_channel_mask[2])));
+
+							if (condition){
+								uint16_t gain_cal[3] = {0, default_gains_cal[straw_num], default_gains_cal[straw_num]};
+								uint16_t gain_hv[3] = {default_gains_hv[straw_num], 0, default_gains_hv[straw_num]};
+								//first zero cal, then hv, then both to default
+
+								digi_write(DG_ADDR_SELECTSMA, k%48, ihvcal);
+								//select channel
+								for (uint8_t i=0; i<3; i++){
+									setPreampGain(straw_num, gain_cal[i]);
+									setPreampGain(straw_num+96, gain_hv[i]);
+									delay_ms(10);//wait for gain to reach written value and for SMA to settle
+
+									digi_write(DG_ADDR_SMARDREQ, 1, ihvcal);
+									delayUs(1);//write READREQ to 1 and freeze SMA module
+
+									threshold_array[96*i+straw_num] = digi_read(DG_ADDR_SMADATA,ihvcal);
+									digi_write(DG_ADDR_SMARDREQ, 0, ihvcal); //unfreeze SMA module
+								}
+							}
+						}
+					}
+
+					for (uint16_t i=0; i<288; i++)
+						bufWrite(outBuffer, &bufcount, threshold_array[i], 2);
+
+					bufWrite(outBuffer, &bufcount_place_holder, (bufcount-3), 2);
+					outBufSend(g_uart, outBuffer, bufcount);
 				}
 
 				// If we didn't use the whole buffer, the rest must be the next command

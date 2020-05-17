@@ -78,6 +78,7 @@
 #define STOPRUNCMDID 106
 #define ADCINITINFOCMDID 107
 #define FINDTHRESHOLDSCMDID 108
+#define MEASURETHRESHOLD 109
 
 #define PACKAGETESTCMDID 151
 
@@ -126,6 +127,10 @@
 
 #define DG_ADDR_TVS_VAL 0x40
 #define DG_ADDR_TVS_ADDR 0x41
+
+#define DG_ADDR_SELECTSMA 0x50
+#define DG_ADDR_SMARDREQ 0x51
+#define DG_ADDR_SMADATA 0x52
 
 //#define DG_ADDR_EWMCNTER 0x80
 #define DG_ADDR_EWS 0x81 // (event window start 160MHz clock ticks)
