@@ -1245,7 +1245,8 @@ int main()
 					//enable pulser as readstrawcmd does
 					digi_write(DG_ADDR_ENABLE_PULSER,1,0);
 
-					uint16_t threshold_array[288] = {0xFFFF};
+					uint16_t threshold_array[288];
+					for (uint16_t i=0; i<288; i++) threshold_array[i] = 0xFFFF;
 
 					for (uint8_t ihvcal=1; ihvcal<3; ihvcal++){
 						for (uint8_t k=(48*(ihvcal-1));k<48*ihvcal;k++){
