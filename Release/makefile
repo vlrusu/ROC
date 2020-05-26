@@ -17,6 +17,7 @@ RM := rm -rf
 -include drivers/CoreGPIO/subdir.mk
 -include CMSIS/startup_gcc/subdir.mk
 -include CMSIS/subdir.mk
+-include .metadata/.plugins/org.eclipse.cdt.make.core/subdir.mk
 -include subdir.mk
 -include objects.mk
 
@@ -36,38 +37,38 @@ endif
 
 # Add inputs and outputs from these tool invocations to the build variables 
 SECONDARY_FLASH += \
-ROC.hex \
+MyProj.hex \
 
 SECONDARY_SIZE += \
-ROC.siz \
+MyProj.siz \
 
 
 # All Target
-all: ROC.elf secondary-outputs
+all: MyProj.elf secondary-outputs
 
 # Tool invocations
-ROC.elf: $(OBJS) $(USER_OBJS)
+MyProj.elf: $(OBJS) $(USER_OBJS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: GNU ARM Cross C Linker'
-	arm-none-eabi-gcc -mcpu=cortex-m1 -mthumb -Os -fmessage-length=0 -ffunction-sections -fdata-sections -fno-builtin  -g -T "C:\Users\vrusu\Documents\GitHub\ARMCode\ROC\blinky.ld" -Xlinker --gc-sections -Wl,-Map,"ROC.map" -Xlinker --print-map --specs=nano.specs -v -o "ROC.elf" $(OBJS) $(USER_OBJS) $(LIBS)
+	arm-none-eabi-gcc -mcpu=cortex-m1 -mthumb -Og -fmessage-length=0 -fsigned-char -ffunction-sections -fdata-sections -fno-builtin  -g -T "E:\UM-research\SoftConsole\ROCDIGI_02_25_19\SoftConsole\MyProj\blinky.ld" -Xlinker --gc-sections -Wl,-Map,"MyProj.map" -Xlinker --print-map --specs=nano.specs -v -o "MyProj.elf" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
-ROC.hex: ROC.elf
+MyProj.hex: MyProj.elf
 	@echo 'Invoking: GNU ARM Cross Create Flash Image'
-	arm-none-eabi-objcopy -O ihex "ROC.elf"  "ROC.hex"
+	arm-none-eabi-objcopy -O ihex "MyProj.elf"  "MyProj.hex"
 	@echo 'Finished building: $@'
 	@echo ' '
 
-ROC.siz: ROC.elf
+MyProj.siz: MyProj.elf
 	@echo 'Invoking: GNU ARM Cross Print Size'
-	arm-none-eabi-size --format=berkeley --totals "ROC.elf"
+	arm-none-eabi-size --format=berkeley --totals "MyProj.elf"
 	@echo 'Finished building: $@'
 	@echo ' '
 
 # Other Targets
 clean:
-	-$(RM) $(OBJS)$(SECONDARY_FLASH)$(SECONDARY_SIZE)$(ASM_DEPS)$(S_UPPER_DEPS)$(C_DEPS) ROC.elf
+	-$(RM) $(OBJS)$(SECONDARY_FLASH)$(SECONDARY_SIZE)$(ASM_DEPS)$(S_UPPER_DEPS)$(C_DEPS) MyProj.elf
 	-@echo ' '
 
 secondary-outputs: $(SECONDARY_FLASH) $(SECONDARY_SIZE)

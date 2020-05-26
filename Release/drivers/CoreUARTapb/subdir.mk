@@ -10,6 +10,7 @@ OBJS += \
 ./drivers/CoreUARTapb/core_uart_apb.o 
 
 C_DEPS += \
+
 ./drivers/CoreUARTapb/core_uart_apb.d 
 
 

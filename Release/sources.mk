@@ -27,4 +27,5 @@ drivers/CorePWM \
 drivers/CoreGPIO \
 CMSIS \
 CMSIS/startup_gcc \
+.metadata/.plugins/org.eclipse.cdt.make.core \
 
