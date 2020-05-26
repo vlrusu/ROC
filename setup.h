@@ -44,9 +44,13 @@ typedef struct {
 MCP preampMCP[12];
 
 LTC2634 dacs[96];
+LTC2634 caldac0;
+LTC2634 caldac1;
 
 Straw strawsCal[96];
 Straw strawsHV[96];
+
+
 
 I2C I2CserialCal;
 I2C I2CserialHV;

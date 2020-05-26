@@ -131,6 +131,8 @@ int main()
 			LTC2634_setup(&dacs[idac],&preampMCP[MCPHV3],idac-85,&preampMCP[MCPHV2],2,&preampMCP[MCPHV2],1);
 	}
 
+	LTC2634_setup(&caldac0,&preampMCP[MCPCAL1],12,&preampMCP[MCPCAL0],2,&preampMCP[MCPCAL0],1);
+	LTC2634_setup(&caldac1,&preampMCP[MCPCAL1],13,&preampMCP[MCPCAL0],2,&preampMCP[MCPCAL0],1);
 
 	// Set default thresholds and gains
 	for (uint8_t i = 0 ; i < 96 ; i++){
@@ -249,10 +251,17 @@ int main()
 	//		sprintf(outBuffer,"Data Sensor HV: %d %d %d\n",comp_data.temperature, comp_data.pressure, comp_data.humidity);
 	//		UART_polled_tx_string( &g_uart, outBuffer );
 	//
-	*(registers_0_addr+12) = 1;
-	for (uint8_t i=0;i<8;i++)
-		AD5318_write(g_spi[3],1,i,default_caldac[i]);
-	*(registers_0_addr+12) = 0;
+//	*(registers_0_addr+12) = 1;
+//	for (uint8_t i=0;i<8;i++)
+//		AD5318_write(g_spi[3],1,i,default_caldac[i]);
+//	*(registers_0_addr+12) = 0;
+
+	for (uint8_t i=0;i<4;i++)		{
+		LTC2634_write(&caldac0,i,default_caldac[i]);
+		LTC2634_write(&caldac1,i+4,default_caldac[i+4]);
+	}
+
+
 
 
 	init_DIGIs();
@@ -339,12 +348,17 @@ int main()
 
 				 	uint8_t chan_mask = (uint8_t) buffer[4];
 				 	uint16_t value = readU16fromBytes(&buffer[5]);
-				 	*(registers_0_addr+REG_INVERT_CAL_SPI_CLK) = 1;
+
 				 	for (uint8_t i=0;i<8;i++){
-				 		if (chan_mask & (0x1<<i))
-				 			AD5318_write(g_spi[3],1, i,value);
+				 		if (chan_mask & (0x1<<i)){
+				 			if (i<4)
+				 				LTC2634_write(&caldac0,i,default_caldac[i]);
+				 			else
+				 				LTC2634_write(&caldac1,i,default_caldac[i]);
+				 		}
 				 	}
-				 	*(registers_0_addr+REG_INVERT_CAL_SPI_CLK) = 0;
+
+
 				 	outBuffer[bufcount++] = SETCALDAC;
 				 	bufWrite(outBuffer, &bufcount, 3, 2);
 				 	outBuffer[bufcount++] = chan_mask;

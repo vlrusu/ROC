@@ -50,7 +50,7 @@ all: MyProj.elf secondary-outputs
 MyProj.elf: $(OBJS) $(USER_OBJS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: GNU ARM Cross C Linker'
-	arm-none-eabi-gcc -mcpu=cortex-m1 -mthumb -O0 -fmessage-length=0 -fsigned-char -ffunction-sections -fdata-sections  -g3 -T "E:\UM-research\SoftConsole\ROCDIGI_02_25_19\SoftConsole\MyProj\blinky.ld" -Xlinker --gc-sections -Wl,-Map,"MyProj.map" -o "MyProj.elf" $(OBJS) $(USER_OBJS) $(LIBS)
+	arm-none-eabi-gcc -mcpu=cortex-m1 -mthumb -O0 -fmessage-length=0 -fsigned-char -ffunction-sections -fdata-sections  -g3 -T "C:\Users\vadim\OneDrive\Documents\ROC\blinky.ld" -Xlinker --gc-sections -Wl,-Map,"MyProj.map" -o "MyProj.elf" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
@@ -74,6 +74,5 @@ clean:
 secondary-outputs: $(SECONDARY_FLASH) $(SECONDARY_SIZE)
 
 .PHONY: all clean dependents
-.SECONDARY:
 
 -include ../makefile.targets
