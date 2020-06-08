@@ -563,7 +563,7 @@ int main()
 				 	outBuffer[bufcount++] = READMONADCS;
 				 	bufWrite(outBuffer, &bufcount, 64, 2);
 				 	for (uint8_t i = 0 ; i < 2; i++){
-				 		for (uint8_t j = 0 ; j < ((i==1)?8:12); j++){
+				 		for (uint8_t j = 0 ; j < 12; j++){
 				 			SPI_set_slave_select( &g_spi[i] , ((j>=8)?SPI_SLAVE_2:(j<4?SPI_SLAVE_0:SPI_SLAVE_1)));
 				 			uint16_t addr = (j%4 <<11 );
 				 			SPI_transfer_frame( &g_spi[i], addr);
