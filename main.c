@@ -561,7 +561,7 @@ int main()
 				 	uint32_t rx0;
 
 				 	outBuffer[bufcount++] = READMONADCS;
-				 	bufWrite(outBuffer, &bufcount, 64, 2);
+				 	bufWrite(outBuffer, &bufcount, 72, 2);
 				 	for (uint8_t i = 0 ; i < 2; i++){
 				 		for (uint8_t j = 0 ; j < 12; j++){
 				 			SPI_set_slave_select( &g_spi[i] , ((j>=8)?SPI_SLAVE_2:(j<4?SPI_SLAVE_0:SPI_SLAVE_1)));
