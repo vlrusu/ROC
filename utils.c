@@ -105,7 +105,7 @@ uint32_t readU32fromBytes(uint8_t data[])
 	return u.ulval;
 }
 
-void hwdelay (uint32_t tdelay)
+void hwdelay (uint32_t tdelay)//100ns per count
 {
 	volatile uint32_t retv = 0;
 	*(registers_0_addr + REG_TIMERRESET) = 1;
@@ -155,6 +155,23 @@ void delayTicks(uint8_t ticks)
 		--delay_count;
 	}
 }
+
+//void delayCore(uint32_t cycles)
+//{
+//	asm volatile (
+//			"MOV r0, %[cycles]\n\t"/* load value*/
+//			"1:\n\t"
+//			"SUB r0, #1\n\t"
+//			"CMP r0, #0\n\t"
+//			"BNE 1b\n\t"
+//			: /* no outputs */
+//			: [cycles] "r" (cycles)
+//			: "r0"/*clobber list to prevent using these registers*/
+//			);
+//	return;
+//}
+//in-line assembly implementation of delay loop.
+//Nominal 50MHz CPU(?) core rate, debugging mode runs 1.25x nominal time, sNvM ~3.75x
 
 void GPIO_write(uint8_t pin, uint8_t value)
 {

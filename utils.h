@@ -311,6 +311,7 @@ void delayUs(int us);
 void delay_ms(uint32_t us);
 void delayTicks(uint8_t ticks);
 void hwdelay (uint32_t tdelay);
+//void delayCore(uint32_t cycles);
 char * print_float(char *fchars, float value);
 
 void read_data(int *delay_count, int *trigger_count);

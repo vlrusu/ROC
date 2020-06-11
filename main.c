@@ -1294,7 +1294,7 @@ int main()
 								for (uint8_t i=0; i<3; i++){
 									setPreampGain(straw_num, gain_cal[i]);
 									setPreampGain(straw_num+96, gain_hv[i]);
-									delay_ms(1);//wait for gain to reach written value and for SMA to settle
+									hwdelay(100000);//wait for 10ms gain to reach written value and for SMA to settle
 
 									digi_write(DG_ADDR_SMARDREQ, 1, ihvcal);
 									delayUs(1);//write READREQ to 1 and freeze SMA module
