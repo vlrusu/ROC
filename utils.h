@@ -140,6 +140,9 @@
 //***********************REG_ROC_* are the ROC registers
 #define REG_ROC_RESET 0x10
 #define REG_INVERT_CAL_SPI_CLK 0x11
+#define REG_TIMERENABLE 0x12
+#define REG_TIMERRESET 0x13
+#define REG_TIMERCOUNTER 0x14
 
 #define REG_ROC_DDR_NHITS 0x20
 #define REG_ROC_DDR_OFFSET 0x21
@@ -307,6 +310,7 @@ uint32_t readU32fromBytes(uint8_t data[]);
 void delayUs(int us);
 void delay_ms(uint32_t us);
 void delayTicks(uint8_t ticks);
+void hwdelay (uint32_t tdelay);
 char * print_float(char *fchars, float value);
 
 void read_data(int *delay_count, int *trigger_count);

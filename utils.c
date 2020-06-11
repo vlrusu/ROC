@@ -105,6 +105,17 @@ uint32_t readU32fromBytes(uint8_t data[])
 	return u.ulval;
 }
 
+void hwdelay (uint32_t tdelay)
+{
+	volatile uint32_t retv = 0;
+	*(registers_0_addr + REG_TIMERRESET) = 1;
+
+	while (retv < tdelay)
+		retv = *(registers_0_addr + REG_TIMERCOUNTER);
+
+	*(registers_0_addr + REG_TIMERRESET) = 0;
+}
+
 //char * print_float(char *fchars, float value)
 //{
 //    if (value < 0){

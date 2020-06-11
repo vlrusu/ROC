@@ -269,7 +269,13 @@ int main()
 	UART_polled_tx_string( &g_uart, "Initialization completed" );
 
 	GPIO_set_output( &g_gpio, GPIO_0, 0);
-
+	GPIO_set_output( &g_gpio, GPIO_1, 0);
+	//granularity is clock period=25ns -- period is (gr+1)*1000=50us
+	//PWM_PERIOD = PWM_GRANULARITY * (period + 1) = 25 *1000 = 25us
+	PWM_init( &g_pwm, COREPWM_BASE_ADDR, 1, 4 );
+	PWM_set_duty_cycle( &g_pwm, PWM_2,2 );//duty cycle is 4 x 25 = 100ns
+	*(registers_0_addr + REG_TIMERENABLE) = 1;
+	*(registers_0_addr + REG_TIMERRESET) = 0;
 
 	while(1)
 	{
@@ -284,7 +290,7 @@ int main()
 
 		if (loopCount == 20000){
 			ledPattern ^= 0x1;
-			GPIO_set_output( &g_gpio, GPIO_0, (uint32_t)ledPattern);
+//			GPIO_set_output( &g_gpio, GPIO_0, (uint32_t)ledPattern);
 
 			loopCount = 0;
 		}
@@ -420,6 +426,9 @@ int main()
 					bufWrite(outBuffer, &bufcount, dutyCycle, 2);
 					bufWrite(outBuffer, &bufcount, pulserDelay, 4);
 					outBufSend(g_uart, outBuffer, bufcount);
+					PWM_init( &g_pwm, COREPWM_BASE_ADDR, 1, 4 );
+//					PWM_set_duty_cycle( &g_pwm, PWM_2, 2 );//duty cycle is 4 x 25 = 100ns
+
 
 
 				}else if (commandID == SETPULSEROFF){
@@ -433,6 +442,10 @@ int main()
 
 				 	outBuffer[bufcount++] = WHOAREYOU;
 				 	bufWrite(outBuffer, &bufcount, 0, 2);
+
+				 	GPIO_set_output( &g_gpio, GPIO_0, 1);
+				 	hwdelay(1000);
+				 	GPIO_set_output( &g_gpio, GPIO_0, 0);
 				 	outBufSend(g_uart, outBuffer, bufcount);
 
 				}else if (commandID == ROCREADREG){
