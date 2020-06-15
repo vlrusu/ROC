@@ -42,7 +42,7 @@ int main()
 	//	GPIO_config( &g_gpio, GPIO_0, GPIO_OUTPUT_MODE);
 	GPIO_set_output( &g_gpio, GPIO_0, 0);
 
-
+	UART_polled_tx_string( &g_uart, "here" );
 	uint8_t readout_enabled = 0;
 	uint8_t calibration_enabled = 0;
 	int readout_totalTriggers = 0;
@@ -57,6 +57,7 @@ int main()
 	uint8_t errors = init_adc(ENABLED_ADCS,0x02,0x03);
 
 	//adc_write(ADC_ADDR_PWR,0x01,0x8FF);
+
 
 
 	/*Initialize the CoreSysService_PF driver*/
@@ -82,10 +83,11 @@ int main()
 	SPI_configure_master_mode( &g_spi[2] );
 	SPI_init( &g_spi[3], CALSPI_BASE_ADDR, 8 );
 	SPI_configure_master_mode( &g_spi[3] );
-
+	UART_polled_tx_string( &g_uart, "here" );
 
 	//setup MCPs
 	for (int imcp = MCPCAL0; imcp<=MCPFC2; imcp++){
+		UART_polled_tx_string( &g_uart, "here2\n" );
 		if (imcp < MCPHV0)
 			MCP_setup(&preampMCP[imcp], g_spi[3], 0 , 0x20 + imcp);
 		else if (imcp < MCPFC0)
@@ -94,7 +96,7 @@ int main()
 			MCP_setup(&preampMCP[imcp], g_spi[2], 1 , 0x20 + imcp - MCPFC0);
 	}
 
-
+	UART_polled_tx_string( &g_uart, "here1\n" );
 	// outputs for calpulse enable
 
 	for (uint8_t imcp = 0; imcp < 8; imcp++){
@@ -110,7 +112,7 @@ int main()
 	for (uint8_t i = 0; i < 48; i++){
 		MCP_pinWrite(&preampMCP[MCPFC0+i/16],i%16+1,0);
 	}
-
+	UART_polled_tx_string( &g_uart, "here1\n" );
 	//setup LTC2634, preamp DACs
 	for (uint8_t idac = 0 ; idac < 96; idac++){
 		if (idac<14)
@@ -130,10 +132,10 @@ int main()
 		else
 			LTC2634_setup(&dacs[idac],&preampMCP[MCPHV3],idac-85,&preampMCP[MCPHV2],2,&preampMCP[MCPHV2],1);
 	}
-
+	UART_polled_tx_string( &g_uart, "here2\n" );
 	LTC2634_setup(&caldac0,&preampMCP[MCPCAL1],12,&preampMCP[MCPCAL0],2,&preampMCP[MCPCAL0],1);
 	LTC2634_setup(&caldac1,&preampMCP[MCPCAL1],13,&preampMCP[MCPCAL0],2,&preampMCP[MCPCAL0],1);
-
+	UART_polled_tx_string( &g_uart, "here3\n" );
 	// Set default thresholds and gains
 	for (uint8_t i = 0 ; i < 96 ; i++){
 		strawsCal[i]._ltc = &dacs[i/2];
@@ -154,7 +156,7 @@ int main()
 		LTC2634_write(strawsHV[i]._ltc,strawsHV[i]._gain,default_gains_hv[i]);
 		LTC2634_write(strawsHV[i]._ltc,strawsHV[i]._thresh,default_threshs_hv[i]);
 	}
-
+	UART_polled_tx_string( &g_uart, "here" );
 	//adc_write(0x08,0x00,0x3F);
 
 	digi_write(DG_ADDR_BITSLIP0,0x0,0);
@@ -200,7 +202,7 @@ int main()
 
 
 	uint8_t settings_sel;
-	struct bme280_data comp_data;
+
 
 	// Recommended mode of operation: Indoor navigation
 	ptscal.settings.osr_h = BME280_OVERSAMPLING_1X;
@@ -641,23 +643,29 @@ int main()
 
 				}else if (commandID == READBMES){
 					//Old sensor codes with BME 280
+					uint8_t reg_data[BME280_P_T_H_DATA_LEN];
+					uint8_t calib_data[BME280_TEMP_PRESS_CALIB_DATA_LEN];
 				 	outBuffer[bufcount++] = READBMES;
-				 	bufWrite(outBuffer, &bufcount, 32, 2);
+				 	bufWrite(outBuffer, &bufcount, 2*(BME280_TEMP_PRESS_CALIB_DATA_LEN+BME280_P_T_H_DATA_LEN)+4, 2);
 				 	rslt = bme280_set_sensor_mode(BME280_FORCED_MODE, &ptscal);
 				 	ptscal.delay_ms(40);
-				 	rslt = bme280_get_sensor_data(BME280_ALL, &comp_data, &ptscal);
-				 	bufWrite(outBuffer, &bufcount, comp_data.temperature, 4);
-				 	bufWrite(outBuffer, &bufcount, comp_data.pressure, 4);
-				 	bufWrite(outBuffer, &bufcount, comp_data.humidity, 4);
+				 	rslt = bme280_get_regs(BME280_TEMP_PRESS_CALIB_DATA_ADDR, calib_data, BME280_TEMP_PRESS_CALIB_DATA_LEN,&ptscal );
+				 	rslt = bme280_get_regs(BME280_DATA_ADDR, &reg_data, BME280_P_T_H_DATA_LEN, &ptscal);
+				 	for (uint8_t i =0; i<BME280_P_T_H_DATA_LEN; i++){
+				 		bufWrite(outBuffer, &bufcount, reg_data[i], 1);
 
+				 	}
 				 	//					sprintf(outBuffer,"CAL %d %d %d\n",comp_data.temperature, comp_data.pressure, comp_data.humidity);
 				 	//					MSS_UART_polled_tx( &g_mss_uart1, outBuffer, strlen(outBuffer) );
 				 	rslt = bme280_set_sensor_mode(BME280_FORCED_MODE, &ptshv);
 				 	ptshv.delay_ms(40);
-				 	rslt = bme280_get_sensor_data(BME280_ALL, &comp_data, &ptshv);
-				 	bufWrite(outBuffer, &bufcount, comp_data.temperature, 4);
-				 	bufWrite(outBuffer, &bufcount, comp_data.pressure, 4);
-				 	bufWrite(outBuffer, &bufcount, comp_data.humidity, 4);
+				 	rslt = bme280_get_regs(BME280_TEMP_PRESS_CALIB_DATA_ADDR, calib_data, BME280_TEMP_PRESS_CALIB_DATA_LEN,&ptshv );
+				 	rslt = bme280_get_regs(BME280_DATA_ADDR, &reg_data, BME280_P_T_H_DATA_LEN, &ptshv);
+				 	for (uint8_t i =0; i<BME280_P_T_H_DATA_LEN; i++){
+				 		bufWrite(outBuffer, &bufcount, reg_data[i], 1);
+
+				 	}
+
 				 	//					sprintf(outBuffer,"HV %d %d %d\n",comp_data.temperature, comp_data.pressure, comp_data.humidity);
 				 	//					MSS_UART_polled_tx( &g_mss_uart1, outBuffer, strlen(outBuffer) );
 
