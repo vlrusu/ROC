@@ -1,6 +1,5 @@
 #include "utils.h"
-#include "./CMSIS/cortexm1_cfg.h"
-#include "./CMSIS/system_cortexm1_cfg.h"
+
 #include "hw_platform.h"
 #include "setup.h"
 
@@ -129,7 +128,7 @@ void hwdelay (uint32_t tdelay)//100ns per count
 
 void delay_ms(uint32_t us)
 {
-    volatile uint32_t delay_count = SystemCoreClock / 1000 * us;
+    volatile uint32_t delay_count = SYS_CLK_FREQ / 1000 * us;
 
     while(delay_count > 0u)
     {
@@ -139,7 +138,7 @@ void delay_ms(uint32_t us)
 
 void delayUs(int us)
 {
-	volatile uint32_t delay_count = SystemCoreClock / 1000000 * us;
+	volatile uint32_t delay_count = SYS_CLK_FREQ / 1000000 * us;
 
 	while(delay_count > 0u)
 	{

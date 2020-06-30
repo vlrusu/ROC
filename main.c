@@ -5,8 +5,8 @@
 #include "drivers/CoreSPI/core_spi.h"
 #include "drivers/CoreSysServices_PF/core_sysservices_pf.h"
 
-#include "./CMSIS/cortexm1_cfg.h"
-#include "./CMSIS/system_cortexm1_cfg.h"
+#include "riscv_hal.h"
+
 
 #include "setup.h"
 //#include "Commands.h"
@@ -15,7 +15,7 @@
 #include "autobitslip.h"
 #include "version.h"
 
-#define BAUD_VALUE                  57600
+#define BAUD_VALUE                  115200
 
 const uint16_t default_caldac[8] = {1000,1000,1000,1000,1000,1000,1000,1000};
 
@@ -27,8 +27,8 @@ const uint8_t MCPCALIBCHAN[8] = {1,2,3,4,9,10,11,12};
 
 int main()
 {
-	SystemCoreClockUpdate();
-	UART_init( &g_uart, UART_BASE_ADDRESS, (SYS_M1_CLK_FREQ/(16 * BAUD_VALUE))-1, (DATA_8_BITS | NO_PARITY));
+
+	UART_init( &g_uart, UART_BASE_ADDRESS, (SYS_CLK_FREQ/(16 * BAUD_VALUE))-1, (DATA_8_BITS | NO_PARITY));
 
 	const uint8_t greeting[] = "\n\r\"Welcome to the ROC\"\n"
 			"\t - Sean Connery\n";
@@ -42,7 +42,7 @@ int main()
 	//	GPIO_config( &g_gpio, GPIO_0, GPIO_OUTPUT_MODE);
 	GPIO_set_output( &g_gpio, GPIO_0, 0);
 
-	UART_polled_tx_string( &g_uart, "here" );
+
 	uint8_t readout_enabled = 0;
 	uint8_t calibration_enabled = 0;
 	int readout_totalTriggers = 0;
@@ -83,11 +83,11 @@ int main()
 	SPI_configure_master_mode( &g_spi[2] );
 	SPI_init( &g_spi[3], CALSPI_BASE_ADDR, 8 );
 	SPI_configure_master_mode( &g_spi[3] );
-	UART_polled_tx_string( &g_uart, "here" );
+
 
 	//setup MCPs
 	for (int imcp = MCPCAL0; imcp<=MCPFC2; imcp++){
-		UART_polled_tx_string( &g_uart, "here2\n" );
+
 		if (imcp < MCPHV0)
 			MCP_setup(&preampMCP[imcp], g_spi[3], 0 , 0x20 + imcp);
 		else if (imcp < MCPFC0)
@@ -96,7 +96,7 @@ int main()
 			MCP_setup(&preampMCP[imcp], g_spi[2], 1 , 0x20 + imcp - MCPFC0);
 	}
 
-	UART_polled_tx_string( &g_uart, "here1\n" );
+
 	// outputs for calpulse enable
 
 	for (uint8_t imcp = 0; imcp < 8; imcp++){
@@ -112,7 +112,7 @@ int main()
 	for (uint8_t i = 0; i < 48; i++){
 		MCP_pinWrite(&preampMCP[MCPFC0+i/16],i%16+1,0);
 	}
-	UART_polled_tx_string( &g_uart, "here1\n" );
+
 	//setup LTC2634, preamp DACs
 	for (uint8_t idac = 0 ; idac < 96; idac++){
 		if (idac<14)
@@ -132,10 +132,10 @@ int main()
 		else
 			LTC2634_setup(&dacs[idac],&preampMCP[MCPHV3],idac-85,&preampMCP[MCPHV2],2,&preampMCP[MCPHV2],1);
 	}
-	UART_polled_tx_string( &g_uart, "here2\n" );
+
 	LTC2634_setup(&caldac0,&preampMCP[MCPCAL1],12,&preampMCP[MCPCAL0],2,&preampMCP[MCPCAL0],1);
 	LTC2634_setup(&caldac1,&preampMCP[MCPCAL1],13,&preampMCP[MCPCAL0],2,&preampMCP[MCPCAL0],1);
-	UART_polled_tx_string( &g_uart, "here3\n" );
+
 	// Set default thresholds and gains
 	for (uint8_t i = 0 ; i < 96 ; i++){
 		strawsCal[i]._ltc = &dacs[i/2];
@@ -156,7 +156,7 @@ int main()
 		LTC2634_write(strawsHV[i]._ltc,strawsHV[i]._gain,default_gains_hv[i]);
 		LTC2634_write(strawsHV[i]._ltc,strawsHV[i]._thresh,default_threshs_hv[i]);
 	}
-	UART_polled_tx_string( &g_uart, "here" );
+
 	//adc_write(0x08,0x00,0x3F);
 
 	digi_write(DG_ADDR_BITSLIP0,0x0,0);
@@ -876,56 +876,56 @@ int main()
 						outBufSend(g_uart, outBuffer, bufcount);
 					}
 
-				}else if (commandID == BITSLIPCMDID){
-
-//					// bitslip
-//					uint16_t num_bits = readU16fromBytes(&buffer[4]);
-//					channel_mask[0] = readU32fromBytes(&buffer[6]);
-//					channel_mask[1] = readU32fromBytes(&buffer[10]);
-//					channel_mask[2] = readU32fromBytes(&buffer[14]);
-//					get_mapped_channels();
+//				}else if (commandID == BITSLIPCMDID){
 //
+////					// bitslip
+////					uint16_t num_bits = readU16fromBytes(&buffer[4]);
+////					channel_mask[0] = readU32fromBytes(&buffer[6]);
+////					channel_mask[1] = readU32fromBytes(&buffer[10]);
+////					channel_mask[2] = readU32fromBytes(&buffer[14]);
+////					get_mapped_channels();
+////
+////
+////	      //for (int i=0;i<num_bits;i++){
+////					 *(registers_0_addr + 0x30) = ((mapped_channel_mask1 & 0xFF)>>0);
+////					 *(registers_0_addr + 0x31) = ((mapped_channel_mask1 & 0xFF00)>>8);
+////					 *(registers_0_addr + 0x32) = ((mapped_channel_mask1 & 0xFF0000)>>16);
+////					 *(registers_0_addr + 0x33) = ((mapped_channel_mask1 & 0xFF000000)>>24);
+////					 *(registers_0_addr + 0x34) = ((mapped_channel_mask2 & 0xFF)>>0);
+////					 *(registers_0_addr + 0x35) = ((mapped_channel_mask2 & 0xFF00)>>8);
+////					 *(registers_0_addr + 0x30) = 0x0;
+////					 *(registers_0_addr + 0x31) = 0x0;
+////					 *(registers_0_addr + 0x32) = 0x0;
+////					 *(registers_0_addr + 0x33) = 0x0;
+////					 *(registers_0_addr + 0x34) = 0x0;
+////					 *(registers_0_addr + 0x35) = 0x0;
+////	      delayUs(100);
+////	      //}
+////
+////	      sprintf(outBuffer,"Activated bitslip %d times for channels %08x %08x %08x\n",num_bits,channel_mask1,channel_mask2,channel_mask3);
+////	      UART_polled_tx_string( &g_uart, outBuffer );
 //
-//	      //for (int i=0;i<num_bits;i++){
-//					 *(registers_0_addr + 0x30) = ((mapped_channel_mask1 & 0xFF)>>0);
-//					 *(registers_0_addr + 0x31) = ((mapped_channel_mask1 & 0xFF00)>>8);
-//					 *(registers_0_addr + 0x32) = ((mapped_channel_mask1 & 0xFF0000)>>16);
-//					 *(registers_0_addr + 0x33) = ((mapped_channel_mask1 & 0xFF000000)>>24);
-//					 *(registers_0_addr + 0x34) = ((mapped_channel_mask2 & 0xFF)>>0);
-//					 *(registers_0_addr + 0x35) = ((mapped_channel_mask2 & 0xFF00)>>8);
-//					 *(registers_0_addr + 0x30) = 0x0;
-//					 *(registers_0_addr + 0x31) = 0x0;
-//					 *(registers_0_addr + 0x32) = 0x0;
-//					 *(registers_0_addr + 0x33) = 0x0;
-//					 *(registers_0_addr + 0x34) = 0x0;
-//					 *(registers_0_addr + 0x35) = 0x0;
-//	      delayUs(100);
-//	      //}
+//					volatile uint32_t *empty_p = (registers_0_addr + REG_ROC_FIFO_EMPTY);
+//					volatile uint32_t *full_p = (registers_0_addr + REG_ROC_FIFO_FULL);
+//					volatile uint32_t *data_p = (registers_0_addr + REG_ROC_FIFO_DATA);
 //
-//	      sprintf(outBuffer,"Activated bitslip %d times for channels %08x %08x %08x\n",num_bits,channel_mask1,channel_mask2,channel_mask3);
-//	      UART_polled_tx_string( &g_uart, outBuffer );
-
-					volatile uint32_t *empty_p = (registers_0_addr + REG_ROC_FIFO_EMPTY);
-					volatile uint32_t *full_p = (registers_0_addr + REG_ROC_FIFO_FULL);
-					volatile uint32_t *data_p = (registers_0_addr + REG_ROC_FIFO_DATA);
-
-					uint32_t empty = *(empty_p);
-					uint32_t full = *(full_p);
-					uint32_t data1 = *(data_p);
-
-					*(registers_0_addr + REG_ROC_FIFO_RE) = 1;
-					uint32_t data2 = *(data_p);
-
-					//					sprintf(outBuffer,"Empty: %d, Full: %d, data1: %04x, data2: %04x\n",empty,full,data1,data2);
-					//					UART_polled_tx_string( &g_uart, outBuffer );
-					outBuffer[bufcount++] = BITSLIPCMDID;
-					bufWrite(outBuffer, &bufcount, 32, 2);
-					bufWrite(outBuffer, &bufcount, empty, 4);
-					bufWrite(outBuffer, &bufcount, full, 4);
-					bufWrite(outBuffer, &bufcount, data1, 4);
-					bufWrite(outBuffer, &bufcount, data2, 4);
-
-					outBufSend(g_uart, outBuffer, bufcount);
+//					uint32_t empty = *(empty_p);
+//					uint32_t full = *(full_p);
+//					uint32_t data1 = *(data_p);
+//
+//					*(registers_0_addr + REG_ROC_FIFO_RE) = 1;
+//					uint32_t data2 = *(data_p);
+//
+//					//					sprintf(outBuffer,"Empty: %d, Full: %d, data1: %04x, data2: %04x\n",empty,full,data1,data2);
+//					//					UART_polled_tx_string( &g_uart, outBuffer );
+//					outBuffer[bufcount++] = BITSLIPCMDID;
+//					bufWrite(outBuffer, &bufcount, 32, 2);
+//					bufWrite(outBuffer, &bufcount, empty, 4);
+//					bufWrite(outBuffer, &bufcount, full, 4);
+//					bufWrite(outBuffer, &bufcount, data1, 4);
+//					bufWrite(outBuffer, &bufcount, data2, 4);
+//
+//					outBufSend(g_uart, outBuffer, bufcount);
 
 				}else if (commandID == AUTOBITSLIPCMDID){
 					autobitslip();
@@ -1173,41 +1173,41 @@ int main()
 
 					}
 
-				}else if (commandID == STOPRUNCMDID){
-
-					readout_mode = 0;
-					// first send end data flag to break out of loop on python
-					readout_obloc = 0;
-					bufWrite(dataBuffer, &readout_obloc, ENDOFDATA, 2);
-					UART_send(&g_uart, dataBuffer ,2);
-
-					// now send READDATACMDID response to finish there
-					bufcount = 0;
-					outBuffer[bufcount++] = READDATACMDID;
-					bufWrite(outBuffer, &bufcount, 5, 2);
-					outBuffer[bufcount++] = 0; // as a hack for now we have it fail so it tells us total number of triggers
-					bufWrite(outBuffer, &bufcount, (uint32_t)readout_totalTriggers, 4);
-					UART_send(&g_uart, outBuffer ,bufcount );
-
-					/*
-					outBuffer[bufcount++] = STOPRUNCMDID;
-					bufWrite(outBuffer, &bufcount, 3, 2);
-					outBuffer[bufcount++] = readout_enabled;
-
-					if (readout_enabled == 0){
-						//sprintf(outBuffer,"Error: no run to stop\n");
-						//UART_polled_tx_string( &g_uart, outBuffer );
-						bufWrite(outBuffer, &bufcount, 0, 2);
-					}else{
-						readout_enabled = 0;
-						//sprintf(&dataBuffer[readout_obloc],"\nend\n");
-						//UART_polled_tx_string( &g_uart, dataBuffer );
-						//sprintf(outBuffer,"Run ended. Read %d triggers\n",readout_totalTriggers);
-						//UART_polled_tx_string( &g_uart, outBuffer );
-						bufWrite(outBuffer, &bufcount, readout_totalTriggers, 2);
-					}
-					outBufSend(g_uart, outBuffer, bufcount);
-					*/
+//				}else if (commandID == STOPRUNCMDID){
+//
+//					readout_mode = 0;
+//					// first send end data flag to break out of loop on python
+//					readout_obloc = 0;
+//					bufWrite(dataBuffer, &readout_obloc, ENDOFDATA, 2);
+//					UART_send(&g_uart, dataBuffer ,2);
+//
+//					// now send READDATACMDID response to finish there
+//					bufcount = 0;
+//					outBuffer[bufcount++] = READDATACMDID;
+//					bufWrite(outBuffer, &bufcount, 5, 2);
+//					outBuffer[bufcount++] = 0; // as a hack for now we have it fail so it tells us total number of triggers
+//					bufWrite(outBuffer, &bufcount, (uint32_t)readout_totalTriggers, 4);
+//					UART_send(&g_uart, outBuffer ,bufcount );
+//
+//					/*
+//					outBuffer[bufcount++] = STOPRUNCMDID;
+//					bufWrite(outBuffer, &bufcount, 3, 2);
+//					outBuffer[bufcount++] = readout_enabled;
+//
+//					if (readout_enabled == 0){
+//						//sprintf(outBuffer,"Error: no run to stop\n");
+//						//UART_polled_tx_string( &g_uart, outBuffer );
+//						bufWrite(outBuffer, &bufcount, 0, 2);
+//					}else{
+//						readout_enabled = 0;
+//						//sprintf(&dataBuffer[readout_obloc],"\nend\n");
+//						//UART_polled_tx_string( &g_uart, dataBuffer );
+//						//sprintf(outBuffer,"Run ended. Read %d triggers\n",readout_totalTriggers);
+//						//UART_polled_tx_string( &g_uart, outBuffer );
+//						bufWrite(outBuffer, &bufcount, readout_totalTriggers, 2);
+//					}
+//					outBufSend(g_uart, outBuffer, bufcount);
+//					*/
 
 				}else if (commandID == ADCINITINFOCMDID){
 
@@ -1225,47 +1225,47 @@ int main()
 						outBuffer[bufcount++] = i%256;
 					outBufSend(g_uart, outBuffer, bufcount);
 							
-				}else if (commandID == FINDTHRESHOLDSCMDID){
-					uint16_t num_lookback = readU16fromBytes(&buffer[4]);
-					uint16_t num_samples = readU16fromBytes(&buffer[6]);
-					channel_mask[0] = readU32fromBytes(&buffer[8]);
-					channel_mask[1] = readU32fromBytes(&buffer[12]);
-					channel_mask[2] = readU32fromBytes(&buffer[16]);
-					uint16_t target_rate = readU16fromBytes(&buffer[20]);
-					uint8_t verbose = (uint8_t) buffer[22];
-					//if single channel, verbose = 1 prints the detailed process for cal/hv
-
-					outBuffer[bufcount++] = FINDTHRESHOLDSCMDID;
-					bufcount_place_holder = bufcount;
-					bufWrite(outBuffer, &bufcount, 0, 2);
-					bufWrite(outBuffer, &bufcount, num_lookback, 2);
-					bufWrite(outBuffer, &bufcount, num_samples, 2);
-					bufWrite(outBuffer, &bufcount, target_rate, 2);
-					bufWrite(outBuffer, &bufcount, verbose, 1);
-
-					//disable pulser
-					digi_write(DG_ADDR_ENABLE_PULSER,0,0);
-
-					for (uint8_t channel=0; channel<96; channel++){
-						thischanmask = (((uint32_t) 0x1)<<(channel%32));
-						if 	( ((channel<32) && ((thischanmask & channel_mask[0]) == 0x0))||
-								((channel>=32) && (channel<64) && ((thischanmask & channel_mask[1]) == 0x0))||
-								((channel>=64) && ((thischanmask & channel_mask[2]) == 0x0))	){
-							continue;
-						}
-						//prints initial settings
-						bufWrite(outBuffer, &bufcount, channel, 1);
-						bufWrite(outBuffer, &bufcount, default_gains_cal[channel], 2);
-						bufWrite(outBuffer, &bufcount, default_threshs_cal[channel], 2);
-						bufWrite(outBuffer, &bufcount, default_gains_hv[channel], 2);
-						bufWrite(outBuffer, &bufcount, default_threshs_hv[channel], 2);
-
-						findChThreshold(num_lookback, num_samples, channel, target_rate, verbose);
-						findChThreshold(num_lookback, num_samples, channel+96, target_rate, verbose);
-					}
-
-					bufWrite(outBuffer, &bufcount_place_holder, (bufcount-3), 2);
-					outBufSend(g_uart, outBuffer, bufcount);
+//				}else if (commandID == FINDTHRESHOLDSCMDID){
+//					uint16_t num_lookback = readU16fromBytes(&buffer[4]);
+//					uint16_t num_samples = readU16fromBytes(&buffer[6]);
+//					channel_mask[0] = readU32fromBytes(&buffer[8]);
+//					channel_mask[1] = readU32fromBytes(&buffer[12]);
+//					channel_mask[2] = readU32fromBytes(&buffer[16]);
+//					uint16_t target_rate = readU16fromBytes(&buffer[20]);
+//					uint8_t verbose = (uint8_t) buffer[22];
+//					//if single channel, verbose = 1 prints the detailed process for cal/hv
+//
+//					outBuffer[bufcount++] = FINDTHRESHOLDSCMDID;
+//					bufcount_place_holder = bufcount;
+//					bufWrite(outBuffer, &bufcount, 0, 2);
+//					bufWrite(outBuffer, &bufcount, num_lookback, 2);
+//					bufWrite(outBuffer, &bufcount, num_samples, 2);
+//					bufWrite(outBuffer, &bufcount, target_rate, 2);
+//					bufWrite(outBuffer, &bufcount, verbose, 1);
+//
+//					//disable pulser
+//					digi_write(DG_ADDR_ENABLE_PULSER,0,0);
+//
+//					for (uint8_t channel=0; channel<96; channel++){
+//						thischanmask = (((uint32_t) 0x1)<<(channel%32));
+//						if 	( ((channel<32) && ((thischanmask & channel_mask[0]) == 0x0))||
+//								((channel>=32) && (channel<64) && ((thischanmask & channel_mask[1]) == 0x0))||
+//								((channel>=64) && ((thischanmask & channel_mask[2]) == 0x0))	){
+//							continue;
+//						}
+//						//prints initial settings
+//						bufWrite(outBuffer, &bufcount, channel, 1);
+//						bufWrite(outBuffer, &bufcount, default_gains_cal[channel], 2);
+//						bufWrite(outBuffer, &bufcount, default_threshs_cal[channel], 2);
+//						bufWrite(outBuffer, &bufcount, default_gains_hv[channel], 2);
+//						bufWrite(outBuffer, &bufcount, default_threshs_hv[channel], 2);
+//
+//						findChThreshold(num_lookback, num_samples, channel, target_rate, verbose);
+//						findChThreshold(num_lookback, num_samples, channel+96, target_rate, verbose);
+//					}
+//
+//					bufWrite(outBuffer, &bufcount_place_holder, (bufcount-3), 2);
+//					outBufSend(g_uart, outBuffer, bufcount);
 
 				}else if (commandID == MEASURETHRESHOLDCMDID){
 					channel_mask[0] = readU32fromBytes(&buffer[4]);

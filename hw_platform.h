@@ -37,18 +37,14 @@
 
 #ifndef HW_PLATFORM_H
 #define HW_PLATFORM_H
-#if MSCC_NO_RELATIVE_PATHS
-#include "cortexm1_cfg.h.h"
-#else
-#include "./CMSIS/cortexm1_cfg.h"
-#endif
+
 /***************************************************************************//**
  * Cortex-M1 clock definition
  * This is the only clock brought over from the Cortex-M1 Libero design.
  * The current design requirement is all the associated Cores in the Cortex-M1
  * subsystem are running at this frequency.
  */
-#define SYS_M1_CLK_FREQ             50000000UL
+#define SYS_CLK_FREQ             50000000UL
 
 /***************************************************************************//**
  * Memory Cores addresses-
@@ -85,15 +81,17 @@
 #define CORETIMER_0_BASE_ADDR           0x42000000UL
  */
 
-#define COREGPIO_BASE_ADDR          0x00040000UL
-#define UART_BASE_ADDRESS 			0x00043000UL
-#define SPI0_BASE_ADDR 				0x00044000UL
-#define SPI1_BASE_ADDR 				0x00045000UL
-#define REGISTERBASEADDR          0x00042000UL
-#define HVSPI_BASE_ADDR 				0x00046000UL
-#define CALSPI_BASE_ADDR 				0x00047000UL
-#define COREPWM_BASE_ADDR             0x00041000UL
-#define CSS_PF_BASE_ADDRESS             0x00048000UL
+
+#define COREGPIO_BASE_ADDR          0x70004000UL
+#define UART_BASE_ADDRESS 			0x70003000UL
+#define SPI0_BASE_ADDR 				0x70004000UL
+#define SPI1_BASE_ADDR 				0x70005000UL
+#define REGISTERBASEADDR            0x70002000UL
+#define HVSPI_BASE_ADDR 			0x70006000UL
+#define CALSPI_BASE_ADDR 			0x70007000UL
+#define COREPWM_BASE_ADDR           0x70001000UL
+#define CSS_PF_BASE_ADDRESS         0x70008000UL
+
 
 /***************************************************************************//**
  * Peripheral Interrupts are mapped to the corresponding Cortex-M1 interrupt
@@ -119,23 +117,7 @@
 #define UART_0_RXRDY_IRQ                External2_IRQn
  */
 
-/***************************************************************************//**
- * User edit section- Edit sections below if required
- */
-#ifdef MSCC_STDIO_THRU_CORE_UART_APB
-/*
- * A base address mapping for the STDIO printf/scanf mapping to CortUARTapb
- * must be provided if it is being used
- *
- * e.g. #define MSCC_STDIO_UART_BASE_ADDR COREUARTAPB1_BASE_ADDR
- */
-#define MSCC_STDIO_UART_BASE_ADDR COREUARTAPB0_BASE_ADDR
-#ifndef MSCC_STDIO_UART_BASE_ADDR
-#error MSCC_STDIO_UART_BASE_ADDR not defined- e.g. #define MSCC_STDIO_UART_BASE_ADDR COREUARTAPB1_BASE_ADDR
-#endif
-#endif  /* end of MSCC_STDIO_THRU_CORE_UART_APB */
-/*******************************************************************************
- * End of user edit section
- */
+
+
 #endif /* HW_PLATFORM_H */
 
