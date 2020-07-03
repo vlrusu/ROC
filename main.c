@@ -630,16 +630,20 @@ int main()
 					//					outBuffer[bufcount++] = channel >> 8;
 					//
 					//					UART_send(&g_uart, outBuffer ,bufcount );
-//				}else if (commandID == GETDEVICEID){
-//
-//				 	uint8_t data_buffer[16];
-//				 	uint8_t status;
-//				 	status = SYS_get_serial_number(data_buffer, 0);
-//				 	outBuffer[bufcount++] = GETDEVICEID;
-//				 	bufWrite(outBuffer, &bufcount, 16, 2);
-//				 	for (uint8_t i = 0 ; i < 16; i++)
-//				 		outBuffer[bufcount++] = data_buffer[i];
-//				 	outBufSend(g_uart, outBuffer, bufcount);
+				}else if (commandID == GETDEVICEID){
+
+				 	uint8_t data_buffer[16];
+				 	uint8_t dinfo_buffer[36];
+				 	uint8_t status;
+				 	status = SYS_get_serial_number(data_buffer, 0);
+				 	status = SYS_get_design_info(dinfo_buffer,0);
+				 	outBuffer[bufcount++] = GETDEVICEID;
+				 	bufWrite(outBuffer, &bufcount, 52, 2);
+				 	for (uint8_t i = 0 ; i < 16; i++)
+				 		outBuffer[bufcount++] = data_buffer[i];
+				 	for (uint8_t i = 0 ; i < 36; i++)
+				 		outBuffer[bufcount++] = dinfo_buffer[i];
+				 	outBufSend(g_uart, outBuffer, bufcount);
 
 				}else if (commandID == READBMES){
 					//Old sensor codes with BME 280

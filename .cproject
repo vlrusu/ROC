@@ -390,6 +390,16 @@
                                 <option id="ilg.gnumcueclipse.managedbuild.cross.riscv.option.createlisting.linenumbers.1172713465" name="Display line numbers (--line-numbers|-l)" superClass="ilg.gnumcueclipse.managedbuild.cross.riscv.option.createlisting.linenumbers" useByScannerDiscovery="false" value="true" valueType="boolean"/>
                                 								
                                 <option id="ilg.gnumcueclipse.managedbuild.cross.riscv.option.createlisting.wide.1668563506" name="Wide lines (--wide|-w)" superClass="ilg.gnumcueclipse.managedbuild.cross.riscv.option.createlisting.wide" useByScannerDiscovery="false" value="true" valueType="boolean"/>
+                                								
+                                <option id="ilg.gnumcueclipse.managedbuild.cross.riscv.option.createlisting.disassemble.1426200138" name="Disassemble (--disassemble|-d)" superClass="ilg.gnumcueclipse.managedbuild.cross.riscv.option.createlisting.disassemble" useByScannerDiscovery="false" value="true" valueType="boolean"/>
+                                								
+                                <option id="ilg.gnumcueclipse.managedbuild.cross.riscv.option.createlisting.fileheaders.6995346" name="Display file headers (--file-headers|-f)" superClass="ilg.gnumcueclipse.managedbuild.cross.riscv.option.createlisting.fileheaders" useByScannerDiscovery="false" value="true" valueType="boolean"/>
+                                								
+                                <option id="ilg.gnumcueclipse.managedbuild.cross.riscv.option.createlisting.symbols.1328152249" name="Display symbols (--syms|-t)" superClass="ilg.gnumcueclipse.managedbuild.cross.riscv.option.createlisting.symbols" useByScannerDiscovery="false" value="true" valueType="boolean"/>
+                                								
+                                <option id="ilg.gnumcueclipse.managedbuild.cross.riscv.option.createlisting.debugging.1652281729" name="Display debugging info (--debugging|-g)" superClass="ilg.gnumcueclipse.managedbuild.cross.riscv.option.createlisting.debugging" useByScannerDiscovery="false" value="true" valueType="boolean"/>
+                                								
+                                <option id="ilg.gnumcueclipse.managedbuild.cross.riscv.option.createlisting.other.2019037692" name="Other flags" superClass="ilg.gnumcueclipse.managedbuild.cross.riscv.option.createlisting.other" useByScannerDiscovery="false" value="" valueType="string"/>
                                 							
                             </tool>
                             							

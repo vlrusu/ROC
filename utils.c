@@ -583,7 +583,7 @@ void read_data(int *delay_count, int *trigger_count)
 		*/
 
 		// if not requiring coincidence, immediately send out this hit
-		if (readout_mode < 4){
+//		if (readout_mode < 4){
 			readout_obloc = 0;
 			bufWrite(dataBuffer, &readout_obloc, STARTTRG, 2);
 			bufWrite(dataBuffer, &readout_obloc, 4*readout_wordsPerTrigger,2);
@@ -594,52 +594,52 @@ void read_data(int *delay_count, int *trigger_count)
 			UART_send(&g_uart, dataBuffer ,readout_obloc);
 
 			(*trigger_count)++;
-		}else{
-			// otherwise check if you have a PMT coincidence
-
-			int is_pmt = 0;
-			if ((hit_buffer[hit_ptr][0]&0x3F) == 0 && (hit_buffer[hit_ptr][0]&0x40) > 0)
-				is_pmt = 1;
-
-
-			// if we have gotten events since last PMT hit, read out up to 10 of them
-			// also read out this PMT event
-			if (is_pmt){
-				for (int k=0;k<nhits+1;k++){
-					int ptr = (hit_ptr+max_buffer-nhits+k) % max_buffer;
-					readout_obloc = 0;
-					bufWrite(dataBuffer, &readout_obloc, STARTTRG, 2);
-					bufWrite(dataBuffer, &readout_obloc, 4*readout_wordsPerTrigger,2);
-					for (int j=0;j<readout_wordsPerTrigger;j++){
-						bufWrite(dataBuffer, &readout_obloc, ((hit_buffer[ptr][j] & 0xFFFF0000)>>16), 2);
-						bufWrite(dataBuffer, &readout_obloc, (hit_buffer[ptr][j] & 0xFFFF), 2);
-					}
-					UART_send(&g_uart, dataBuffer ,readout_obloc);
-
-					(*trigger_count)++;
-				}
-				nhits = 0;
-				pmt_counter = 10;
-			}else if (pmt_counter > 0){
-				readout_obloc = 0;
-				bufWrite(dataBuffer, &readout_obloc, STARTTRG, 2);
-				bufWrite(dataBuffer, &readout_obloc, 4*readout_wordsPerTrigger,2);
-				for (int j=0;j<readout_wordsPerTrigger;j++){
-				//	if (j == 0 && ((hit_buffer[hit_ptr][0]&0x3F) == 0 && (hit_buffer[hit_ptr][0]&0x40) > 0))
-				//		readout_wordsPerTrigger = 9;
-					bufWrite(dataBuffer, &readout_obloc, ((hit_buffer[hit_ptr][j] & 0xFFFF0000)>>16), 2);
-					bufWrite(dataBuffer, &readout_obloc, (hit_buffer[hit_ptr][j] & 0xFFFF), 2);
-				}
-				UART_send(&g_uart, dataBuffer ,readout_obloc);
-
-				(*trigger_count)++;
-				pmt_counter--;
-			}else{
-				if (nhits < max_buffer-1)
-					nhits++;
-			}
-
-		}
+//		}else{
+//			// otherwise check if you have a PMT coincidence
+//
+//			int is_pmt = 0;
+//			if ((hit_buffer[hit_ptr][0]&0x3F) == 0 && (hit_buffer[hit_ptr][0]&0x40) > 0)
+//				is_pmt = 1;
+//
+//
+//			// if we have gotten events since last PMT hit, read out up to 10 of them
+//			// also read out this PMT event
+//			if (is_pmt){
+//				for (int k=0;k<nhits+1;k++){
+//					int ptr = (hit_ptr+max_buffer-nhits+k) % max_buffer;
+//					readout_obloc = 0;
+//					bufWrite(dataBuffer, &readout_obloc, STARTTRG, 2);
+//					bufWrite(dataBuffer, &readout_obloc, 4*readout_wordsPerTrigger,2);
+//					for (int j=0;j<readout_wordsPerTrigger;j++){
+//						bufWrite(dataBuffer, &readout_obloc, ((hit_buffer[ptr][j] & 0xFFFF0000)>>16), 2);
+//						bufWrite(dataBuffer, &readout_obloc, (hit_buffer[ptr][j] & 0xFFFF), 2);
+//					}
+//					UART_send(&g_uart, dataBuffer ,readout_obloc);
+//
+//					(*trigger_count)++;
+//				}
+//				nhits = 0;
+//				pmt_counter = 10;
+//			}else if (pmt_counter > 0){
+//				readout_obloc = 0;
+//				bufWrite(dataBuffer, &readout_obloc, STARTTRG, 2);
+//				bufWrite(dataBuffer, &readout_obloc, 4*readout_wordsPerTrigger,2);
+//				for (int j=0;j<readout_wordsPerTrigger;j++){
+//				//	if (j == 0 && ((hit_buffer[hit_ptr][0]&0x3F) == 0 && (hit_buffer[hit_ptr][0]&0x40) > 0))
+//				//		readout_wordsPerTrigger = 9;
+//					bufWrite(dataBuffer, &readout_obloc, ((hit_buffer[hit_ptr][j] & 0xFFFF0000)>>16), 2);
+//					bufWrite(dataBuffer, &readout_obloc, (hit_buffer[hit_ptr][j] & 0xFFFF), 2);
+//				}
+//				UART_send(&g_uart, dataBuffer ,readout_obloc);
+//
+//				(*trigger_count)++;
+//				pmt_counter--;
+//			}else{
+//				if (nhits < max_buffer-1)
+//					nhits++;
+//			}
+//
+//		}
 		hit_ptr = (hit_ptr+1)%max_buffer;
 
 

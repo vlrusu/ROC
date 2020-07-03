@@ -426,12 +426,12 @@ int8_t bme280_get_regs(uint8_t reg_addr, uint8_t *reg_data, uint16_t len, const 
 	unsigned int j = 0;
 
 	/* Check for null pointer in the device structure*/
-	rslt = null_ptr_check(dev);
+//	rslt = null_ptr_check(dev);
 	/* Proceed if null check is fine */
-	if (rslt == BME280_OK) {
+//	if (rslt == BME280_OK) {
 		/* If interface selected is SPI */
-		if (dev->intf != BME280_I2C_INTF)
-			reg_addr = reg_addr | 0x80;
+//		if (dev->intf != BME280_I2C_INTF)
+//			reg_addr = reg_addr | 0x80;
 		/* Read the data  */
 
 
@@ -456,11 +456,11 @@ int8_t bme280_get_regs(uint8_t reg_addr, uint8_t *reg_data, uint16_t len, const 
 
 
 		/* Check for communication error */
-		if (rslt != BME280_OK)
-			rslt = BME280_E_COMM_FAIL;
-	}
+//		if (rslt != BME280_OK)
+//			rslt = BME280_E_COMM_FAIL;
+//	}
 
-	return rslt;
+	return 0;
 }
 
 /*!
@@ -479,16 +479,16 @@ int8_t bme280_set_regs(uint8_t *reg_addr, const uint8_t *reg_data, uint8_t len, 
 	uint8_t reg_addr_cnt;
 
 	/* Check for null pointer in the device structure*/
-	rslt = null_ptr_check(dev);
+//	rslt = null_ptr_check(dev);
 	/* Check for arguments validity */
-	if ((rslt ==  BME280_OK) && (reg_addr != NULL) && (reg_data != NULL)) {
+//	if ((reg_addr != NULL) && (reg_data != NULL)) {
 		if (len != 0) {
 			temp_buff[0] = reg_data[0];
 			/* If interface selected is SPI */
-			if (dev->intf != BME280_I2C_INTF) {
-				for (reg_addr_cnt = 0; reg_addr_cnt < len; reg_addr_cnt++)
-					reg_addr[reg_addr_cnt] = reg_addr[reg_addr_cnt] & 0x7F;
-			}
+//			if (dev->intf != BME280_I2C_INTF) {
+//				for (reg_addr_cnt = 0; reg_addr_cnt < len; reg_addr_cnt++)
+//					reg_addr[reg_addr_cnt] = reg_addr[reg_addr_cnt] & 0x7F;
+//			}
 			/* Burst write mode */
 //			if (len > 1) {
 //				/* Interleave register address w.r.t data for
@@ -513,17 +513,17 @@ int8_t bme280_set_regs(uint8_t *reg_addr, const uint8_t *reg_data, uint8_t len, 
 
 
 			/* Check for communication error */
-			if (rslt != BME280_OK)
-				rslt = BME280_E_COMM_FAIL;
+//			if (rslt != BME280_OK)
+//				rslt = BME280_E_COMM_FAIL;
 		} else {
 			rslt = BME280_E_INVALID_LEN;
 		}
-	} else {
-		rslt = BME280_E_NULL_PTR;
-	}
+//	} else {
+//		rslt = BME280_E_NULL_PTR;
+//	}
 
 
-	return rslt;
+	return 0;
 }
 
 /*!
@@ -536,9 +536,9 @@ int8_t bme280_set_sensor_settings(uint8_t desired_settings, const struct bme280_
 	uint8_t sensor_mode;
 
 	/* Check for null pointer in the device structure*/
-	rslt = null_ptr_check(dev);
+//	rslt = null_ptr_check(dev);
 	/* Proceed if null check is fine */
-	if (rslt == BME280_OK) {
+//	if (rslt == BME280_OK) {
 		rslt = bme280_get_sensor_mode(&sensor_mode, dev);
 //		if ((rslt == BME280_OK) && (sensor_mode != BME280_SLEEP_MODE))
 //			rslt = put_device_to_sleep(dev);
@@ -552,9 +552,9 @@ int8_t bme280_set_sensor_settings(uint8_t desired_settings, const struct bme280_
 			if ((rslt == BME280_OK) && are_settings_changed(FILTER_STANDBY_SETTINGS, desired_settings))
 				rslt = set_filter_standby_settings(desired_settings, &dev->settings, dev);
 		}
-	}
+//	}
 
-	return rslt;
+	return 0;
 }
 
 /*!
@@ -567,15 +567,15 @@ int8_t bme280_get_sensor_settings(struct bme280_dev *dev)
 	uint8_t reg_data[4];
 
 	/* Check for null pointer in the device structure*/
-	rslt = null_ptr_check(dev);
+//	rslt = null_ptr_check(dev);
 	/* Proceed if null check is fine */
-	if (rslt == BME280_OK) {
+//	if (rslt == BME280_OK) {
 		rslt = bme280_get_regs(BME280_CTRL_HUM_ADDR, reg_data, 4, dev);
-		if (rslt == BME280_OK)
+//		if (rslt == BME280_OK)
 			parse_device_settings(reg_data, &dev->settings);
-	}
+//	}
 
-	return rslt;
+	return 0;
 }
 
 /*!
@@ -587,20 +587,20 @@ int8_t bme280_set_sensor_mode(uint8_t sensor_mode, const struct bme280_dev *dev)
 	uint8_t last_set_mode;
 
 	/* Check for null pointer in the device structure*/
-	rslt = null_ptr_check(dev);
+//	rslt = null_ptr_check(dev);
 
-	if (rslt == BME280_OK) {
+//	if (rslt == BME280_OK) {
 		rslt = bme280_get_sensor_mode(&last_set_mode, dev);
 		/* If the sensor is not in sleep mode put the device to sleep
 		   mode */
 //		if ((rslt == BME280_OK) && (last_set_mode != BME280_SLEEP_MODE))
 //			rslt = put_device_to_sleep(dev);
 		/* Set the power mode */
-		if (rslt == BME280_OK)
+//		if (rslt == BME280_OK)
 			rslt = write_power_mode(sensor_mode, dev);
-	}
+//	}
 
-	return rslt;
+	return 0;
 }
 
 /*!
@@ -611,16 +611,16 @@ int8_t bme280_get_sensor_mode(uint8_t *sensor_mode, const struct bme280_dev *dev
 	int8_t rslt;
 
 	/* Check for null pointer in the device structure*/
-	rslt = null_ptr_check(dev);
+//	rslt = null_ptr_check(dev);
 
-	if (rslt == BME280_OK) {
+//	if (rslt == BME280_OK) {
 		/* Read the power mode register */
 		rslt = bme280_get_regs(BME280_PWR_CTRL_ADDR, sensor_mode, 1, dev);
 		/* Assign the power mode in the device structure */
 		*sensor_mode = BME280_GET_BITS_POS_0(*sensor_mode, BME280_SENSOR_MODE);
-	}
+//	}
 
-	return rslt;
+	return 0;
 }
 
 /*!
@@ -634,16 +634,16 @@ int8_t bme280_soft_reset(const struct bme280_dev *dev)
 	uint8_t soft_rst_cmd = 0xB6;
 
 	/* Check for null pointer in the device structure*/
-	rslt = null_ptr_check(dev);
+//	rslt = null_ptr_check(dev);
 	/* Proceed if null check is fine */
-	if (rslt == BME280_OK) {
+//	if (rslt == BME280_OK) {
 		/* Write the soft reset command in the sensor */
 		rslt = bme280_set_regs(&reg_addr, &soft_rst_cmd, 1, dev);
 		/* As per data sheet, startup time is 2 ms. */
 		dev->delay_ms(2);
-	}
+//	}
 
-	return rslt;
+	return 0;
 }
 
 /*!
@@ -660,24 +660,24 @@ int8_t bme280_get_sensor_data(uint8_t sensor_comp, struct bme280_data *comp_data
 	struct bme280_uncomp_data uncomp_data = {0};
 
 	/* Check for null pointer in the device structure*/
-	rslt = null_ptr_check(dev);
+//	rslt = null_ptr_check(dev);
 
-	if ((rslt == BME280_OK) && (comp_data != NULL)) {
+//	if ((rslt == BME280_OK) && (comp_data != NULL)) {
 		/* Read the pressure and temperature data from the sensor */
 		rslt = bme280_get_regs(BME280_DATA_ADDR, reg_data, BME280_P_T_H_DATA_LEN, dev);
 
-		if (rslt == BME280_OK) {
+//		if (rslt == BME280_OK) {
 			/* Parse the read data from the sensor */
 			parse_sensor_data(reg_data, &uncomp_data);
 			/* Compensate the pressure and/or temperature and/or
 			   humidity data from the sensor */
 			rslt = compensate_data(sensor_comp, &uncomp_data, comp_data, &dev->calib_data);
-		}
-	} else {
-		rslt = BME280_E_NULL_PTR;
-	}
+//		}
+//	} else {
+//		rslt = BME280_E_NULL_PTR;
+//	}
 
-	return rslt;
+	return 0;
 }
 
 /*!
