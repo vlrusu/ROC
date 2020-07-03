@@ -287,7 +287,11 @@
                             							
                             <option id="ilg.gnumcueclipse.managedbuild.cross.riscv.option.toolchain.id.490587099" superClass="ilg.gnumcueclipse.managedbuild.cross.riscv.option.toolchain.id" useByScannerDiscovery="false" value="-2032619395" valueType="string"/>
                             							
-                            <option id="ilg.gnumcueclipse.managedbuild.cross.riscv.option.optimization.lto.2114839411" name="Link-time optimizer (-flto)" superClass="ilg.gnumcueclipse.managedbuild.cross.riscv.option.optimization.lto" value="false" valueType="boolean"/>
+                            <option id="ilg.gnumcueclipse.managedbuild.cross.riscv.option.optimization.lto.2114839411" name="Link-time optimizer (-flto)" superClass="ilg.gnumcueclipse.managedbuild.cross.riscv.option.optimization.lto" useByScannerDiscovery="true" value="false" valueType="boolean"/>
+                            							
+                            <option id="ilg.gnumcueclipse.managedbuild.cross.riscv.option.target.isa.atomic.1032222960" name="Atomic extension (RVA)" superClass="ilg.gnumcueclipse.managedbuild.cross.riscv.option.target.isa.atomic" value="false" valueType="boolean"/>
+                            							
+                            <option id="ilg.gnumcueclipse.managedbuild.cross.riscv.option.target.codemodel.936489641" name="Code model" superClass="ilg.gnumcueclipse.managedbuild.cross.riscv.option.target.codemodel" value="ilg.gnumcueclipse.managedbuild.cross.riscv.option.target.codemodel.default" valueType="enumerated"/>
                             							
                             <targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="ilg.gnumcueclipse.managedbuild.cross.riscv.targetPlatform.331849526" isAbstract="false" osList="all" superClass="ilg.gnumcueclipse.managedbuild.cross.riscv.targetPlatform"/>
                             							
@@ -296,6 +300,8 @@
                             <tool id="ilg.gnumcueclipse.managedbuild.cross.riscv.tool.assembler.959726248" name="GNU RISC-V Cross Assembler" superClass="ilg.gnumcueclipse.managedbuild.cross.riscv.tool.assembler">
                                 								
                                 <option id="ilg.gnumcueclipse.managedbuild.cross.riscv.option.assembler.usepreprocessor.2101493935" name="Use preprocessor" superClass="ilg.gnumcueclipse.managedbuild.cross.riscv.option.assembler.usepreprocessor" useByScannerDiscovery="false" value="true" valueType="boolean"/>
+                                								
+                                <option id="ilg.gnumcueclipse.managedbuild.cross.riscv.option.assembler.asmlisting.43096887" name="Generate assembler listing (-Wa,-adhlns=&quot;$@.lst&quot;)" superClass="ilg.gnumcueclipse.managedbuild.cross.riscv.option.assembler.asmlisting" useByScannerDiscovery="false" value="true" valueType="boolean"/>
                                 								
                                 <inputType id="ilg.gnumcueclipse.managedbuild.cross.riscv.tool.assembler.input.1788778684" superClass="ilg.gnumcueclipse.managedbuild.cross.riscv.tool.assembler.input"/>
                                 							
@@ -314,6 +320,8 @@
                                 </option>
                                 								
                                 <option id="ilg.gnumcueclipse.managedbuild.cross.riscv.option.c.compiler.other.1177332536" name="Other compiler flags" superClass="ilg.gnumcueclipse.managedbuild.cross.riscv.option.c.compiler.other" useByScannerDiscovery="true" value="-msave-restore" valueType="string"/>
+                                								
+                                <option id="ilg.gnumcueclipse.managedbuild.cross.riscv.option.c.compiler.asmlisting.305198140" name="Generate assembler listing (-Wa,-adhlns=&quot;$@.lst&quot;)" superClass="ilg.gnumcueclipse.managedbuild.cross.riscv.option.c.compiler.asmlisting" useByScannerDiscovery="false" value="true" valueType="boolean"/>
                                 								
                                 <inputType id="ilg.gnumcueclipse.managedbuild.cross.riscv.tool.c.compiler.input.14270091" superClass="ilg.gnumcueclipse.managedbuild.cross.riscv.tool.c.compiler.input"/>
                                 							
@@ -334,6 +342,8 @@
                                 </option>
                                 								
                                 <option id="ilg.gnumcueclipse.managedbuild.cross.riscv.option.c.linker.usenewlibnano.836024323" name="Use newlib-nano (--specs=nano.specs)" superClass="ilg.gnumcueclipse.managedbuild.cross.riscv.option.c.linker.usenewlibnano" useByScannerDiscovery="false" value="true" valueType="boolean"/>
+                                								
+                                <option id="ilg.gnumcueclipse.managedbuild.cross.riscv.option.c.linker.nodeflibs.1356739611" name="Do not use default libraries (-nodefaultlibs)" superClass="ilg.gnumcueclipse.managedbuild.cross.riscv.option.c.linker.nodeflibs" useByScannerDiscovery="false" value="false" valueType="boolean"/>
                                 								
                                 <inputType id="ilg.gnumcueclipse.managedbuild.cross.riscv.tool.c.linker.input.1531675589" superClass="ilg.gnumcueclipse.managedbuild.cross.riscv.tool.c.linker.input">
                                     									
@@ -371,15 +381,15 @@
                             							
                             <tool id="ilg.gnumcueclipse.managedbuild.cross.riscv.tool.createlisting.172595166" name="GNU RISC-V Cross Create Listing" superClass="ilg.gnumcueclipse.managedbuild.cross.riscv.tool.createlisting">
                                 								
-                                <option id="ilg.gnumcueclipse.managedbuild.cross.riscv.option.createlisting.source.574552378" name="Display source (--source|-S)" superClass="ilg.gnumcueclipse.managedbuild.cross.riscv.option.createlisting.source" value="true" valueType="boolean"/>
+                                <option id="ilg.gnumcueclipse.managedbuild.cross.riscv.option.createlisting.source.574552378" name="Display source (--source|-S)" superClass="ilg.gnumcueclipse.managedbuild.cross.riscv.option.createlisting.source" useByScannerDiscovery="false" value="true" valueType="boolean"/>
                                 								
-                                <option id="ilg.gnumcueclipse.managedbuild.cross.riscv.option.createlisting.allheaders.1243284576" name="Display all headers (--all-headers|-x)" superClass="ilg.gnumcueclipse.managedbuild.cross.riscv.option.createlisting.allheaders" value="true" valueType="boolean"/>
+                                <option id="ilg.gnumcueclipse.managedbuild.cross.riscv.option.createlisting.allheaders.1243284576" name="Display all headers (--all-headers|-x)" superClass="ilg.gnumcueclipse.managedbuild.cross.riscv.option.createlisting.allheaders" useByScannerDiscovery="false" value="true" valueType="boolean"/>
                                 								
-                                <option id="ilg.gnumcueclipse.managedbuild.cross.riscv.option.createlisting.demangle.227417768" name="Demangle names (--demangle|-C)" superClass="ilg.gnumcueclipse.managedbuild.cross.riscv.option.createlisting.demangle" value="true" valueType="boolean"/>
+                                <option id="ilg.gnumcueclipse.managedbuild.cross.riscv.option.createlisting.demangle.227417768" name="Demangle names (--demangle|-C)" superClass="ilg.gnumcueclipse.managedbuild.cross.riscv.option.createlisting.demangle" useByScannerDiscovery="false" value="true" valueType="boolean"/>
                                 								
-                                <option id="ilg.gnumcueclipse.managedbuild.cross.riscv.option.createlisting.linenumbers.1172713465" name="Display line numbers (--line-numbers|-l)" superClass="ilg.gnumcueclipse.managedbuild.cross.riscv.option.createlisting.linenumbers" value="true" valueType="boolean"/>
+                                <option id="ilg.gnumcueclipse.managedbuild.cross.riscv.option.createlisting.linenumbers.1172713465" name="Display line numbers (--line-numbers|-l)" superClass="ilg.gnumcueclipse.managedbuild.cross.riscv.option.createlisting.linenumbers" useByScannerDiscovery="false" value="true" valueType="boolean"/>
                                 								
-                                <option id="ilg.gnumcueclipse.managedbuild.cross.riscv.option.createlisting.wide.1668563506" name="Wide lines (--wide|-w)" superClass="ilg.gnumcueclipse.managedbuild.cross.riscv.option.createlisting.wide" value="true" valueType="boolean"/>
+                                <option id="ilg.gnumcueclipse.managedbuild.cross.riscv.option.createlisting.wide.1668563506" name="Wide lines (--wide|-w)" superClass="ilg.gnumcueclipse.managedbuild.cross.riscv.option.createlisting.wide" useByScannerDiscovery="false" value="true" valueType="boolean"/>
                                 							
                             </tool>
                             							
@@ -417,36 +427,6 @@
         	
     </storageModule>
     	
-    <storageModule moduleId="scannerConfiguration">
-        		
-        <autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
-        		
-        <scannerConfigBuildInfo instanceId="ilg.gnumcueclipse.managedbuild.cross.riscv.config.elf.release.1583801870;ilg.gnumcueclipse.managedbuild.cross.riscv.config.elf.release.1583801870.;ilg.gnumcueclipse.managedbuild.cross.riscv.tool.c.compiler.1044359942;ilg.gnumcueclipse.managedbuild.cross.riscv.tool.c.compiler.input.14270091">
-            			
-            <autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
-            		
-        </scannerConfigBuildInfo>
-        		
-        <scannerConfigBuildInfo instanceId="ilg.gnuarmeclipse.managedbuild.cross.config.elf.debug.1771281278;ilg.gnuarmeclipse.managedbuild.cross.config.elf.debug.1771281278.;ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.419655750;ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.input.24907644">
-            			
-            <autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
-            		
-        </scannerConfigBuildInfo>
-        		
-        <scannerConfigBuildInfo instanceId="ilg.gnumcueclipse.managedbuild.cross.riscv.config.elf.debug.1716752127;ilg.gnumcueclipse.managedbuild.cross.riscv.config.elf.debug.1716752127.;ilg.gnumcueclipse.managedbuild.cross.riscv.tool.c.compiler.2097727536;ilg.gnumcueclipse.managedbuild.cross.riscv.tool.c.compiler.input.390580312">
-            			
-            <autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
-            		
-        </scannerConfigBuildInfo>
-        		
-        <scannerConfigBuildInfo instanceId="ilg.gnuarmeclipse.managedbuild.cross.config.elf.release.867062901;ilg.gnuarmeclipse.managedbuild.cross.config.elf.release.867062901.;ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.454798444;ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.input.599084851">
-            			
-            <autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
-            		
-        </scannerConfigBuildInfo>
-        	
-    </storageModule>
-    	
     <storageModule moduleId="org.eclipse.cdt.core.LanguageSettingsProviders"/>
     	
     <storageModule moduleId="org.eclipse.cdt.make.core.buildtargets"/>
@@ -464,6 +444,24 @@
             <resource resourceType="PROJECT" workspacePath="/ROC"/>
             		
         </configuration>
+        	
+    </storageModule>
+    	
+    <storageModule moduleId="scannerConfiguration">
+        		
+        <autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
+        		
+        <scannerConfigBuildInfo instanceId="ilg.gnuarmeclipse.managedbuild.cross.config.elf.debug.1771281278;ilg.gnuarmeclipse.managedbuild.cross.config.elf.debug.1771281278.;ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.419655750;ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.input.24907644">
+            			
+            <autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
+            		
+        </scannerConfigBuildInfo>
+        		
+        <scannerConfigBuildInfo instanceId="ilg.gnuarmeclipse.managedbuild.cross.config.elf.release.867062901;ilg.gnuarmeclipse.managedbuild.cross.config.elf.release.867062901.;ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.454798444;ilg.gnuarmeclipse.managedbuild.cross.tool.c.compiler.input.599084851">
+            			
+            <autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
+            		
+        </scannerConfigBuildInfo>
         	
     </storageModule>
     

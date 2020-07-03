@@ -540,8 +540,8 @@ int8_t bme280_set_sensor_settings(uint8_t desired_settings, const struct bme280_
 	/* Proceed if null check is fine */
 	if (rslt == BME280_OK) {
 		rslt = bme280_get_sensor_mode(&sensor_mode, dev);
-		if ((rslt == BME280_OK) && (sensor_mode != BME280_SLEEP_MODE))
-			rslt = put_device_to_sleep(dev);
+//		if ((rslt == BME280_OK) && (sensor_mode != BME280_SLEEP_MODE))
+//			rslt = put_device_to_sleep(dev);
 		if (rslt == BME280_OK) {
 			/* Check if user wants to change oversampling
 			   settings */
@@ -593,8 +593,8 @@ int8_t bme280_set_sensor_mode(uint8_t sensor_mode, const struct bme280_dev *dev)
 		rslt = bme280_get_sensor_mode(&last_set_mode, dev);
 		/* If the sensor is not in sleep mode put the device to sleep
 		   mode */
-		if ((rslt == BME280_OK) && (last_set_mode != BME280_SLEEP_MODE))
-			rslt = put_device_to_sleep(dev);
+//		if ((rslt == BME280_OK) && (last_set_mode != BME280_SLEEP_MODE))
+//			rslt = put_device_to_sleep(dev);
 		/* Set the power mode */
 		if (rslt == BME280_OK)
 			rslt = write_power_mode(sensor_mode, dev);

@@ -62,3 +62,4 @@ Release\*
 Debug\*
 /RemoteSystemsTempFiles/
 /CMSIS/
+/Release/

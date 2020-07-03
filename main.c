@@ -940,7 +940,7 @@ int main()
 					outBuffer[bufcount++] = READRATESCMDID;
 					bufcount_place_holder = bufcount;
 					bufWrite(outBuffer, &bufcount, 0, 2);
-		
+
 					get_rates(num_lookback,num_samples,255,NULL);
 
 					bufWrite(outBuffer, &bufcount_place_holder, (bufcount-3), 2);
