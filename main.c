@@ -362,7 +362,7 @@ int main()
 				 			if (i<4)
 				 				LTC2634_write(&caldac0,i,default_caldac[i]);
 				 			else
-				 				LTC2634_write(&caldac1,i,default_caldac[i]);
+				 				LTC2634_write(&caldac1,i-4,default_caldac[i]);
 				 		}
 				 	}
 
@@ -428,7 +428,7 @@ int main()
 					bufWrite(outBuffer, &bufcount, dutyCycle, 2);
 					bufWrite(outBuffer, &bufcount, pulserDelay, 4);
 					outBufSend(g_uart, outBuffer, bufcount);
-					PWM_init( &g_pwm, COREPWM_BASE_ADDR, 1, 4 );
+//					PWM_init( &g_pwm, COREPWM_BASE_ADDR, 1, 4 );
 //					PWM_set_duty_cycle( &g_pwm, PWM_2, 2 );//duty cycle is 4 x 25 = 100ns
 
 
