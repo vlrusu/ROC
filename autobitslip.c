@@ -498,7 +498,7 @@ void autobitslip()
 
 	//Output:
 	outBuffer[bufcount++] = AUTOBITSLIPCMDID;
-	bufWrite(outBuffer, &bufcount, 1+12*5, 2);
+	bufWrite(outBuffer, &bufcount, 1+12*7, 2);
 	bufWrite(outBuffer, &bufcount, eye_monitor_width, 1);
 	bufWrite(outBuffer, &bufcount, active_ch_cal1, 2);
 	bufWrite(outBuffer, &bufcount, active_ch_cal2, 2);
@@ -561,62 +561,68 @@ void autobitslip()
 	// CHECK RESULT                  //
 	///////////////////////////////////
 
-	// check with mixed frequency ADC
-	for (uint8_t i=0;i<12;i++){
-		if ((0x1<<i) & ENABLED_ADCS){
-			adc_write(ADC_ADDR_TESTIO,0xC,(0x1<<i));
-		}
-	}
-
-	uint32_t not_enough_trigger[3] = {0};
-	uint32_t pattern_fail[3] = {0};
-
-	hvcal = 1;
-	for (uint8_t ichan=0;ichan<96;ichan++){
-		if (ichan > 47)	hvcal =2;
-		thischanmask = (((uint32_t) 0x1)<<(ichan%32));
-		if ( ((ichan<32) && ((thischanmask & mapped_channel_mask[0]) == 0x0))||
-				((ichan>=32) && (ichan<64) && ((thischanmask & mapped_channel_mask[1]) == 0x0))||
-				((ichan>=64) && ((thischanmask & mapped_channel_mask[2]) == 0x0))	){
-			continue;
+	// check with mixed frequency ADC/ 0x0001
+	for (uint8_t ipattern = 0; ipattern<2; ipattern++){
+		for (uint8_t i=0;i<12;i++){
+			if ((0x1<<i) & ENABLED_ADCS){
+				if (ipattern == 0)
+					adc_write(ADC_ADDR_TESTIO,0xC,(0x1<<i));
+				else
+					adc_write(ADC_ADDR_TESTIO,0x1,(0x1<<i));
+			}
 		}
 
-		digi_write(DG_ADDR_MASK1, 0x0, 0);
-		digi_write(DG_ADDR_MASK2, 0x0, 0);
-		digi_write(DG_ADDR_MASK3, 0x0, 0);
-		if ((ichan%48) < 16)
-			digi_write(DG_ADDR_MASK1,(uint16_t) (0x1<<(ichan%48)), hvcal);
-		else if ((ichan%48) < 32)
-			digi_write(DG_ADDR_MASK2,(uint16_t) (0x1<<((ichan%48)-16)), hvcal);
-		else
-			digi_write(DG_ADDR_MASK3,(uint16_t) (0x1<<((ichan%48)-32)), hvcal);
+		uint32_t not_enough_trigger[3] = {0};
+		uint32_t pattern_fail[3] = {0};
 
-		resetFIFO();
-		*(registers_0_addr + REG_ROC_EWW_PULSER) = 1;
-		readout_obloc = 0;
-		readout_maxDelay = 50;
-		readout_mode = 0;
-		readout_wordsPerTrigger = NUMTDCWORDS+1;
-		readout_numTriggers = 11;
+		hvcal = 1;
+		for (uint8_t ichan=0;ichan<96;ichan++){
+			if (ichan > 47)	hvcal =2;
+			thischanmask = (((uint32_t) 0x1)<<(ichan%32));
+			if ( ((ichan<32) && ((thischanmask & mapped_channel_mask[0]) == 0x0))||
+					((ichan>=32) && (ichan<64) && ((thischanmask & mapped_channel_mask[1]) == 0x0))||
+					((ichan>=64) && ((thischanmask & mapped_channel_mask[2]) == 0x0))	){
+				continue;
+			}
 
-		int delay_count = 0;
-		int trigger_count = 0;
-		uint16_t lasthit[readout_wordsPerTrigger];
+			digi_write(DG_ADDR_MASK1, 0x0, 0);
+			digi_write(DG_ADDR_MASK2, 0x0, 0);
+			digi_write(DG_ADDR_MASK3, 0x0, 0);
+			if ((ichan%48) < 16)
+				digi_write(DG_ADDR_MASK1,(uint16_t) (0x1<<(ichan%48)), hvcal);
+			else if ((ichan%48) < 32)
+				digi_write(DG_ADDR_MASK2,(uint16_t) (0x1<<((ichan%48)-16)), hvcal);
+			else
+				digi_write(DG_ADDR_MASK3,(uint16_t) (0x1<<((ichan%48)-32)), hvcal);
 
-		read_data2(&delay_count,&trigger_count,lasthit);
+			resetFIFO();
+			*(registers_0_addr + REG_ROC_EWW_PULSER) = 1;
+			readout_obloc = 0;
+			readout_maxDelay = 50;
+			readout_mode = 0;
+			readout_wordsPerTrigger = NUMTDCWORDS+1;
+			readout_numTriggers = 11;
 
-		if (trigger_count != 11){
-			not_enough_trigger[ichan/32] |= (((uint32_t)0x1)<<(ichan%32));
-			continue;
+			int delay_count = 0;
+			int trigger_count = 0;
+			uint16_t lasthit[readout_wordsPerTrigger];
+
+			read_data2(&delay_count,&trigger_count,lasthit);
+
+			if (trigger_count != 11){
+				not_enough_trigger[ichan/32] |= (((uint32_t)0x1)<<(ichan%32));
+				continue;
+			}
+			if (((ipattern == 0) &&(lasthit[readout_wordsPerTrigger-1] != 0x319)) ||
+					((ipattern == 1) &&(lasthit[readout_wordsPerTrigger-1] != 0x001))){
+				pattern_fail[ichan/32] |= (((uint32_t)0x1)<<(ichan%32));
+			}
 		}
-		if (lasthit[readout_wordsPerTrigger-1] != 0x319){
-			pattern_fail[ichan/32] |= (((uint32_t)0x1)<<(ichan%32));
-		}
-	}
 
-	for (uint8_t i=0; i<3; i++){
-		bufWrite(outBuffer, &bufcount, not_enough_trigger[i], 4);
-		bufWrite(outBuffer, &bufcount, pattern_fail[i], 4);
+		for (uint8_t i=0; i<3; i++){
+			bufWrite(outBuffer, &bufcount, not_enough_trigger[i], 4);
+			bufWrite(outBuffer, &bufcount, pattern_fail[i], 4);
+		}
 	}
 
 	outBufSend(g_uart, outBuffer, bufcount);
