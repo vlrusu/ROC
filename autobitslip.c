@@ -505,7 +505,7 @@ void autobitslip()
 
 	//Output:
 	outBuffer[bufcount++] = AUTOBITSLIPCMDID;
-	bufWrite(outBuffer, &bufcount, 2+5*12+96, 2);
+	bufWrite(outBuffer, &bufcount, 2+6*12+96, 2);
 	bufWrite(outBuffer, &bufcount, eye_monitor_width, 1);
 	bufWrite(outBuffer, &bufcount, ifcheck, 1);
 	bufWrite(outBuffer, &bufcount, active_ch_cal1, 2);
