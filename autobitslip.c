@@ -455,6 +455,7 @@ void autobitslip()
 	channel_mask[0] = readU32fromBytes(&buffer[5]);
 	channel_mask[1] = readU32fromBytes(&buffer[9]);
 	channel_mask[2] = readU32fromBytes(&buffer[13]);
+	uint8_t ifcheck = (uint8_t) buffer[17];
 	get_mapped_channels();
 
 	digi_write(DG_ADDR_SAMPLE,1,0);
@@ -463,11 +464,11 @@ void autobitslip()
 	digi_write(DG_ADDR_TRIGGER_MODE,0,0);
 	digi_write(DG_ADDR_ENABLE_PULSER,1,0);
 
-	//fix all adc at phase = 0
+	//fix all adc at phase = 3 (default 180 deg)
 	//using pattern #9 (0x155/0x2aa) for alignment
 	for (uint8_t i=0;i<12;i++){
 		if ((0x1<<i) & ENABLED_ADCS){
-			adc_write(ADC_ADDR_PHASE,0,(0x1<<i));
+			adc_write(ADC_ADDR_PHASE,3,(0x1<<i));
 			adc_write(ADC_ADDR_TESTIO,0x9,(0x1<<i));
 		}
 		else //turn off the channels not in use
@@ -481,7 +482,6 @@ void autobitslip()
 	//set minimum eye monitor width
 	digi_write(DG_ADDR_BITALIGN_EWM_WIDTH, (uint16_t)eye_monitor_width,0);
 
-	//start bit align, set corresponding channel's restart to 1, then back to 0 after 8 ticks
 	uint16_t active_ch_cal1 = (uint16_t)(mapped_channel_mask[0] & 0xffff);
 	uint16_t active_ch_cal2 = (uint16_t)((mapped_channel_mask[0] >> 16) & 0xffff);
 	uint16_t active_ch_cal3 = (uint16_t)(mapped_channel_mask[1] & 0xffff);
@@ -496,10 +496,18 @@ void autobitslip()
 	digi_write(DG_ADDR_MASK2, active_ch_hv2, 2);
 	digi_write(DG_ADDR_MASK3, active_ch_hv3, 2);
 
+	digi_write(DG_ADDR_RX_CH_MASK1, active_ch_cal1, 1);
+	digi_write(DG_ADDR_RX_CH_MASK2, active_ch_cal2, 1);
+	digi_write(DG_ADDR_RX_CH_MASK3, active_ch_cal3, 1);
+	digi_write(DG_ADDR_RX_CH_MASK1, active_ch_hv1, 2);
+	digi_write(DG_ADDR_RX_CH_MASK2, active_ch_hv2, 2);
+	digi_write(DG_ADDR_RX_CH_MASK3, active_ch_hv3, 2);
+
 	//Output:
 	outBuffer[bufcount++] = AUTOBITSLIPCMDID;
-	bufWrite(outBuffer, &bufcount, 1+12*7, 2);
+	bufWrite(outBuffer, &bufcount, 2+5*12+96, 2);
 	bufWrite(outBuffer, &bufcount, eye_monitor_width, 1);
+	bufWrite(outBuffer, &bufcount, ifcheck, 1);
 	bufWrite(outBuffer, &bufcount, active_ch_cal1, 2);
 	bufWrite(outBuffer, &bufcount, active_ch_cal2, 2);
 	bufWrite(outBuffer, &bufcount, active_ch_cal3, 2);
@@ -507,21 +515,10 @@ void autobitslip()
 	bufWrite(outBuffer, &bufcount, active_ch_hv2, 2);
 	bufWrite(outBuffer, &bufcount, active_ch_hv3, 2);
 
-	digi_write(DG_ADDR_BITALIGN_RSTRT1, active_ch_cal1, 1);
-	digi_write(DG_ADDR_BITALIGN_RSTRT2, active_ch_cal2, 1);
-	digi_write(DG_ADDR_BITALIGN_RSTRT3, active_ch_cal3, 1);
-	digi_write(DG_ADDR_BITALIGN_RSTRT1, active_ch_hv1, 2);
-	digi_write(DG_ADDR_BITALIGN_RSTRT2, active_ch_hv2, 2);
-	digi_write(DG_ADDR_BITALIGN_RSTRT3, active_ch_hv3, 2);
-
+	//start bit align, set corresponding channel's restart to 1, then back to 0 after 8 ticks
+	digi_write(DG_ADDR_BITALIGN_RSTRT, 1, 0);
 	delayTicks(8);
-
-	digi_write(DG_ADDR_BITALIGN_RSTRT1, 0,1);
-	digi_write(DG_ADDR_BITALIGN_RSTRT2, 0,1);
-	digi_write(DG_ADDR_BITALIGN_RSTRT3, 0,1);
-	digi_write(DG_ADDR_BITALIGN_RSTRT1, 0,2);
-	digi_write(DG_ADDR_BITALIGN_RSTRT2, 0,2);
-	digi_write(DG_ADDR_BITALIGN_RSTRT3, 0,2);
+	digi_write(DG_ADDR_BITALIGN_RSTRT, 0, 0);
 
 	volatile uint16_t completion[6] = {0};
 	volatile uint16_t error[6] = {0};
@@ -558,32 +555,63 @@ void autobitslip()
 	}
 
 	///////////////////////////////////
+	// 	DOING BITSLIP                //
+	///////////////////////////////////
+
+	//switch to pattern #1 for bitslip
+	for (uint8_t i=0;i<12;i++){
+		if ((0x1<<i) & ENABLED_ADCS)
+			adc_write(ADC_ADDR_TESTIO,0x1,(0x1<<i));
+	}
+
+	uint8_t bitslipstep[96] = {0xff};
+	volatile uint16_t bitstlip_done[6] = {0};
+
+	for (uint8_t i=0; i<10; i++){
+		hwdelay(10);
+
+		digi_write(DG_ADDR_BITSLIP_STRT, 1, 0);
+		delayTicks(10);
+		digi_write(DG_ADDR_BITSLIP_STRT, 0, 0);
+
+		bitstlip_done[0] = digi_read(DG_ADDR_BITSLIP_DONE1, 1);
+		bitstlip_done[1] = digi_read(DG_ADDR_BITSLIP_DONE2, 1);
+		bitstlip_done[2] = digi_read(DG_ADDR_BITSLIP_DONE3, 1);
+		bitstlip_done[3] = digi_read(DG_ADDR_BITSLIP_DONE1, 2);
+		bitstlip_done[4] = digi_read(DG_ADDR_BITSLIP_DONE2, 2);
+		bitstlip_done[5] = digi_read(DG_ADDR_BITSLIP_DONE3, 2);
+
+		for (uint8_t ichan=0; ichan<96; ichan++){
+			uint16_t this_chan_mask = (uint16_t) 0x1 << (ichan%16);
+			if (((bitstlip_done[ichan/16] & this_chan_mask) != 0) && (bitslipstep[ichan] == 0xff))
+				bitslipstep[ichan] = i;
+		}
+	}
+	for (uint8_t i=0; i<6; i++)
+			bufWrite(outBuffer, &bufcount, bitstlip_done[i], 2);
+	for (uint8_t i=0; i<96; i++)
+			bufWrite(outBuffer, &bufcount, bitslipstep[i], 1);
+
+	///////////////////////////////////
 	// CHECK RESULT                  //
 	///////////////////////////////////
 
-	// check with mixed frequency ADC/ 0x0001
-	for (uint8_t ipattern = 0; ipattern<2; ipattern++){
-		for (uint8_t i=0;i<12;i++){
-			if ((0x1<<i) & ENABLED_ADCS){
-				if (ipattern == 0)
-					adc_write(ADC_ADDR_TESTIO,0xC,(0x1<<i));
-				else
-					adc_write(ADC_ADDR_TESTIO,0x1,(0x1<<i));
-			}
-		}
+	// check with mixed frequency ADC
 
-		uint32_t not_enough_trigger[3] = {0};
-		uint32_t pattern_fail[3] = {0};
+	uint32_t not_enough_trigger[3] = {0};
+	uint32_t pattern_fail[3] = {0};
+	if (ifcheck){
+		for (uint8_t i=0;i<12;i++){
+			if ((0x1<<i) & ENABLED_ADCS)
+				adc_write(ADC_ADDR_TESTIO,0xC,(0x1<<i));
+		}
 
 		hvcal = 1;
 		for (uint8_t ichan=0;ichan<96;ichan++){
 			if (ichan > 47)	hvcal =2;
 			thischanmask = (((uint32_t) 0x1)<<(ichan%32));
-			if ( ((ichan<32) && ((thischanmask & mapped_channel_mask[0]) == 0x0))||
-					((ichan>=32) && (ichan<64) && ((thischanmask & mapped_channel_mask[1]) == 0x0))||
-					((ichan>=64) && ((thischanmask & mapped_channel_mask[2]) == 0x0))	){
+			if ((thischanmask & mapped_channel_mask[ichan/32]) == 0x0)
 				continue;
-			}
 
 			digi_write(DG_ADDR_MASK1, 0x0, 0);
 			digi_write(DG_ADDR_MASK2, 0x0, 0);
@@ -613,8 +641,7 @@ void autobitslip()
 				not_enough_trigger[ichan/32] |= (((uint32_t)0x1)<<(ichan%32));
 				continue;
 			}
-			if (((ipattern == 0) &&(lasthit[readout_wordsPerTrigger-1] != 0x319)) ||
-					((ipattern == 1) &&(lasthit[readout_wordsPerTrigger-1] != 0x001))){
+			if (lasthit[readout_wordsPerTrigger-1] != 0x319){
 				pattern_fail[ichan/32] |= (((uint32_t)0x1)<<(ichan%32));
 			}
 		}

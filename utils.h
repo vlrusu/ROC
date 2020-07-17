@@ -10,6 +10,7 @@
 
 
 #define ENABLED_ADCS				0xFFFu
+//#define ENABLED_ADCS				0x3Fu
 
 //******************************************************************************
 //                             Parameters
@@ -132,16 +133,21 @@
 #define DG_ADDR_SMARDREQ 0x51
 #define DG_ADDR_SMADATA 0x52
 
-#define DG_ADDR_BITALIGN_RSTRT1 0x60
-#define DG_ADDR_BITALIGN_RSTRT2 0x61
-#define DG_ADDR_BITALIGN_RSTRT3 0x62
+#define DG_ADDR_RX_CH_MASK1 0x60
+#define DG_ADDR_RX_CH_MASK2 0x61
+#define DG_ADDR_RX_CH_MASK3 0x62
 #define DG_ADDR_BITALIGN_EWM_WIDTH 0x63
-#define DG_ADDR_BITALIGN_CMP1 0x64
-#define DG_ADDR_BITALIGN_CMP2 0x65
-#define DG_ADDR_BITALIGN_CMP3 0x66
-#define DG_ADDR_BITALIGN_ERR1 0x67
-#define DG_ADDR_BITALIGN_ERR2 0x68
-#define DG_ADDR_BITALIGN_ERR3 0x69
+#define DG_ADDR_BITALIGN_RSTRT 0x64
+#define DG_ADDR_BITSLIP_STRT 0x65
+#define DG_ADDR_BITALIGN_CMP1 0x66
+#define DG_ADDR_BITALIGN_CMP2 0x67
+#define DG_ADDR_BITALIGN_CMP3 0x68
+#define DG_ADDR_BITALIGN_ERR1 0x69
+#define DG_ADDR_BITALIGN_ERR2 0x6A
+#define DG_ADDR_BITALIGN_ERR3 0x6B
+#define DG_ADDR_BITSLIP_DONE1 0x6C
+#define DG_ADDR_BITSLIP_DONE2 0x6D
+#define DG_ADDR_BITSLIP_DONE3 0x6E
 
 //#define DG_ADDR_EWMCNTER 0x80
 #define DG_ADDR_EWS 0x81 // (event window start 160MHz clock ticks)
