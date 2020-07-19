@@ -148,6 +148,7 @@
 #define DG_ADDR_BITSLIP_DONE1 0x6C
 #define DG_ADDR_BITSLIP_DONE2 0x6D
 #define DG_ADDR_BITSLIP_DONE3 0x6E
+#define DG_AGGR_BITALIGN_RSETN 0x6F
 
 //#define DG_ADDR_EWMCNTER 0x80
 #define DG_ADDR_EWS 0x81 // (event window start 160MHz clock ticks)
