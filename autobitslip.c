@@ -549,7 +549,7 @@ void autobitslip()
 
 		//wait until all channels are completed; timeout after 30 secs
 		for (uint8_t i=0; i<30; i++){
-			hwdelay(10000000);//check every 1 second if is done
+			hwdelay(50000000);//check every 1 second if is done
 
 			completion[0] = digi_read(DG_ADDR_BITALIGN_CMP1, 1);
 			completion[1] = digi_read(DG_ADDR_BITALIGN_CMP2, 1);
@@ -598,7 +598,7 @@ void autobitslip()
 		volatile uint16_t bitstlip_done[6] = {0};
 
 		for (uint8_t i=0; i<10; i++){
-			hwdelay(10);
+			hwdelay(50);
 
 			digi_write(DG_ADDR_BITSLIP_STRT, 1, 0);
 			delayTicks(10);
@@ -638,7 +638,7 @@ void autobitslip()
 		if (ifcheck){
 
 			digi_write(DG_ADDR_SAMPLE,checksamples,0);
-			hwdelay(10);
+			hwdelay(50);
 
 			for (uint8_t i=0;i<12;i++){
 				if ((0x1<<i) & ENABLED_ADCS)

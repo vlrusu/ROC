@@ -42,7 +42,6 @@ int main()
 	//	GPIO_config( &g_gpio, GPIO_0, GPIO_OUTPUT_MODE);
 	GPIO_set_output( &g_gpio, GPIO_0, 0);
 
-	UART_polled_tx_string( &g_uart, "here" );
 	uint8_t readout_enabled = 0;
 	uint8_t calibration_enabled = 0;
 	int readout_totalTriggers = 0;
@@ -83,7 +82,6 @@ int main()
 	SPI_configure_master_mode( &g_spi[2] );
 	SPI_init( &g_spi[3], CALSPI_BASE_ADDR, 8 );
 	SPI_configure_master_mode( &g_spi[3] );
-	UART_polled_tx_string( &g_uart, "here" );
 
 	//setup MCPs
 	for (int imcp = MCPCAL0; imcp<=MCPFC2; imcp++){
@@ -96,7 +94,6 @@ int main()
 			MCP_setup(&preampMCP[imcp], g_spi[2], 1 , 0x20 + imcp - MCPFC0);
 	}
 
-	UART_polled_tx_string( &g_uart, "here1\n" );
 	// outputs for calpulse enable
 
 	for (uint8_t imcp = 0; imcp < 8; imcp++){
@@ -112,7 +109,7 @@ int main()
 	for (uint8_t i = 0; i < 48; i++){
 		MCP_pinWrite(&preampMCP[MCPFC0+i/16],i%16+1,0);
 	}
-	UART_polled_tx_string( &g_uart, "here1\n" );
+
 	//setup LTC2634, preamp DACs
 	for (uint8_t idac = 0 ; idac < 96; idac++){
 		if (idac<14)
@@ -132,10 +129,10 @@ int main()
 		else
 			LTC2634_setup(&dacs[idac],&preampMCP[MCPHV3],idac-85,&preampMCP[MCPHV2],2,&preampMCP[MCPHV2],1);
 	}
-	UART_polled_tx_string( &g_uart, "here2\n" );
+
 	LTC2634_setup(&caldac0,&preampMCP[MCPCAL1],12,&preampMCP[MCPCAL0],2,&preampMCP[MCPCAL0],1);
 	LTC2634_setup(&caldac1,&preampMCP[MCPCAL1],13,&preampMCP[MCPCAL0],2,&preampMCP[MCPCAL0],1);
-	UART_polled_tx_string( &g_uart, "here3\n" );
+
 	// Set default thresholds and gains
 	for (uint8_t i = 0 ; i < 96 ; i++){
 		strawsCal[i]._ltc = &dacs[i/2];
@@ -156,7 +153,7 @@ int main()
 		LTC2634_write(strawsHV[i]._ltc,strawsHV[i]._gain,default_gains_hv[i]);
 		LTC2634_write(strawsHV[i]._ltc,strawsHV[i]._thresh,default_threshs_hv[i]);
 	}
-	UART_polled_tx_string( &g_uart, "here" );
+
 	//adc_write(0x08,0x00,0x3F);
 
 	digi_write(DG_ADDR_BITSLIP0,0x0,0);
@@ -274,8 +271,6 @@ int main()
 	GPIO_set_output( &g_gpio, GPIO_1, 0);
 	//granularity is clock period=25ns -- period is (gr+1)*1000=50us
 	//PWM_PERIOD = PWM_GRANULARITY * (period + 1) = 25 *1000 = 25us
-	PWM_init( &g_pwm, COREPWM_BASE_ADDR, 1, 4 );
-	PWM_set_duty_cycle( &g_pwm, PWM_2,2 );//duty cycle is 4 x 25 = 100ns
 	*(registers_0_addr + REG_TIMERENABLE) = 1;
 	*(registers_0_addr + REG_TIMERRESET) = 0;
 
@@ -428,8 +423,8 @@ int main()
 					bufWrite(outBuffer, &bufcount, dutyCycle, 2);
 					bufWrite(outBuffer, &bufcount, pulserDelay, 4);
 					outBufSend(g_uart, outBuffer, bufcount);
-					PWM_init( &g_pwm, COREPWM_BASE_ADDR, 1, 4 );
-//					PWM_set_duty_cycle( &g_pwm, PWM_2, 2 );//duty cycle is 4 x 25 = 100ns
+					//PWM_init( &g_pwm, COREPWM_BASE_ADDR, 1, 4 );
+					//PWM_set_duty_cycle( &g_pwm, PWM_2, 2 );//duty cycle is 4 x 25 = 100ns
 
 
 
@@ -446,7 +441,7 @@ int main()
 				 	bufWrite(outBuffer, &bufcount, 0, 2);
 
 				 	GPIO_set_output( &g_gpio, GPIO_0, 1);
-				 	hwdelay(1000);
+				 	hwdelay(5000);
 				 	GPIO_set_output( &g_gpio, GPIO_0, 0);
 				 	outBufSend(g_uart, outBuffer, bufcount);
 
@@ -1302,7 +1297,7 @@ int main()
 								for (uint8_t i=0; i<3; i++){
 									setPreampGain(straw_num, gain_cal[i]);
 									setPreampGain(straw_num+96, gain_hv[i]);
-									hwdelay(100000);//wait for 10ms gain to reach written value and for SMA to settle
+									hwdelay(500000);//wait for 10ms gain to reach written value and for SMA to settle
 
 									digi_write(DG_ADDR_SMARDREQ, 1, ihvcal);
 									delayUs(1);//write READREQ to 1 and freeze SMA module

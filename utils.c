@@ -105,7 +105,7 @@ uint32_t readU32fromBytes(uint8_t data[])
 	return u.ulval;
 }
 
-void hwdelay (uint32_t tdelay)//100ns per count
+void hwdelay (uint32_t tdelay)//20ns per count
 {
 	volatile uint32_t retv = 0;
 	*(registers_0_addr + REG_TIMERRESET) = 1;
@@ -738,7 +738,7 @@ uint32_t get_rates(int num_delays, int num_samples, uint8_t channel, uint32_t* t
 				(((uint64_t) digi_read(DG_ADDR_GT2,ihvcal))<<16) |
 				((uint64_t) digi_read(DG_ADDR_GT3,ihvcal));
 		for (uint8_t j=0;j<num_samples;j++){
-			hwdelay(num_delays*10);//delayUs(num_delays);
+			hwdelay((uint32_t)num_delays*50);//delayUs(num_delays);
 			digi_write(DG_ADDR_LATCH, 1, ihvcal);
 			end_global_time = (((uint64_t) digi_read(DG_ADDR_GT0,ihvcal))<<48) |
 					(((uint64_t) digi_read(DG_ADDR_GT1,ihvcal))<<32) |
