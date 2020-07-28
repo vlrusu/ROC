@@ -55,7 +55,7 @@ extern void mscc_post_hw_cfg_init(void);
 /*------------------------------------------------------------------------------
  * Standard CMSIS global variables.
  */
-uint32_t SystemCoreClock = 1000000;         /*!< System Clock Frequency (Core Clock) */
+uint32_t SystemCoreClock = 1000000;         /*!< System Clock Frequency (Core Clock Hz) */
 
 /*------------------------------------------------------------------------------
  * global variables from linker script

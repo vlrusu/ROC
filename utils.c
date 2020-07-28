@@ -41,7 +41,7 @@ uint8_t channel_map[96]={
 		//94,88,82,76,70,64,58,52};
 uint8_t adc_map[12] = {0,1,2,3,4,5,6,7,8,9,10,11};
 //uint8_t adcclk_map[12] = {1,1,2,3,3,3,6,6,6,9,11,11};
-uint8_t adcclk_map[12] = {1,1,2,3,3,3,6,6,8,9,9,9};
+//uint8_t adcclk_map[12] = {1,1,2,3,3,3,6,6,8,9,9,9};
 
 uint8_t adc_phases[12] = {0};
 
@@ -105,7 +105,7 @@ uint32_t readU32fromBytes(uint8_t data[])
 	return u.ulval;
 }
 
-void hwdelay (uint32_t tdelay)
+void hwdelay (uint32_t tdelay)//20ns per count
 {
 	volatile uint32_t retv = 0;
 	*(registers_0_addr + REG_TIMERRESET) = 1;
@@ -155,6 +155,23 @@ void delayTicks(uint8_t ticks)
 		--delay_count;
 	}
 }
+
+//void delayCore(uint32_t cycles)
+//{
+//	asm volatile (
+//			"MOV r0, %[cycles]\n\t"/* load value*/
+//			"1:\n\t"
+//			"SUB r0, #1\n\t"
+//			"CMP r0, #0\n\t"
+//			"BNE 1b\n\t"
+//			: /* no outputs */
+//			: [cycles] "r" (cycles)
+//			: "r0"/*clobber list to prevent using these registers*/
+//			);
+//	return;
+//}
+//in-line assembly implementation of delay loop.
+//Nominal 50MHz CPU(?) core rate, debugging mode runs 1.25x nominal time, sNvM ~3.75x
 
 void GPIO_write(uint8_t pin, uint8_t value)
 {
@@ -721,7 +738,7 @@ uint32_t get_rates(int num_delays, int num_samples, uint8_t channel, uint32_t* t
 				(((uint64_t) digi_read(DG_ADDR_GT2,ihvcal))<<16) |
 				((uint64_t) digi_read(DG_ADDR_GT3,ihvcal));
 		for (uint8_t j=0;j<num_samples;j++){
-			delayUs(num_delays);
+			hwdelay((uint32_t)num_delays*50);//delayUs(num_delays);
 			digi_write(DG_ADDR_LATCH, 1, ihvcal);
 			end_global_time = (((uint64_t) digi_read(DG_ADDR_GT0,ihvcal))<<48) |
 					(((uint64_t) digi_read(DG_ADDR_GT1,ihvcal))<<32) |

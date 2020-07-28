@@ -42,6 +42,7 @@ typedef struct {
 } Straw;
 
 MCP preampMCP[12];
+MCP sensorMCP;
 
 LTC2634 dacs[96];
 LTC2634 caldac0;
@@ -55,8 +56,9 @@ Straw strawsHV[96];
 I2C I2CserialCal;
 I2C I2CserialHV;
 
-I2C i2c_ptscal[2];
-I2C i2c_ptshv[2];
+//I2C i2c_ptscal[2];
+//I2C i2c_ptshv[2];
+I2C i2c_sensor[2];
 
 I2C     i2c_slowamps[48]; // "I2C" objects, they internally hold 2 MCP23S17 objects.
 MCP3427 slowamps[48];     // MCP3427 objects, one per I2C object.
