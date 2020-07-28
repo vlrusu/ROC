@@ -8,6 +8,7 @@
 #include "drivers/CorePWM/core_pwm.h"
 #include "hw_platform.h"
 
+#define TICKPERUS 50
 
 #define ENABLED_ADCS				0xFFFu
 //#define ENABLED_ADCS				0x3Fu

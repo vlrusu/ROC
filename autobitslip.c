@@ -703,9 +703,12 @@ void autobitslip()
 					faulted_adc |= ((uint16_t)0x1 << (4*i+2));
 				if (pattern_fail[i] & 0xff000000)
 					faulted_adc |= ((uint16_t)0x1 << (4*i+3));
-
+			}
+			for (uint8_t i=0; i<3; i++){
 				if (not_enough_trigger[i] != 0) faulted_adc = 0;
 			}
+			//not enough trigger indicates a SERDES error. abort immediately
+			//put in a separate loop so faulted_adc is not overwritten again
 		}
 		else{
 			for (uint8_t i=0;i<6;i++) bufWrite(outBuffer, &bufcount, 0, 4);
