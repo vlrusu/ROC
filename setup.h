@@ -13,7 +13,9 @@
 #include "I2C.h"
 #include "AD5318.h"
 #include "LTC2634.h"
-#include "BME280.h"
+#include "SPI_daisy.h"
+//#include "BME280.h"
+#include "BME280_SPI_daisy.h"
 #include "bme280_defs.h"
 #include "HDC2080.h"
 #include "DS28CM00.h"
@@ -44,6 +46,8 @@ typedef struct {
 
 MCP preampMCP[12];
 MCP sensorMCP;
+
+SPI_daisy spi_sensor, spi_ambtemp_cal, spi_ambtemp_hv;
 
 LTC2634 dacs[96];
 LTC2634 caldac0;

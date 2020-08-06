@@ -840,11 +840,11 @@ void bufWrite(char *outBuffer, uint16_t *bufcount, uint32_t data, uint16_t nbyte
 	}
 }
 
-void bufWriteN(char *outBuffer, uint16_t bufaddr, uint32_t data, uint16_t nbytes){
-	for (uint8_t i=0; i<nbytes; i++){
-		outBuffer[bufaddr+i] = (data>>(i*8)) & 0xff;
-	}
-}
+//void bufWriteN(char *outBuffer, uint16_t bufaddr, uint32_t data, uint16_t nbytes){
+//	for (uint8_t i=0; i<nbytes; i++){
+//		outBuffer[bufaddr+i] = (data>>(i*8)) & 0xff;
+//	}
+//}
 
 void outBufSend(UART_instance_t g_uart, char *outBuffer, uint16_t bufcount){
 	UART_polled_tx_string( &g_uart, "monitoring\n" );
