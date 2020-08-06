@@ -29,7 +29,7 @@ void LTC2634_setup(LTC2634 *self, MCP *csnMCP, uint8_t csnPin, MCP *sclkMCP, uin
 
 	MCP_pinWrite(self->_sclkMCP, self->_sclkPin, 0);
 	MCP_pinWrite(self->_csnMCP, self->_csnPin, 0);
-	delayTicks(LTC2634DELAY);
+	delayUs(LTC2634DELAY);
 	for (int i=23;i>=0;i--){
 		uint8_t thisbit;
 		if ((0x1<<i) & dataWord)
@@ -38,14 +38,14 @@ void LTC2634_setup(LTC2634 *self, MCP *csnMCP, uint8_t csnPin, MCP *sclkMCP, uin
 			thisbit = 0;
 
 		MCP_pinWrite(self->_sdiMCP, self->_sdiPin, thisbit);
-		delayTicks(LTC2634DELAY);
+		delayUs(LTC2634DELAY);
 		MCP_pinWrite(self->_sclkMCP, self->_sclkPin, 1);
-		delayTicks(LTC2634DELAY);
+		delayUs(LTC2634DELAY);
 		MCP_pinWrite(self->_sclkMCP, self->_sclkPin, 0);
-		delayTicks(LTC2634DELAY);
+		delayUs(LTC2634DELAY);
 	}
 	MCP_pinWrite(self->_csnMCP, self->_csnPin, 1);
-	delayTicks(LTC2634DELAY);
+	delayUs(LTC2634DELAY);
 
 }
 
@@ -59,7 +59,7 @@ void LTC2634_write(LTC2634 *self, uint8_t channel, uint16_t value)
 
 	MCP_pinWrite(self->_sclkMCP, self->_sclkPin, 0);
 	MCP_pinWrite(self->_csnMCP, self->_csnPin, 0);
-	delayTicks(LTC2634DELAY);
+	delayUs(LTC2634DELAY);
 	for (int i=23;i>=0;i--){
 		uint8_t thisbit;
 		if ((0x1<<i) & dataWord)
@@ -68,12 +68,12 @@ void LTC2634_write(LTC2634 *self, uint8_t channel, uint16_t value)
 			thisbit = 0;
 
 		MCP_pinWrite(self->_sdiMCP, self->_sdiPin, thisbit);
-		delayTicks(LTC2634DELAY);
+		delayUs(LTC2634DELAY);
 		MCP_pinWrite(self->_sclkMCP, self->_sclkPin, 1);
-		delayTicks(LTC2634DELAY);
+		delayUs(LTC2634DELAY);
 		MCP_pinWrite(self->_sclkMCP, self->_sclkPin, 0);
-		delayTicks(LTC2634DELAY);
+		delayUs(LTC2634DELAY);
 	}
 	MCP_pinWrite(self->_csnMCP, self->_csnPin, 1);
-	delayTicks(LTC2634DELAY);
+	delayUs(LTC2634DELAY);
 }
