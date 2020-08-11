@@ -63,6 +63,7 @@
 #define ROCREADREG 18
 #define SETFUSEON 19
 #define SETFUSEOFF 20
+#define READKEY 21
 
 //DDR command ID
 #define DDRSETUP 50

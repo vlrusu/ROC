@@ -70,7 +70,7 @@ uint32_t calibration_done;
 
 
 UART_instance_t g_uart;
-spi_instance_t g_spi[4];
+spi_instance_t g_spi[5];
 pwm_instance_t g_pwm;
 gpio_instance_t g_gpio;
 

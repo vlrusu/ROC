@@ -82,6 +82,8 @@ int main()
 	SPI_configure_master_mode( &g_spi[2] );
 	SPI_init( &g_spi[3], CALSPI_BASE_ADDR, 8 );
 	SPI_configure_master_mode( &g_spi[3] );
+	SPI_init( &g_spi[4], SPI2_BASE_ADDR, 8 );
+	SPI_configure_master_mode( &g_spi[4] );
 
 	//setup MCPs
 	for (int imcp = MCPCAL0; imcp<=MCPFC2; imcp++){
@@ -768,8 +770,8 @@ int main()
 					bufWrite(outBuffer, &bufcount, this_humidity, 2);
 
 					//readout amb_temp
-					uint16_t amb_temp_cal = ADC124S051_read(&spi_ambtemp_cal, 1);
-					uint16_t amb_temp_hv = ADC124S051_read(&spi_ambtemp_hv, 0);
+					uint16_t amb_temp_cal = ADC124S051_daisy_read(&spi_ambtemp_cal, 1);
+					uint16_t amb_temp_hv = ADC124S051_daisy_read(&spi_ambtemp_hv, 0);
 					bufWrite(outBuffer, &bufcount, amb_temp_cal, 2);
 					bufWrite(outBuffer, &bufcount, amb_temp_hv, 2);
 
@@ -827,6 +829,19 @@ int main()
 //					outBuffer[bufcount++] = SETFUSEOFF;
 //					bufWrite(outBuffer, &bufcount, 0, 2);
 //					outBufSend(g_uart, outBuffer, bufcount);
+
+				}else if (commandID == READKEY){
+					outBuffer[bufcount++] = READKEY;
+					bufWrite(outBuffer, &bufcount, 6, 2);
+
+					uint16_t key_temp = ADC124S051_read(&g_spi[4], 1);
+					uint16_t v2p5 = ADC124S051_read(&g_spi[4], 3);
+					uint16_t v5p1 = ADC124S051_read(&g_spi[4], 0);
+
+					bufWrite(outBuffer, &bufcount, key_temp, 2);
+					bufWrite(outBuffer, &bufcount, v2p5, 2);
+					bufWrite(outBuffer, &bufcount, v5p1, 2);
+					outBufSend(g_uart, outBuffer, bufcount);
 
 				//***********************************begin of DDR commands****************************************************************************************
 /*
