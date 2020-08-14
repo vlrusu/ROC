@@ -49,6 +49,11 @@ int main()
 	//register address for bit banging
 	registers_0_addr = (volatile uint32_t *) REGISTERBASEADDR;
 
+	//enabling hw counter
+	//granularity is clock period=25ns -- period is (gr+1)*1000=50us
+	//PWM_PERIOD = PWM_GRANULARITY * (period + 1) = 25 *1000 = 25us
+	*(registers_0_addr + REG_TIMERENABLE) = 1;
+	*(registers_0_addr + REG_TIMERRESET) = 0;
 
 	adc_write(ADC_ADDR_PWR,0x01,0xFFF);
 	adc_write(ADC_ADDR_PWR,0x00,ENABLED_ADCS);
@@ -195,7 +200,7 @@ int main()
 	//SPI_daisy bus for AMB temperature, cal side
 	SPI_daisy_setup(&spi_ambtemp_cal, &preampMCP[MCPCAL1], 16, &preampMCP[MCPCAL1], 14, &preampMCP[MCPCAL1], 15, &preampMCP[MCPCAL1], 11);
 	//SPI_daisy bus for AMB temperature, hv side
-	SPI_daisy_setup(&spi_ambtemp_hv, &preampMCP[MCPHV1], 13, &preampMCP[MCPHV1], 15, &preampMCP[MCPHV1], 14, &preampMCP[MCPHV1], 16);
+	SPI_daisy_setup(&spi_ambtemp_hv, &preampMCP[MCPHV1], 13, &preampMCP[MCPHV1], 15, &preampMCP[MCPHV1], 14, &preampMCP[MCPHV3], 16);
 
 	int8_t rslt = BME280_OK;
 	//uint8_t settings_sel;
@@ -296,19 +301,12 @@ int main()
 		LTC2634_write(&caldac1,i+4,default_caldac[i+4]);
 	}
 
-
-
-
 	init_DIGIs();
 
 	UART_polled_tx_string( &g_uart, "Initialization completed" );
 
 	GPIO_set_output( &g_gpio, GPIO_0, 0);
 	GPIO_set_output( &g_gpio, GPIO_1, 0);
-	//granularity is clock period=25ns -- period is (gr+1)*1000=50us
-	//PWM_PERIOD = PWM_GRANULARITY * (period + 1) = 25 *1000 = 25us
-	*(registers_0_addr + REG_TIMERENABLE) = 1;
-	*(registers_0_addr + REG_TIMERRESET) = 0;
 
 	while(1)
 	{
