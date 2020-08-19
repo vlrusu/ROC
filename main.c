@@ -832,9 +832,9 @@ int main()
 					outBuffer[bufcount++] = READKEY;
 					bufWrite(outBuffer, &bufcount, 6, 2);
 
-					uint16_t key_temp = ADC124S051_read(&g_spi[4], 1);
-					uint16_t v2p5 = ADC124S051_read(&g_spi[4], 3);
-					uint16_t v5p1 = ADC124S051_read(&g_spi[4], 0);
+					uint16_t key_temp = ADC124S051_read(&g_spi[4], 0, 1);
+					uint16_t v2p5 = ADC124S051_read(&g_spi[4], 0, 3);
+					uint16_t v5p1 = ADC124S051_read(&g_spi[4], 0, 0);
 
 					bufWrite(outBuffer, &bufcount, key_temp, 2);
 					bufWrite(outBuffer, &bufcount, v2p5, 2);
