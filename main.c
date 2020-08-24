@@ -195,6 +195,8 @@ int main()
 	//I2C_setup(&i2c_sensor[0], &sensorMCP, 2,&sensorMCP, 3);
 	//SPI_daisy bus for BME
 	SPI_daisy_setup(&spi_sensor, &sensorMCP, 3, &sensorMCP, 2, &sensorMCP, 4, &sensorMCP, 1);
+	unsigned int check0 = MCP_wordRead(&sensorMCP, OLAT09);
+	unsigned int check1 = MCP_wordRead(&sensorMCP, GPIO09);
 	//I2C bus for HDC
 	I2C_setup(&i2c_sensor[1], &sensorMCP, 6,&sensorMCP, 7);
 	//SPI_daisy bus for AMB temperature, cal side

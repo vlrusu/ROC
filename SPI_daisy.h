@@ -13,7 +13,8 @@
 
 #include "MCP23S17.h"
 
-#define SPI_DAISY_HALF_CLK_DELAY 2
+//#define SPI_DAISY_HALF_CLK_DELAY 2
+#define SPI_DAISY_HALF_CLK_DELAY 20
 
 typedef struct{
     MCP *_mcp_scl; // SPI expander for clock line

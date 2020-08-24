@@ -30,6 +30,17 @@ void bme280_get_regs(SPI_daisy *spi, uint8_t starting_reg_addr, uint8_t len, uin
 }
 
 uint8_t bme280_init_settings(SPI_daisy *spi){//write fixed settings to registers
+	uint8_t chip_id = 0;
+	bme280_get_regs(spi, BME280_CHIP_ID_ADDR, 1, &chip_id);
+
+	//reset chip
+	uint8_t rst_addr = BME280_RESET_ADDR;
+	//0xB6 is the soft reset command
+	uint8_t rst_cmd = 0xB6;
+	bme280_set_regs(spi, 1, &rst_addr, &rst_cmd);
+	//As per data sheet, startup time is 2 ms
+	delay_ms(2);
+
 	uint8_t settings_addr[3] = {BME280_CONFIG_ADDR, BME280_CTRL_HUM_ADDR, BME280_CTRL_MEAS_ADDR};
 	uint8_t settings_data[3] = {0};
 	settings_data[0] = ((BME280_FILTER_COEFF_16) << 2); //intend to use forced mode, no t_sb required; filter; 4-pin SPI

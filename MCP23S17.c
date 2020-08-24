@@ -264,7 +264,7 @@ uint8_t MCP_byteRead(MCP *mcp, uint8_t reg) {
 	           &rx_buffer,
 	           1);
 
-
+	SPI_clear_slave_select(&(mcp->spi), mcp->ss);
 
 	return rx_buffer;
 
