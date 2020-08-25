@@ -20,12 +20,20 @@ void SPI_daisy_setup(SPI_daisy *self, MCP *mcp_scl, uint8_t sclPin, MCP *mcp_sdi
 
 	MCP_pinWrite(self->_mcp_scl, self->_sclPin, 1);
 	MCP_pinMode(self->_mcp_scl, self->_sclPin, MCP_OUTPUT);
+	if (self->_mcp_scl->_ifMCP23S09)
+		MCP_pullupMode(self->_mcp_scl, self->_sclPin, 1);
 	MCP_pinWrite(self->_mcp_sdi, self->_sdiPin, 0);
 	MCP_pinMode(self->_mcp_sdi, self->_sdiPin, MCP_OUTPUT);
+	if (self->_mcp_sdi->_ifMCP23S09)
+		MCP_pullupMode(self->_mcp_sdi, self->_sdiPin, 1);
 	MCP_pinWrite(self->_mcp_sdo, self->_sdoPin, 0);
 	MCP_pinMode(self->_mcp_sdo, self->_sdoPin, MCP_INPUT);
+	if (self->_mcp_sdo->_ifMCP23S09)
+		MCP_pullupMode(self->_mcp_sdo, self->_sdoPin, 1);
 	MCP_pinWrite(self->_mcp_cs, self->_csPin, 1);
 	MCP_pinMode(self->_mcp_cs, self->_csPin, MCP_OUTPUT);
+	if (self->_mcp_cs->_ifMCP23S09)
+		MCP_pullupMode(self->_mcp_cs, self->_csPin, 1);
 
 	return;
 }
@@ -61,7 +69,7 @@ void SPI_daisy_write(SPI_daisy* self, uint8_t nbyte, uint8_t *data){
 
 void SPI_daisy_rw_cycle(SPI_daisy *self, uint8_t wbyte, uint8_t *wdata, uint8_t rbyte, uint8_t *rdata){
 	MCP_pinWrite(self->_mcp_cs, self->_csPin, 0);
-	hwdelay(2); //Allow 100 ns setup time
+	hwdelay(200); //Allow 10 us setup time
 	SPI_daisy_write(self, wbyte, wdata);
 	SPI_daisy_read(self, rbyte, rdata);
 	MCP_pinWrite(self->_mcp_cs, self->_csPin, 1);
