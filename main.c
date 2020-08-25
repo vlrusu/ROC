@@ -49,6 +49,11 @@ int main()
 	//register address for bit banging
 	registers_0_addr = (volatile uint32_t *) REGISTERBASEADDR;
 
+	//enabling hw counter
+	//granularity is clock period=25ns -- period is (gr+1)*1000=50us
+	//PWM_PERIOD = PWM_GRANULARITY * (period + 1) = 25 *1000 = 25us
+	*(registers_0_addr + REG_TIMERENABLE) = 1;
+	*(registers_0_addr + REG_TIMERRESET) = 0;
 
 	adc_write(ADC_ADDR_PWR,0x01,0xFFF);
 	adc_write(ADC_ADDR_PWR,0x00,ENABLED_ADCS);
@@ -82,6 +87,8 @@ int main()
 	SPI_configure_master_mode( &g_spi[2] );
 	SPI_init( &g_spi[3], CALSPI_BASE_ADDR, 8 );
 	SPI_configure_master_mode( &g_spi[3] );
+	SPI_init( &g_spi[4], SPI2_BASE_ADDR, 8 );
+	SPI_configure_master_mode( &g_spi[4] );
 
 	//setup MCPs
 	for (int imcp = MCPCAL0; imcp<=MCPFC2; imcp++){
@@ -185,9 +192,17 @@ int main()
 	//I2C_setup(&i2c_ptshv[1], &preampMCP[MCPHV3],15,&preampMCP[MCPHV3],14);
 
 	//I2C bus for BME
-	I2C_setup(&i2c_sensor[0], &sensorMCP, 2,&sensorMCP, 3);
+	//I2C_setup(&i2c_sensor[0], &sensorMCP, 2,&sensorMCP, 3);
+	//SPI_daisy bus for BME
+	SPI_daisy_setup(&spi_sensor, &sensorMCP, 3, &sensorMCP, 2, &sensorMCP, 4, &sensorMCP, 1);
+	//unsigned int check2 = MCP_wordRead(&sensorMCP, OLAT09);
+	//unsigned int check3 = MCP_wordRead(&sensorMCP, GPIO09);
 	//I2C bus for HDC
 	I2C_setup(&i2c_sensor[1], &sensorMCP, 6,&sensorMCP, 7);
+	//SPI_daisy bus for AMB temperature, cal side
+	SPI_daisy_setup(&spi_ambtemp_cal, &preampMCP[MCPCAL1], 16, &preampMCP[MCPCAL1], 14, &preampMCP[MCPCAL1], 15, &preampMCP[MCPCAL1], 11);
+	//SPI_daisy bus for AMB temperature, hv side
+	SPI_daisy_setup(&spi_ambtemp_hv, &preampMCP[MCPHV1], 13, &preampMCP[MCPHV1], 15, &preampMCP[MCPHV1], 14, &preampMCP[MCPHV3], 16);
 
 	int8_t rslt = BME280_OK;
 	//uint8_t settings_sel;
@@ -262,6 +277,9 @@ int main()
 	rslt = bme280_set_sensor_settings(settings_sel, &ptbme);
 	*/
 
+	//Set up BME280 on SPI daisy
+	bme280_init_settings(&spi_sensor);
+
 	//Set up HDC2080 chips
 	/*
 	HDC2080 hdchv;
@@ -285,19 +303,12 @@ int main()
 		LTC2634_write(&caldac1,i+4,default_caldac[i+4]);
 	}
 
-
-
-
 	init_DIGIs();
 
 	UART_polled_tx_string( &g_uart, "Initialization completed" );
 
 	GPIO_set_output( &g_gpio, GPIO_0, 0);
 	GPIO_set_output( &g_gpio, GPIO_1, 0);
-	//granularity is clock period=25ns -- period is (gr+1)*1000=50us
-	//PWM_PERIOD = PWM_GRANULARITY * (period + 1) = 25 *1000 = 25us
-	*(registers_0_addr + REG_TIMERENABLE) = 1;
-	*(registers_0_addr + REG_TIMERRESET) = 0;
 
 	while(1)
 	{
@@ -712,20 +723,22 @@ int main()
 				 	*/
 
 					outBuffer[bufcount++] = READBMES;
-					bufWrite(outBuffer, &bufcount, 4, 2);
-					//bufWrite(outBuffer, &bufcount, 2*BME280_P_T_H_DATA_LEN+4, 2);
-					/*
+					bufWrite(outBuffer, &bufcount, BME280_TEMP_PRESS_CALIB_DATA_LEN+BME280_HUMIDITY_CALIB_DATA_LEN+BME280_P_T_H_DATA_LEN+4+4, 2);
+
 					//read with BME 280
-					uint8_t reg_data[BME280_P_T_H_DATA_LEN];
-					uint8_t calib_data[BME280_TEMP_PRESS_CALIB_DATA_LEN];
-					rslt = bme280_set_sensor_mode(BME280_FORCED_MODE, &ptbme);
-					ptbme.delay_ms(40);
-					rslt = bme280_get_regs(BME280_TEMP_PRESS_CALIB_DATA_ADDR, calib_data, BME280_TEMP_PRESS_CALIB_DATA_LEN,&ptbme);
-					rslt = bme280_get_regs(BME280_DATA_ADDR, reg_data, BME280_P_T_H_DATA_LEN, &ptbme);
-					for (uint8_t i =0; i<BME280_P_T_H_DATA_LEN; i++){
-						bufWrite(outBuffer, &bufcount, reg_data[i], 1);
-					}
-					*/
+					uint8_t calib_data_tp[BME280_TEMP_PRESS_CALIB_DATA_LEN];
+					uint8_t calib_data_h[BME280_HUMIDITY_CALIB_DATA_LEN];
+					uint8_t raw_bme_data[BME280_P_T_H_DATA_LEN];
+
+					bme280_get_calib(&spi_sensor, calib_data_tp, calib_data_h);
+					bme280_get_htp(&spi_sensor, raw_bme_data);
+
+					for (uint8_t i =0; i<BME280_TEMP_PRESS_CALIB_DATA_LEN; i++)
+						bufWrite(outBuffer, &bufcount, calib_data_tp[i], 1);
+					for (uint8_t i =0; i<BME280_HUMIDITY_CALIB_DATA_LEN; i++)
+						bufWrite(outBuffer, &bufcount, calib_data_h[i], 1);
+					for (uint8_t i =0; i<BME280_P_T_H_DATA_LEN; i++)
+						bufWrite(outBuffer, &bufcount, raw_bme_data[i], 1);
 
 					//Also take measurements from HDC 2080 chips
 					uint16_t this_temp = 0;
@@ -753,6 +766,12 @@ int main()
 					rslt = hdc2080_read_humidity(&pthdc, &this_humidity);
 					bufWrite(outBuffer, &bufcount, this_temp, 2);
 					bufWrite(outBuffer, &bufcount, this_humidity, 2);
+
+					//readout amb_temp
+					uint16_t amb_temp_cal = ADC124S051_daisy_read(&spi_ambtemp_cal, 1);
+					uint16_t amb_temp_hv = ADC124S051_daisy_read(&spi_ambtemp_hv, 0);
+					bufWrite(outBuffer, &bufcount, amb_temp_cal, 2);
+					bufWrite(outBuffer, &bufcount, amb_temp_hv, 2);
 
 					outBufSend(g_uart, outBuffer, bufcount);
 
@@ -808,6 +827,19 @@ int main()
 //					outBuffer[bufcount++] = SETFUSEOFF;
 //					bufWrite(outBuffer, &bufcount, 0, 2);
 //					outBufSend(g_uart, outBuffer, bufcount);
+
+				}else if (commandID == READKEY){
+					outBuffer[bufcount++] = READKEY;
+					bufWrite(outBuffer, &bufcount, 6, 2);
+
+					uint16_t key_temp = ADC124S051_read(&g_spi[4], 0, 1);
+					uint16_t v2p5 = ADC124S051_read(&g_spi[4], 0, 3);
+					uint16_t v5p1 = ADC124S051_read(&g_spi[4], 0, 0);
+
+					bufWrite(outBuffer, &bufcount, key_temp, 2);
+					bufWrite(outBuffer, &bufcount, v2p5, 2);
+					bufWrite(outBuffer, &bufcount, v5p1, 2);
+					outBufSend(g_uart, outBuffer, bufcount);
 
 				//***********************************begin of DDR commands****************************************************************************************
 /*

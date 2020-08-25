@@ -70,7 +70,7 @@ uint32_t calibration_done;
 
 
 UART_instance_t g_uart;
-spi_instance_t g_spi[4];
+spi_instance_t g_spi[5];
 pwm_instance_t g_pwm;
 gpio_instance_t g_gpio;
 
@@ -127,34 +127,36 @@ void hwdelay (uint32_t tdelay)//20ns per count
 //    return fchars;
 //}
 
-void delay_ms(uint32_t us)
+void delay_ms(uint32_t ms)
 {
-    volatile uint32_t delay_count = SystemCoreClock / 1000 * us;
-
-    while(delay_count > 0u)
-    {
-        --delay_count;
-    }
+//    volatile uint32_t delay_count = SystemCoreClock / 1000 * ms;
+//
+//    while(delay_count > 0u)
+//    {
+//        --delay_count;
+//    }
+	hwdelay (TICKPERUS * ms * 1000);
 }
 
 void delayUs(int us)
 {
-	volatile uint32_t delay_count = SystemCoreClock / 1000000 * us;
-
-	while(delay_count > 0u)
-	{
-		--delay_count;
-	}
+//	volatile uint32_t delay_count = SystemCoreClock / 1000000 * us;
+//
+//	while(delay_count > 0u)
+//	{
+//		--delay_count;
+//	}
+	hwdelay (TICKPERUS * us);
 }
 
-void delayTicks(uint8_t ticks)
-{
-	volatile uint8_t delay_count = ticks;
-	while(delay_count > 0u)
-	{
-		--delay_count;
-	}
-}
+//void delayTicks(uint8_t ticks)
+//{
+//	volatile uint8_t delay_count = ticks;
+//	while(delay_count > 0u)
+//	{
+//		--delay_count;
+//	}
+//}
 
 //void delayCore(uint32_t cycles)
 //{
@@ -403,7 +405,7 @@ void adc_spi_core(uint8_t rw, uint8_t bytes, uint16_t address, uint8_t *data, ui
 	uint8_t adc_mask = ~(adc_mask_h);
 	digi_write(DG_ADDR_SPI_CS,adc_mask, hvcal);
 
-	delayTicks(4);
+	delayUs(4);
 
 	// send instructions
 
@@ -414,9 +416,9 @@ void adc_spi_core(uint8_t rw, uint8_t bytes, uint16_t address, uint8_t *data, ui
 		else
 			thisbit = 0;
 		digi_write(DG_ADDR_SPI_SDIO, thisbit, hvcal);
-		delayTicks(4);
+		delayUs(4);
 		digi_write(DG_ADDR_SPI_SCLK, 1, hvcal);
-		delayTicks(4);
+		delayUs(4);
 		digi_write(DG_ADDR_SPI_SCLK, 0, hvcal);
 	}
 
@@ -437,7 +439,7 @@ void adc_spi_core(uint8_t rw, uint8_t bytes, uint16_t address, uint8_t *data, ui
 				digi_write(DG_ADDR_SPI_SDIO, thisbit, hvcal);
 			}
 			// if reading just wait for chip to set data
-			delayTicks(4);
+			delayUs(4);
 			// if reading now read this bit
 			if (rw == 1){
 				uint32_t readval = digi_read(DG_ADDR_SPI_SDIO, hvcal);
@@ -446,12 +448,12 @@ void adc_spi_core(uint8_t rw, uint8_t bytes, uint16_t address, uint8_t *data, ui
 					data[ibyte] |= dataval;
 			}
 			digi_write(DG_ADDR_SPI_SCLK, 1, hvcal);
-			delayTicks(4);
+			delayUs(4);
 			digi_write(DG_ADDR_SPI_SCLK, 0, hvcal);
 		}
 	}
 
-	delayTicks(4);
+	delayUs(4);
 	digi_write(DG_ADDR_SPI_CS, 0xFF, hvcal);
 	digi_write(DG_ADDR_SPI_SDIO, 0x0, hvcal);
 }
@@ -840,11 +842,11 @@ void bufWrite(char *outBuffer, uint16_t *bufcount, uint32_t data, uint16_t nbyte
 	}
 }
 
-void bufWriteN(char *outBuffer, uint16_t bufaddr, uint32_t data, uint16_t nbytes){
-	for (uint8_t i=0; i<nbytes; i++){
-		outBuffer[bufaddr+i] = (data>>(i*8)) & 0xff;
-	}
-}
+//void bufWriteN(char *outBuffer, uint16_t bufaddr, uint32_t data, uint16_t nbytes){
+//	for (uint8_t i=0; i<nbytes; i++){
+//		outBuffer[bufaddr+i] = (data>>(i*8)) & 0xff;
+//	}
+//}
 
 void outBufSend(UART_instance_t g_uart, char *outBuffer, uint16_t bufcount){
 	UART_polled_tx_string( &g_uart, "monitoring\n" );

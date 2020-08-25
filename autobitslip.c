@@ -474,7 +474,7 @@ void autobitslip()
 		faulted_adc = 0;
 
 		digi_write(DG_AGGR_BITALIGN_RSETN, 0, 0);
-		delayTicks(8);
+		delayUs(8);
 		digi_write(DG_AGGR_BITALIGN_RSETN, 1, 0);
 
 		digi_write(DG_ADDR_SAMPLE,1,0);
@@ -541,7 +541,7 @@ void autobitslip()
 
 		//start bit align, set corresponding channel's restart to 1, then back to 0 after 8 ticks
 		digi_write(DG_ADDR_BITALIGN_RSTRT, 1, 0);
-		delayTicks(8);
+		delayUs(8);
 		digi_write(DG_ADDR_BITALIGN_RSTRT, 0, 0);
 
 		volatile uint16_t completion[6] = {0};
@@ -601,7 +601,7 @@ void autobitslip()
 			hwdelay(50);
 
 			digi_write(DG_ADDR_BITSLIP_STRT, 1, 0);
-			delayTicks(10);
+			delayUs(10);
 			digi_write(DG_ADDR_BITSLIP_STRT, 0, 0);
 
 			bitstlip_done[0] = digi_read(DG_ADDR_BITSLIP_DONE1, 1);
@@ -703,9 +703,12 @@ void autobitslip()
 					faulted_adc |= ((uint16_t)0x1 << (4*i+2));
 				if (pattern_fail[i] & 0xff000000)
 					faulted_adc |= ((uint16_t)0x1 << (4*i+3));
-
+			}
+			for (uint8_t i=0; i<3; i++){
 				if (not_enough_trigger[i] != 0) faulted_adc = 0;
 			}
+			//not enough trigger indicates a SERDES error. abort immediately
+			//put in a separate loop so faulted_adc is not overwritten again
 		}
 		else{
 			for (uint8_t i=0;i<6;i++) bufWrite(outBuffer, &bufcount, 0, 4);

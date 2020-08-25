@@ -8,6 +8,7 @@
 #include "drivers/CorePWM/core_pwm.h"
 #include "hw_platform.h"
 
+#define TICKPERUS 50
 
 #define ENABLED_ADCS				0xFFFu
 //#define ENABLED_ADCS				0x3Fu
@@ -62,6 +63,7 @@
 #define ROCREADREG 18
 #define SETFUSEON 19
 #define SETFUSEOFF 20
+#define READKEY 21
 
 //DDR command ID
 #define DDRSETUP 50
@@ -310,7 +312,7 @@ extern int calibration_count[32];
 extern uint32_t calibration_done;
 
 extern UART_instance_t g_uart;
-extern spi_instance_t g_spi[4];
+extern spi_instance_t g_spi[5];
 extern gpio_instance_t g_gpio;
 extern pwm_instance_t g_pwm;
 
