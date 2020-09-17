@@ -81,17 +81,16 @@
 #define CORETIMER_0_BASE_ADDR           0x42000000UL
  */
 
-
-#define COREGPIO_BASE_ADDR          0x70004000UL
-#define UART_BASE_ADDRESS 			0x70003000UL
-#define SPI0_BASE_ADDR 				0x70004000UL
-#define SPI1_BASE_ADDR 				0x70005000UL
-#define REGISTERBASEADDR            0x70002000UL
-#define HVSPI_BASE_ADDR 			0x70006000UL
-#define CALSPI_BASE_ADDR 			0x70007000UL
-#define COREPWM_BASE_ADDR           0x70001000UL
-#define CSS_PF_BASE_ADDRESS         0x70008000UL
-
+#define COREGPIO_BASE_ADDR   0x70000000UL
+#define COREPWM_BASE_ADDR    0x70001000UL
+#define REGISTERBASEADDR     0x70002000UL
+#define UART_BASE_ADDRESS    0x70003000UL
+#define SPI0_BASE_ADDR       0x70004000UL
+#define SPI1_BASE_ADDR       0x70005000UL
+#define HVSPI_BASE_ADDR      0x70006000UL
+#define CALSPI_BASE_ADDR     0x70007000UL
+#define CSS_PF_BASE_ADDRESS  0x70008000UL
+#define SPI2_BASE_ADDR       0x70009000UL
 
 /***************************************************************************//**
  * Peripheral Interrupts are mapped to the corresponding Cortex-M1 interrupt

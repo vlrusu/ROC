@@ -72,6 +72,19 @@
 #define    OLATA     (0x14)      // MCP23x17 Output Latch Register
 #define    OLATB     (0x15)      // 1 = Latch High, 0 = Latch Low (default) Reading Returns Latch State, Not Port Value!
 
+//corresponding registers for MCP23x09
+#define    IODIR09    (0x00)
+#define    IPOL09     (0x01)
+#define    GPINTEN09  (0x02)
+#define    DEFVAL09   (0x03)
+#define    INTCON09   (0x04)
+#define    IOCON09    (0x05)
+#define    GPPU09     (0x06)
+#define    INTF09     (0x07)
+#define    INTCAP09   (0x08)
+#define    GPIO09     (0x09)
+#define    OLAT09     (0x0A)
+
 #define MCP_SPI_MODE 0
 
 #define MCP_INPUT 1
@@ -89,9 +102,10 @@ typedef struct{
     unsigned int _outputCache;               // Caches the output pin state of pins
     uint8_t ss;
     spi_instance_t spi ;
+    uint8_t _ifMCP23S09;                     // For MCP23S09 chip
 } MCP;
 
-    void MCP_setup( MCP* mcp, spi_instance_t spi, uint8_t ss, uint8_t address);
+    void MCP_setup( MCP* mcp, spi_instance_t spi, uint8_t ss, uint8_t address, uint8_t ifMCP23S09);
 
 
 

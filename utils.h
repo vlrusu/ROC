@@ -8,8 +8,10 @@
 #include "drivers/CorePWM/core_pwm.h"
 #include "hw_platform.h"
 
+#define TICKPERUS 50
 
 #define ENABLED_ADCS				0xFFFu
+//#define ENABLED_ADCS				0x3Fu
 
 //******************************************************************************
 //                             Parameters
@@ -61,6 +63,7 @@
 #define ROCREADREG 18
 #define SETFUSEON 19
 #define SETFUSEOFF 20
+#define READKEY 21
 
 //DDR command ID
 #define DDRSETUP 50
@@ -118,12 +121,12 @@
 #define DG_ADDR_HISTO_VAL 0x22
 #define DG_ADDR_HISTO_CHANNEL 0x23
 
-#define DG_ADDR_BITSLIP0 0x30
-#define DG_ADDR_BITSLIP1 0x31
-#define DG_ADDR_BITSLIP2 0x32
-#define DG_ADDR_BITSLIP3 0x33
-#define DG_ADDR_BITSLIP4 0x34
-#define DG_ADDR_BITSLIP5 0x35
+//#define DG_ADDR_BITSLIP0 0x30
+//#define DG_ADDR_BITSLIP1 0x31
+//#define DG_ADDR_BITSLIP2 0x32
+//#define DG_ADDR_BITSLIP3 0x33
+//#define DG_ADDR_BITSLIP4 0x34
+//#define DG_ADDR_BITSLIP5 0x35
 
 #define DG_ADDR_TVS_VAL 0x40
 #define DG_ADDR_TVS_ADDR 0x41
@@ -131,6 +134,23 @@
 #define DG_ADDR_SELECTSMA 0x50
 #define DG_ADDR_SMARDREQ 0x51
 #define DG_ADDR_SMADATA 0x52
+
+#define DG_ADDR_RX_CH_MASK1 0x60
+#define DG_ADDR_RX_CH_MASK2 0x61
+#define DG_ADDR_RX_CH_MASK3 0x62
+#define DG_ADDR_BITALIGN_EWM_WIDTH 0x63
+#define DG_ADDR_BITALIGN_RSTRT 0x64
+#define DG_ADDR_BITSLIP_STRT 0x65
+#define DG_ADDR_BITALIGN_CMP1 0x66
+#define DG_ADDR_BITALIGN_CMP2 0x67
+#define DG_ADDR_BITALIGN_CMP3 0x68
+#define DG_ADDR_BITALIGN_ERR1 0x69
+#define DG_ADDR_BITALIGN_ERR2 0x6A
+#define DG_ADDR_BITALIGN_ERR3 0x6B
+#define DG_ADDR_BITSLIP_DONE1 0x6C
+#define DG_ADDR_BITSLIP_DONE2 0x6D
+#define DG_ADDR_BITSLIP_DONE3 0x6E
+#define DG_AGGR_BITALIGN_RSETN 0x6F
 
 //#define DG_ADDR_EWMCNTER 0x80
 #define DG_ADDR_EWS 0x81 // (event window start 160MHz clock ticks)
@@ -292,7 +312,7 @@ extern int calibration_count[32];
 extern uint32_t calibration_done;
 
 extern UART_instance_t g_uart;
-extern spi_instance_t g_spi[4];
+extern spi_instance_t g_spi[5];
 extern gpio_instance_t g_gpio;
 extern pwm_instance_t g_pwm;
 

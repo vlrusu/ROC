@@ -54,7 +54,7 @@
 // Constructor to instantiate an instance of MCP to a specific chip (address)
 
 
-void MCP_setup(MCP *mcp, spi_instance_t spi, uint8_t ss, uint8_t address) {
+void MCP_setup(MCP *mcp, spi_instance_t spi, uint8_t ss, uint8_t address, uint8_t ifMCP23S09) {
 	mcp->spi = spi;
 	mcp->ss = ss;
 
@@ -64,7 +64,9 @@ void MCP_setup(MCP *mcp, spi_instance_t spi, uint8_t ss, uint8_t address) {
 	mcp->_pullupCache = 0x0000;                // Default pull-up state is all off, 0x0000
 	mcp->_invertCache = 0x0000;                // Default input inversion state is not inverted, 0x0000
 
-	MCP_byteWrite(mcp, IOCON, ADDR_ENABLE);
+	mcp->_ifMCP23S09 = ifMCP23S09;
+
+	MCP_byteWrite(mcp, (ifMCP23S09)?IOCON09:IOCON, ADDR_ENABLE);
 
 //  _modeCache = wordRead(IODIRA);
 //  _outputCache = wordRead(GPIOA);
@@ -100,45 +102,46 @@ void MCP_byteWrite(MCP *mcp, uint8_t reg, uint8_t value) {      // Accept the re
 // GENERIC WORD WRITE - will write two bytes to a register pair, LSB to first register, MSB to next higher value register
 
 void MCP_wordWrite(MCP *mcp, uint8_t reg, unsigned int word) {  // Accept the start register and word
-
-	uint8_t master_tx_buffer[4];
-	master_tx_buffer[0] = OPCODEW | (mcp->_address << 1);
-	master_tx_buffer[1] = reg;
-	master_tx_buffer[2] = word & 0xFF;
-	master_tx_buffer[3] = (word >> 8) & 0xFF;
-	SPI_set_slave_select(&(mcp->spi), mcp->ss);
-
-
-	   SPI_transfer_block
-	       (
-	           &(mcp->spi),
-	           master_tx_buffer,
-	           sizeof(master_tx_buffer),
-	           0,
-	           0);
+	if (mcp->_ifMCP23S09){
+		MCP_byteWrite(mcp, reg, (uint8_t)(word & 0xFF));
+	}
+	else{
+		uint8_t master_tx_buffer[4];
+		master_tx_buffer[0] = OPCODEW | (mcp->_address << 1);
+		master_tx_buffer[1] = reg;
+		master_tx_buffer[2] = word & 0xFF;
+		master_tx_buffer[3] = (word >> 8) & 0xFF;
+		SPI_set_slave_select(&(mcp->spi), mcp->ss);
 
 
-	SPI_clear_slave_select(&(mcp->spi), mcp->ss);
+		   SPI_transfer_block
+			   (
+				   &(mcp->spi),
+				   master_tx_buffer,
+				   sizeof(master_tx_buffer),
+				   0,
+				   0);
 
 
-
+		SPI_clear_slave_select(&(mcp->spi), mcp->ss);
+	}
 
 }
 
 // MODE SETTING FUNCTIONS - BY PIN AND BY WORD
 
 void MCP_pinMode(MCP *mcp, uint8_t pin, uint8_t mode) {  // Accept the pin # and I/O mode
-  if ((pin < 1) | (pin > 16)) return;               // If the pin value is not valid (1-16) return, do nothing and return
+  if ((pin < 1) | (pin > ((mcp->_ifMCP23S09)?8:16))) return;               // If the pin value is not valid (1-16) return, do nothing and return
   if (mode == MCP_INPUT) {                          // Determine the mode before changing the bit state in the mode cache
     mcp->_modeCache |= 1 << (pin - 1);               // Since input = "HIGH", OR in a 1 in the appropriate place
   } else {
     mcp->_modeCache &= ~(1 << (pin - 1));            // If not, the mode must be output, so and in a 0 in the appropriate place
   }
-  MCP_wordWrite(mcp, IODIRA, mcp->_modeCache);                // Call the generic word writer with start register and the mode cache
+  MCP_wordWrite(mcp, (mcp->_ifMCP23S09)?IODIR09:IODIRA, mcp->_modeCache);                // Call the generic word writer with start register and the mode cache
 }
 
 void MCP_pinModeAll(MCP *mcp, unsigned int mode) {    // Accept the word�
-  MCP_wordWrite(mcp, IODIRA, mode);                // Call the the generic word writer with start register and the mode cache
+  MCP_wordWrite(mcp, (mcp->_ifMCP23S09)?IODIR09:IODIRA, mode);                // Call the the generic word writer with start register and the mode cache
   mcp->_modeCache = mode;
 }
 
@@ -147,18 +150,18 @@ void MCP_pinModeAll(MCP *mcp, unsigned int mode) {    // Accept the word�
 // WEAK PULL-UP SETTING FUNCTIONS - BY WORD AND BY PIN
 
 void MCP_pullupMode(MCP *mcp, uint8_t pin, uint8_t mode) {
-  if ((pin < 1) | (pin > 16)) return;
+  if ((pin < 1) | (pin > ((mcp->_ifMCP23S09)?8:16))) return;
   if (mode == ON) {
     mcp->_pullupCache |= 1 << (pin - 1);
   } else {
     mcp->_pullupCache &= ~(1 << (pin -1));
   }
-  MCP_wordWrite(mcp, GPPUA, mcp->_pullupCache);
+  MCP_wordWrite(mcp, (mcp->_ifMCP23S09)?GPPU09:GPPUA, mcp->_pullupCache);
 }
 
 
 void MCP_pullupModeAll(MCP *mcp, unsigned int mode) {
-  MCP_wordWrite(mcp, GPPUA, mode);
+  MCP_wordWrite(mcp, (mcp->_ifMCP23S09)?GPPU09:GPPUA, mode);
   mcp->_pullupCache = mode;
 }
 
@@ -166,17 +169,17 @@ void MCP_pullupModeAll(MCP *mcp, unsigned int mode) {
 // INPUT INVERSION SETTING FUNCTIONS - BY WORD AND BY PIN
 
 void MCP_inputInvert(MCP *mcp, uint8_t pin, uint8_t mode) {
-  if ((pin < 1) | (pin > 16)) return;
+  if ((pin < 1) | (pin > ((mcp->_ifMCP23S09)?8:16))) return;
   if (mode == ON) {
     mcp->_invertCache |= 1 << (pin - 1);
   } else {
     mcp->_invertCache &= ~(1 << (pin - 1));
   }
-  MCP_wordWrite(mcp, IPOLA, mcp->_invertCache);
+  MCP_wordWrite(mcp, (mcp->_ifMCP23S09)?IPOL09:IPOLA, mcp->_invertCache);
 }
 
 void MCP_inputInvertAll(MCP *mcp, unsigned int mode) {
-  MCP_wordWrite(mcp, IPOLA, mode);
+  MCP_wordWrite(mcp, (mcp->_ifMCP23S09)?IPOL09:IPOLA, mode);
   mcp->_invertCache = mode;
 }
 
@@ -184,17 +187,17 @@ void MCP_inputInvertAll(MCP *mcp, unsigned int mode) {
 // WRITE FUNCTIONS - BY WORD AND BY PIN
 
 void MCP_pinWrite(MCP *mcp, uint8_t pin, uint8_t value) {
-  if ((pin < 1) | (pin > 16)) return;
+  if ((pin < 1) | (pin > ((mcp->_ifMCP23S09)?8:16))) return;
   if (value) {
     mcp->_outputCache |= 1 << (pin - 1);
   } else {
     mcp->_outputCache &= ~(1 << (pin - 1));
   }
-  MCP_wordWrite(mcp, GPIOA, mcp->_outputCache);
+  MCP_wordWrite(mcp, (mcp->_ifMCP23S09)?GPIO09:GPIOA, mcp->_outputCache);
 }
 
 void MCP_pinWriteAll(MCP *mcp, unsigned int value) {
-  MCP_wordWrite(mcp, GPIOA, value);
+  MCP_wordWrite(mcp, (mcp->_ifMCP23S09)?GPIO09:GPIOA, value);
   mcp->_outputCache = value;
 }
 
@@ -203,38 +206,42 @@ void MCP_pinWriteAll(MCP *mcp, unsigned int value) {
 
 unsigned int MCP_pinReadAll(MCP *mcp) {       // This function will read all 16 bits of I/O, and return them as a word in the format 0x(portB)(portA)
 
-	return MCP_wordRead(mcp,GPIOA);
+	return MCP_wordRead(mcp,(mcp->_ifMCP23S09)?GPIO09:GPIOA);
 
 
 }
 
 unsigned int MCP_wordRead(MCP *mcp, uint8_t reg) {
-
-	uint8_t master_tx_buffer[2];
-	uint8_t rx_buffer[2];
-	unsigned int value = 0x0;
-	master_tx_buffer[0] = OPCODER | (mcp->_address << 1);
-	master_tx_buffer[1] = reg;
-	SPI_set_slave_select(&(mcp->spi), mcp->ss);
-
-
-	   SPI_transfer_block
-	       (
-	           &(mcp->spi),
-	           master_tx_buffer,
-	           sizeof(master_tx_buffer),
-	           rx_buffer,
-	           sizeof(rx_buffer));
+	if (mcp->_ifMCP23S09){
+		return (unsigned int)(MCP_byteRead(mcp, reg));
+	}
+	else{
+		uint8_t master_tx_buffer[2];
+		uint8_t rx_buffer[2];
+		unsigned int value = 0x0;
+		master_tx_buffer[0] = OPCODER | (mcp->_address << 1);
+		master_tx_buffer[1] = reg;
+		SPI_set_slave_select(&(mcp->spi), mcp->ss);
 
 
+		   SPI_transfer_block
+			   (
+				   &(mcp->spi),
+				   master_tx_buffer,
+				   sizeof(master_tx_buffer),
+				   rx_buffer,
+				   sizeof(rx_buffer));
 
-	SPI_clear_slave_select(&(mcp->spi), mcp->ss);
 
-	value |= rx_buffer[0];
 
-	value |= (rx_buffer[1] << 8);
+		SPI_clear_slave_select(&(mcp->spi), mcp->ss);
 
-	return value;
+		value |= rx_buffer[0];
+
+		value |= (rx_buffer[1] << 8);
+
+		return value;
+	}
 }
 
 uint8_t MCP_byteRead(MCP *mcp, uint8_t reg) {
@@ -257,7 +264,7 @@ uint8_t MCP_byteRead(MCP *mcp, uint8_t reg) {
 	           &rx_buffer,
 	           1);
 
-
+	SPI_clear_slave_select(&(mcp->spi), mcp->ss);
 
 	return rx_buffer;
 
@@ -265,6 +272,6 @@ uint8_t MCP_byteRead(MCP *mcp, uint8_t reg) {
 }
 
 uint8_t MCP_pinRead(MCP *mcp, uint8_t pin) {              // Return a single bit value, supply the necessary bit (1-16)
-    if ((pin < 1) | (pin > 16)) return 0x0;                  // If the pin value is not valid (1-16) return, do nothing and return
+    if ((pin < 1) | (pin > ((mcp->_ifMCP23S09)?8:16))) return 0x0;                  // If the pin value is not valid (1-16) return, do nothing and return
     return MCP_pinReadAll(mcp) & (1 << (pin - 1)) ? HIGH : LOW;  // Call the word reading function, extract HIGH/LOW information from the requested pin
 }
