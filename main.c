@@ -1282,7 +1282,7 @@ int main()
 					*(registers_0_addr + REG_ROC_DTC_SIM_PARAM) = dtc_sim_param;
 
 					// pass hearbeat packer info
-					uint32_t dtc_sim_spill = (dtc_onspill<<32) | (dtc_rfmarker<<24) | (dtc_evtmode<<16) | dtc_evttag;
+					uint32_t dtc_sim_spill = (dtc_onspill<<31) | (dtc_rfmarker<<24) | (dtc_evtmode<<16) | dtc_evttag;
 					*(registers_0_addr + REG_ROC_DTC_SIM_SPILL) = dtc_sim_spill;
 
 					// send out simulated packet
@@ -1292,7 +1292,7 @@ int main()
 					// read back all relevant parameters
 					outBuffer[bufcount++] = DCSHEARTBEAT;
 					bufWrite(outBuffer, &bufcount, 6, 2);
-					bufWrite(outBuffer, &bufcount, (dtc_sim_spill>>32)&0x01, 1);
+					bufWrite(outBuffer, &bufcount, (dtc_sim_spill>>31)&0x01, 1);
 					bufWrite(outBuffer, &bufcount, (dtc_sim_spill>>24)&0x7F, 1);
 					bufWrite(outBuffer, &bufcount, (dtc_sim_spill>>16)&0xFF, 1);
 					bufWrite(outBuffer, &bufcount, (dtc_sim_spill)  &0xFFFF, 2);
