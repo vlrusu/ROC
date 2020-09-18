@@ -70,6 +70,22 @@
 #define DDRREAD 51
 #define DDRSTATUS 52
 #define DDRFILL 53
+#define DDRRAMREAD 54
+#define DDRWRITE 55
+#define DDRPATTERNREAD 56
+
+// DTC SIM command ID
+#define DCSRAMWRITE  60
+#define DCSREPLY     61
+#define DCSREAD  	 62
+#define DCSWRITE 	 63
+#define DCSMODREAD   64
+#define DCSMODWRITE  65
+#define DCSMARKER  	 66
+#define DCSHEARTBEAT 67
+#define DCSDATAREQ   68
+#define DCSBLKREAD   69
+#define DCSBLKWRITE  70
 
 //"digi" command ID (1 byte)
 
@@ -164,31 +180,37 @@
 #define REG_TIMERRESET 0x13
 #define REG_TIMERCOUNTER 0x14
 
-#define REG_ROC_DDR_NHITS 0x20
-#define REG_ROC_DDR_OFFSET 0x21
-#define REG_ROC_DDR_CS 0x22
-#define REG_ROC_DDR_WEN 0x23
-#define REG_ROC_DDR_REN 0x24
-#define REG_ROC_DDR_DMAEN 0x25
-#define REG_ROC_DDR_DIAG0 0x26
-#define REG_ROC_DDR_IN 0x27
-#define REG_ROC_DDR_DIAG1 0x28
-#define REG_ROC_DDR_PATTERN 0x29
+#define REG_ROC_DDR_NHITS 0x20  //W  set number of blocks to write to memory
+#define REG_ROC_DDR_OFFSET 0x21 //W  set DDR3 memory start offset (as multiple of 1kB)
+#define REG_ROC_DDR_CS 0x22		//W  enable memory to be written: 0 => DDR3, 1= > SRAM
+#define REG_ROC_DDR_WEN 0x23	//W  enable write of pattern to memory - self clearing
+#define REG_ROC_DDR_REN 0x24	//W  enable read back of pattern from memory - self clearing
+#define REG_ROC_DDR_FIFOWEN 0x25//W  enable DMA transfer between memories - self clearing
+#define REG_ROC_DDR_DIAG0 0x26  //R  diagnostic: used for MEMFIFO_RD_CNT
+#define REG_ROC_DDR_IN 0x27		//W  bit [9:0] are Pattern generator RAM address
+#define REG_ROC_DDR_DIAG1 0x28  //R  diagnostic: used for DDR_RD_CNT
+#define REG_ROC_DDR_PATTERN 0x29//W  set pattern: 0 => +1, 1 => -1, 2 => As, 3 => 5s
+#define REG_ROC_DDR_RAM 0x2A	//R  32 bits RAM output saving data after DDR3 memory read
+#define REG_ROC_DDR_ISERR 0x2B  //R  pattern read back has error
+#define REG_ROC_DDR_ERRLOC 0x2C	//R  pattern read back error location
+#define REG_ROC_DDR_PATTERN_EN 0x2D //W enable pattern writing to memory for tests with DTC
 
-#define REG_ROC_DDR_SEL 0x30 	//RW toggle between DTC commands (if 0) or simulated commands (if 1)
-#define REG_ROC_DDR_FULL 0x31  	//RO  1 while number ROC_DDR_PAGENO pages are read from DDR memory
-#define REG_ROC_DDR_FIFO_RE 0x32//RW  send simulated read of DDR page into MEMFIFO  (need ROC_DDR_SEL = 1)
-#define REG_ROC_DDR_SET 0x33	//RW  enable simulation of ALGO_CLK (for when fiber to DTC not used)
-#define REG_ROC_DDR_PAGENO 0x34	//RW  set number of pages to write from DIGIFIFO to DDR memory
-#define REG_ROC_DDR_PAGEWR 0x35	//RO  number of pages written to DDR
-#define REG_ROC_DDR_PAGERD 0x36	//RO  number of pages read from DDR
-#define REG_ROC_DDR_MEMFIFO_DATA0 0x37	//RO  lsb 32 bits read from MEMFIFO DATA
-#define REG_ROC_DDR_MEMFIFO_DATA1 0x38	//RO  msb 32 bits read from MEMFIFO DATA
-#define REG_ROC_DDR_MEMFIFO_FULL 0x39	//RO  MEMFIFO FULL status
-#define REG_ROC_DDR_MEMFIFO_EMPTY 0x3A	//RO  MEMFIFO EMPTY status
-#define REG_ROC_DDR_MEMFIFO_RE 0x3B	//RW  send simulated read enables to MEMFIFO (need ROC_DDR_SEL = 1)
-#define REG_ROC_DDR_TEMPFIFO_FULL 0x3C	//RO  TEMPFIFO FULL status
-#define REG_ROC_DDR_TEMPFIFO_EMPTY 0x3D	//RO  TEMPFIFO EMPTY status
+#define REG_ROC_DDR_SEL 0x30 	//R  toggle between DTC commands (if 0) or simulated commands (if 1)
+#define REG_ROC_DDR_FULL 0x31  	//R  high while ROC_DDR_PAGENO pages are read from DDR memory
+#define REG_ROC_DDR_FIFO_RE 0x32//W  send simulated read of DDR page into MEMFIFO  (need ROC_DDR_SEL = 1)
+#define REG_ROC_DDR_SET 0x33	//W  enable simulation of ALGO_CLK (for when fiber to DTC not used)
+#define REG_ROC_DDR_PAGENO 0x34	//W  set number of pages to write from DIGIFIFO to DDR memory
+#define REG_ROC_DDR_PAGEWR 0x35	//R  number of pages written to DDR
+#define REG_ROC_DDR_PAGERD 0x36	//R  number of pages read from DDR
+#define REG_ROC_DDR_MEMFIFO_DATA0 0x37	//R  lsb 32 bits read from MEMFIFO DATA
+#define REG_ROC_DDR_MEMFIFO_DATA1 0x38	//R  msb 32 bits read from MEMFIFO DATA
+#define REG_ROC_DDR_MEMFIFO_FULL 0x39	//R  MEMFIFO FULL status
+#define REG_ROC_DDR_MEMFIFO_EMPTY 0x3A	//R  MEMFIFO EMPTY status
+#define REG_ROC_DDR_MEMFIFO_RE 0x3B		//W  send simulated read enables to MEMFIFO (need ROC_DDR_SEL = 1)
+#define REG_ROC_DDR_TEMPFIFO_FULL 0x3C	//R  TEMPFIFO FULL status
+#define REG_ROC_DDR_TEMPFIFO_EMPTY 0x3D	//R  TEMPFIFO EMPTY status
+#define REG_ROC_DDR_CONV_DATA 0x3E 	//R  CONVFIFO data (if DDR_PATTERN_EN=1)
+#define REG_ROC_DDR_CONV_RDCNT 0x3F	//R  CONVFIFO rdcnt (if DDR_PATTERN_EN=1)
 
 #define REG_ROC_FIFO_RE 0x40
 #define REG_ROC_FIFO_DATA 0x41
@@ -198,6 +220,16 @@
 #define REG_ROC_FIFO_RDCNT 0x45
 #define REG_ROC_FIFO_HOWMANY 0x46
 #define REG_ROC_READREG 0x47
+
+#define REG_ROC_DTC_SIM_START 0x51
+#define REG_ROC_DTC_SIM_PARAM 0x52
+#define REG_ROC_DTC_SIM_ADDR  0x53
+#define REG_ROC_DTC_SIM_DATA  0x54
+#define REG_ROC_DTC_SIM_SPILL 0x55
+#define REG_ROC_DTC_SIM_BLK_EN   0x56
+#define REG_ROC_DTC_SIM_BLK_DATA 0x57
+#define REG_ROC_DTC_SIM_BLK_ADDR 0x58
+#define REG_ROC_DTC_SIM_DATA_READ 0x59
 
 #define REG_ROC_CAL_BUSY_P 0x61
 #define REG_ROC_CAL_DATA_P 0x63
@@ -328,11 +360,11 @@ uint32_t GPIO_read(uint8_t pin);
 uint16_t readU16fromBytes(uint8_t data[]);
 uint32_t readU32fromBytes(uint8_t data[]);
 void delayUs(int us);
-void delay_ms(uint32_t us);
-void delayTicks(uint8_t ticks);
+void delay_ms(uint32_t ms);
+//void delayTicks(uint8_t ticks);
 void hwdelay (uint32_t tdelay);
 //void delayCore(uint32_t cycles);
-char * print_float(char *fchars, float value);
+//char * print_float(char *fchars, float value);
 
 void read_data(int *delay_count, int *trigger_count);
 void read_data2(int *delay_count, int *trigger_count, uint16_t *lasthit);
@@ -350,7 +382,7 @@ void init_DIGIs();
 void digi_write(uint8_t address, uint16_t data, uint8_t hvcal);
 uint16_t digi_read(uint8_t address, uint8_t hvcal);
 void bufWrite(char *outBuffer, uint16_t *bufcount, uint32_t data, uint16_t nbytes);
-void bufWriteN(char *outBuffer, uint16_t bufaddr, uint32_t data, uint16_t nbytes);
+//void bufWriteN(char *outBuffer, uint16_t bufaddr, uint32_t data, uint16_t nbytes);
 void outBufSend(UART_instance_t g_uart, char *outBuffer, uint16_t bufcount);
 int resetFIFO();
 void setPreampGain(uint16_t channel, uint16_t value);
