@@ -28,7 +28,7 @@
 
 #define LEDn             0
 
-#define NUMTDCWORDS      4
+#define NUMTDCWORDS      5 //1 event window counter + 4 header words
 #define HVANDCAL         0
 #define CALONLY          1
 #define HVONLY           2

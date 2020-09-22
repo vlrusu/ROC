@@ -667,7 +667,7 @@ int main()
 				 	*/
 
 					outBuffer[bufcount++] = READBMES;
-					bufWrite(outBuffer, &bufcount, BME280_TEMP_PRESS_CALIB_DATA_LEN+BME280_HUMIDITY_CALIB_DATA_LEN+BME280_P_T_H_DATA_LEN+4+4, 2);
+					bufWrite(outBuffer, &bufcount, BME280_TEMP_PRESS_CALIB_DATA_LEN+BME280_HUMIDITY_CALIB_DATA_LEN+BME280_P_T_H_DATA_LEN+4+4+2, 2);
 
 					//read with BME 280
 					uint8_t calib_data_tp[BME280_TEMP_PRESS_CALIB_DATA_LEN];
@@ -716,6 +716,14 @@ int main()
 					uint16_t amb_temp_hv = ADC124S051_daisy_read(&spi_ambtemp_hv, 0);
 					bufWrite(outBuffer, &bufcount, amb_temp_cal, 2);
 					bufWrite(outBuffer, &bufcount, amb_temp_hv, 2);
+
+					//read out A0 for new pressure sensor
+					SPI_set_slave_select( &g_spi[0] , SPI_SLAVE_2);
+					uint16_t addr = (8%4 <<11 );
+					SPI_transfer_frame( &g_spi[0], addr);
+					uint32_t rx0 = SPI_transfer_frame( &g_spi[0], addr);
+					SPI_clear_slave_select( &g_spi[0] , SPI_SLAVE_2);
+					bufWrite(outBuffer, &bufcount, rx0, 2);
 
 					outBufSend(g_uart, outBuffer, bufcount);
 
