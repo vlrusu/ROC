@@ -1631,7 +1631,7 @@ int main()
 						//sprintf(dataBuffer,"start\n");
 						readout_maxDelay = max_total_delay*50;
 						readout_mode = mode;
-						readout_wordsPerTrigger = NUMTDCWORDS + num_samples;
+						readout_wordsPerTrigger = NUMTDCWORDS + 4*num_samples;
 						readout_numTriggers = num_triggers;
 						readout_totalTriggers = 0;
 
