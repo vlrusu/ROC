@@ -1618,7 +1618,13 @@ int main()
 
 					if ((mode & 0x1) == 0x0){
 						// reset fifo
+						*(registers_0_addr + 0x48) = 1;
 						resetFIFO();
+						*(registers_0_addr + 0xA3) = 0;
+						*(registers_0_addr + 0xA3) = 1;
+						resetFIFO();
+						*(registers_0_addr + 0xA3) = 0;
+						*(registers_0_addr + 0xA3) = 1;
 
 						*(registers_0_addr + REG_ROC_EWW_PULSER) = 1;
 
