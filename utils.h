@@ -219,7 +219,8 @@
 #define REG_ROC_FIFO_RESET 0x44
 #define REG_ROC_FIFO_RDCNT 0x45
 #define REG_ROC_FIFO_HOWMANY 0x46
-#define REG_ROC_READREG 0x47
+#define REG_ROC_SERDES_ALIGN 0x47
+#define REG_ROC_SERDES_RE 0x48
 
 #define REG_ROC_DTC_SIM_START 0x51
 #define REG_ROC_DTC_SIM_PARAM 0x52
@@ -251,6 +252,8 @@
 
 #define REG_ROC_TVS_VAL 0x90
 #define REG_ROC_TVS_ADDR 0x91
+
+#define REG_ROC_CR_FIFO_RESET 0xA3
 
 //***********************ADC_ADDR_* are the ADC addresses
 										//AD9212 memory map:

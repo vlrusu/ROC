@@ -476,11 +476,11 @@ void read_data(int *delay_count, int *trigger_count)
 {
 
 	volatile uint32_t * ewm = registers_0_addr + REG_ROC_EWM_SINGLE;
-	for (int i=0;i<1000;i++){
+	//for (int i=0;i<1000;i++){
 	//	*ewm = 1;
 	//	*ewm = 0;
 	//	delayTicks(100);
-	}
+	//}
 	uint32_t memlevel = 0;
 
 	uint32_t rdcnt = REG_ROC_FIFO_RDCNT;
@@ -859,7 +859,7 @@ int resetFIFO(){
 	  digi_write(DG_ADDR_RESET, 1, 0);
 
 	  delayUs(1);
-	  uint16_t is_aligned = *(registers_0_addr + 0x47);
+	  uint16_t is_aligned = *(registers_0_addr + REG_ROC_SERDES_ALIGN);
 	  if (is_aligned == 0xF){
 		return 0;
 	  }
