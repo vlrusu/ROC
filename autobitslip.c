@@ -662,7 +662,7 @@ void autobitslip()
 				else
 					digi_write(DG_ADDR_MASK3,(uint16_t) (0x1<<((ichan%48)-32)), hvcal);
 
-				*(registers_0_addr + REG_ROC_SERDES_RE) = 1;
+				*(registers_0_addr + REG_ROC_USE_LANE) = 0xF;
 				resetFIFO();
 				*(registers_0_addr + REG_ROC_CR_FIFO_RESET) = 0;
 				*(registers_0_addr + REG_ROC_CR_FIFO_RESET) = 1;

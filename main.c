@@ -1618,7 +1618,7 @@ int main()
 
 					if ((mode & 0x1) == 0x0){
 						// reset fifo
-						*(registers_0_addr + REG_ROC_SERDES_RE) = 1;
+						*(registers_0_addr + REG_ROC_USE_LANE) = 0xF;
 						resetFIFO();
 						*(registers_0_addr + REG_ROC_CR_FIFO_RESET) = 0;
 						*(registers_0_addr + REG_ROC_CR_FIFO_RESET) = 1;
