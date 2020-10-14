@@ -450,7 +450,7 @@ void autobitslip()
 	outBufSend(g_uart, outBuffer, bufcount_end);
 
 	*/
-	uint8_t checksamples = 1;
+	uint8_t checksamples = 5;
 
 	uint8_t eye_monitor_width = (uint8_t) buffer[4];
 	uint8_t init_adc_phase = (uint8_t) buffer[5];
@@ -662,25 +662,17 @@ void autobitslip()
 				else
 					digi_write(DG_ADDR_MASK3,(uint16_t) (0x1<<((ichan%48)-32)), hvcal);
 
-				*(registers_0_addr + REG_ROC_SERDES_RE) = 1;
 				resetFIFO();
-				*(registers_0_addr + REG_ROC_CR_FIFO_RESET) = 0;
-				*(registers_0_addr + REG_ROC_CR_FIFO_RESET) = 1;
-				resetFIFO();
-				*(registers_0_addr + REG_ROC_CR_FIFO_RESET) = 0;
-				*(registers_0_addr + REG_ROC_CR_FIFO_RESET) = 1;
 				*(registers_0_addr + REG_ROC_EWW_PULSER) = 1;
 				readout_obloc = 0;
 				readout_maxDelay = 50;
 				readout_mode = 0;
-				readout_wordsPerTrigger = NUMTDCWORDS+ 4*checksamples;
+				readout_wordsPerTrigger = NUMTDCWORDS+checksamples;
 				readout_numTriggers = 11;
 
 				int delay_count = 0;
 				int trigger_count = 0;
 				uint16_t lasthit[readout_wordsPerTrigger];
-				for (uint8_t i=0;i<readout_wordsPerTrigger;i++)
-					lasthit[i] = 0;
 
 				read_data2(&delay_count,&trigger_count,lasthit);
 
@@ -690,7 +682,7 @@ void autobitslip()
 				}
 
 				uint8_t checkfail = 0;
-				for (uint8_t i=0;i<4*checksamples;i++){
+				for (uint8_t i=0;i<checksamples;i++){
 					if (lasthit[readout_wordsPerTrigger-1-i] != 0x319)
 						checkfail = 1;
 				}
