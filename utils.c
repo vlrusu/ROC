@@ -668,7 +668,7 @@ void read_data(int *delay_count, int *trigger_count)
 void read_data2(int *delay_count, int *trigger_count, uint16_t *lasthit)
 {
 	uint32_t memlevel = 0;
-	int fail_count = 0;
+	//int fail_count = 0;
 
 	uint32_t rdcnt = REG_ROC_FIFO_RDCNT;
 	uint32_t re = REG_ROC_FIFO_RE;
@@ -688,24 +688,24 @@ void read_data2(int *delay_count, int *trigger_count, uint16_t *lasthit)
 		}
 
 		// have enough data, see if can read
-		int failed = 0;
+		//int failed = 0;
 		for (int j=0;j<readout_wordsPerTrigger;j++){
 
 			volatile uint32_t digioutput;
 			*(registers_0_addr + re) = 1;
 			digioutput = *(registers_0_addr + data_reg);
 			memlevel -= 1;
-			if ((j == 0) && ((digioutput&0x80000000) != 0x80000000)){
-				failed = 1;
-				fail_count++;
-				break;
-			}
+			//if ((j == 0) && ((digioutput&0x80000000) != 0x80000000)){
+			//	failed = 1;
+			//	fail_count++;
+			//	break;
+			//}
 			lasthit[j] = (uint16_t) ((digioutput & 0x3FF00000)>>20);
 		}
-		if (fail_count >= readout_wordsPerTrigger*10)
-			break;
-		if (failed)
-			continue;
+		//if (fail_count >= readout_wordsPerTrigger*10)
+		//	break;
+		//if (failed)
+		//	continue;
 		(*trigger_count)++;
 		if ((*trigger_count) >= readout_numTriggers)
 			break;
