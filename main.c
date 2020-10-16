@@ -469,25 +469,25 @@ int main()
 					bufWrite(outBuffer, &bufcount, 0, 2);
 					outBufSend(g_uart, outBuffer, bufcount);
 
-				}else if (commandID == WHOAREYOU){
+//				}else if (commandID == WHOAREYOU){
+//
+//				 	outBuffer[bufcount++] = WHOAREYOU;
+//				 	bufWrite(outBuffer, &bufcount, 0, 2);
+//
+//				 	GPIO_set_output( &g_gpio, GPIO_0, 1);
+//				 	hwdelay(5000);
+//				 	GPIO_set_output( &g_gpio, GPIO_0, 0);
+//				 	outBufSend(g_uart, outBuffer, bufcount);
 
-				 	outBuffer[bufcount++] = WHOAREYOU;
-				 	bufWrite(outBuffer, &bufcount, 0, 2);
-
-				 	GPIO_set_output( &g_gpio, GPIO_0, 1);
-				 	hwdelay(5000);
-				 	GPIO_set_output( &g_gpio, GPIO_0, 0);
-				 	outBufSend(g_uart, outBuffer, bufcount);
-
-				}else if (commandID == ROCREADREG){
-					outBuffer[bufcount++] = ROCREADREG;
-					bufWrite(outBuffer,&bufcount,5,2);
-					volatile uint32_t retv = 0xFFFFFFFF;
-					uint32_t raddr = (uint32_t) buffer[4];
-					retv = *(registers_0_addr + raddr);
-					outBuffer[bufcount++] = raddr;
-					bufWrite(outBuffer, &bufcount, retv, 4);
-					outBufSend(g_uart, outBuffer, bufcount);
+//				}else if (commandID == ROCREADREG){
+//					outBuffer[bufcount++] = ROCREADREG;
+//					bufWrite(outBuffer,&bufcount,5,2);
+//					volatile uint32_t retv = 0xFFFFFFFF;
+//					uint32_t raddr = (uint32_t) buffer[4];
+//					retv = *(registers_0_addr + raddr);
+//					outBuffer[bufcount++] = raddr;
+//					bufWrite(outBuffer, &bufcount, retv, 4);
+//					outBufSend(g_uart, outBuffer, bufcount);
 
 				}else if (commandID == RESETROC){
 
@@ -599,20 +599,20 @@ int main()
 					//					outBuffer[bufcount++] = channel >> 8;
 					//
 					//					UART_send(&g_uart, outBuffer ,bufcount );
-				}else if (commandID == GETDEVICEID){
-
-				 	uint8_t data_buffer[16];
-				 	uint8_t dinfo_buffer[36];
-				 	uint8_t status;
-				 	status = SYS_get_serial_number(data_buffer, 0);
-				 	status = SYS_get_design_info(dinfo_buffer,0);
-				 	outBuffer[bufcount++] = GETDEVICEID;
-				 	bufWrite(outBuffer, &bufcount, 52, 2);
-				 	for (uint8_t i = 0 ; i < 16; i++)
-				 		outBuffer[bufcount++] = data_buffer[i];
-				 	for (uint8_t i = 0 ; i < 36; i++)
-				 		outBuffer[bufcount++] = dinfo_buffer[i];
-				 	outBufSend(g_uart, outBuffer, bufcount);
+//				}else if (commandID == GETDEVICEID){
+//
+//				 	uint8_t data_buffer[16];
+//				 	uint8_t dinfo_buffer[36];
+//				 	uint8_t status;
+//				 	status = SYS_get_serial_number(data_buffer, 0);
+//				 	status = SYS_get_design_info(dinfo_buffer,0);
+//				 	outBuffer[bufcount++] = GETDEVICEID;
+//				 	bufWrite(outBuffer, &bufcount, 52, 2);
+//				 	for (uint8_t i = 0 ; i < 16; i++)
+//				 		outBuffer[bufcount++] = data_buffer[i];
+//				 	for (uint8_t i = 0 ; i < 36; i++)
+//				 		outBuffer[bufcount++] = dinfo_buffer[i];
+//				 	outBufSend(g_uart, outBuffer, bufcount);
 
 				}else if (commandID == READBMES){
 					/*
@@ -728,26 +728,26 @@ int main()
 					outBufSend(g_uart, outBuffer, bufcount);
 
 
-				}else if (commandID == DIGIRW){
-					uint8_t rw = (uint8_t) buffer[4];
-					uint8_t thishvcal = (uint8_t) buffer[5];
-					uint8_t address = (uint8_t) buffer[6];
-					uint16_t data = readU16fromBytes(&buffer[7]);
-
-					outBuffer[bufcount++] = DIGIRW;
-					bufWrite(outBuffer, &bufcount, 5, 2);
-
-					if ( rw == 0 ){//read
-						data = digi_read(address, thishvcal);
-					}
-					else{
-						digi_write(address, data, thishvcal);
-					}
-					bufWrite(outBuffer, &bufcount, rw, 1);
-					bufWrite(outBuffer, &bufcount, thishvcal, 1);
-					bufWrite(outBuffer, &bufcount, address, 1);
-					bufWrite(outBuffer, &bufcount, data, 2);
-					outBufSend(g_uart, outBuffer, bufcount);
+//				}else if (commandID == DIGIRW){
+//					uint8_t rw = (uint8_t) buffer[4];
+//					uint8_t thishvcal = (uint8_t) buffer[5];
+//					uint8_t address = (uint8_t) buffer[6];
+//					uint16_t data = readU16fromBytes(&buffer[7]);
+//
+//					outBuffer[bufcount++] = DIGIRW;
+//					bufWrite(outBuffer, &bufcount, 5, 2);
+//
+//					if ( rw == 0 ){//read
+//						data = digi_read(address, thishvcal);
+//					}
+//					else{
+//						digi_write(address, data, thishvcal);
+//					}
+//					bufWrite(outBuffer, &bufcount, rw, 1);
+//					bufWrite(outBuffer, &bufcount, thishvcal, 1);
+//					bufWrite(outBuffer, &bufcount, address, 1);
+//					bufWrite(outBuffer, &bufcount, data, 2);
+//					outBufSend(g_uart, outBuffer, bufcount);
 
 				}else if (commandID == SETFUSEON){
 					uint8_t preamp_number = (uint8_t) buffer[4];
@@ -1375,38 +1375,38 @@ int main()
 
 
 //***********************************begin of control_digi commands*******************************************************************************
-				}else if (commandID == ADCRWCMDID){
-					// adc read/write
-					uint8_t adc_num = (uint8_t) buffer[4];
-					uint8_t rw = (uint8_t) buffer[5];
-					uint16_t address = readU16fromBytes(&buffer[6]);
-					uint16_t data = readU16fromBytes(&buffer[8]);
-
-					outBuffer[bufcount++] = ADCRWCMDID;
-					bufWrite(outBuffer, &bufcount, 6, 2);
-
-					if (rw == 1){
-						uint8_t result = adc_read(address,adc_num);
-						//						sprintf(outBuffer,"Read adc %d address %02x: %02x\n",adc_num,address,result);
-						//						UART_polled_tx_string( &g_uart, outBuffer );
-
-						outBuffer[bufcount++] = rw;
-						outBuffer[bufcount++] = adc_num;
-						bufWrite(outBuffer, &bufcount, address, 2);
-						outBuffer[bufcount++] = result;
-						outBuffer[bufcount++] = 0;
-						outBufSend(g_uart, outBuffer, bufcount);
-					}else{
-						adc_write(address,(uint8_t) data,(0x1<<adc_num));
-						//						sprintf(outBuffer,"Wrote adc %d address %02x: %02x\n",adc_num,address,data);
-						//						UART_polled_tx_string( &g_uart, outBuffer );
-
-						outBuffer[bufcount++] = rw;
-						outBuffer[bufcount++] = adc_num;
-						bufWrite(outBuffer, &bufcount, address, 2);
-						bufWrite(outBuffer, &bufcount, data, 2);
-						outBufSend(g_uart, outBuffer, bufcount);
-					}
+//				}else if (commandID == ADCRWCMDID){
+//					// adc read/write
+//					uint8_t adc_num = (uint8_t) buffer[4];
+//					uint8_t rw = (uint8_t) buffer[5];
+//					uint16_t address = readU16fromBytes(&buffer[6]);
+//					uint16_t data = readU16fromBytes(&buffer[8]);
+//
+//					outBuffer[bufcount++] = ADCRWCMDID;
+//					bufWrite(outBuffer, &bufcount, 6, 2);
+//
+//					if (rw == 1){
+//						uint8_t result = adc_read(address,adc_num);
+//						//						sprintf(outBuffer,"Read adc %d address %02x: %02x\n",adc_num,address,result);
+//						//						UART_polled_tx_string( &g_uart, outBuffer );
+//
+//						outBuffer[bufcount++] = rw;
+//						outBuffer[bufcount++] = adc_num;
+//						bufWrite(outBuffer, &bufcount, address, 2);
+//						outBuffer[bufcount++] = result;
+//						outBuffer[bufcount++] = 0;
+//						outBufSend(g_uart, outBuffer, bufcount);
+//					}else{
+//						adc_write(address,(uint8_t) data,(0x1<<adc_num));
+//						//						sprintf(outBuffer,"Wrote adc %d address %02x: %02x\n",adc_num,address,data);
+//						//						UART_polled_tx_string( &g_uart, outBuffer );
+//
+//						outBuffer[bufcount++] = rw;
+//						outBuffer[bufcount++] = adc_num;
+//						bufWrite(outBuffer, &bufcount, address, 2);
+//						bufWrite(outBuffer, &bufcount, data, 2);
+//						outBufSend(g_uart, outBuffer, bufcount);
+//					}
 
 //				}else if (commandID == BITSLIPCMDID){
 //
@@ -1747,21 +1747,21 @@ int main()
 //					outBufSend(g_uart, outBuffer, bufcount);
 //					*/
 
-				}else if (commandID == ADCINITINFOCMDID){
+//				}else if (commandID == ADCINITINFOCMDID){
+//
+//					outBuffer[bufcount++] = ADCINITINFOCMDID;
+//					bufWrite(outBuffer, &bufcount, 30, 2);
+//					for (uint8_t i=0; i<30; i++)
+//						outBuffer[bufcount++] = init_buff[i];
+//					outBufSend(g_uart, outBuffer, bufcount);
 
-					outBuffer[bufcount++] = ADCINITINFOCMDID;
-					bufWrite(outBuffer, &bufcount, 30, 2);
-					for (uint8_t i=0; i<30; i++)
-						outBuffer[bufcount++] = init_buff[i];
-					outBufSend(g_uart, outBuffer, bufcount);
-
-				}else if (commandID == PACKAGETESTCMDID){
-					outBuffer[bufcount++] = PACKAGETESTCMDID;
-					outBuffer[bufcount++] = 0xCA;
-					outBuffer[bufcount++] = 1;
-					for (uint16_t i=0; i<458; i++)
-						outBuffer[bufcount++] = i%256;
-					outBufSend(g_uart, outBuffer, bufcount);
+//				}else if (commandID == PACKAGETESTCMDID){
+//					outBuffer[bufcount++] = PACKAGETESTCMDID;
+//					outBuffer[bufcount++] = 0xCA;
+//					outBuffer[bufcount++] = 1;
+//					for (uint16_t i=0; i<458; i++)
+//						outBuffer[bufcount++] = i%256;
+//					outBufSend(g_uart, outBuffer, bufcount);
 							
 				}else if (commandID == FINDTHRESHOLDSCMDID){
 					uint16_t num_lookback = readU16fromBytes(&buffer[4]);
