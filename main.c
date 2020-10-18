@@ -795,96 +795,96 @@ int main()
 
 //***********************************begin of DDR commands****************************************************************************************
 
-				}else if (commandID == TESTDDR){
-					// MT changed to have automatic memory write and read back
-					uint8_t ddrpattern = (uint8_t) buffer[4];
-					uint32_t ddrraddr = readU32fromBytes(&buffer[5]);
-					uint32_t ddroffset = readU32fromBytes(&buffer[9]);
-
-					// MT added delay between passing of parameters
-					*(registers_0_addr + REG_ROC_DDR_NHITS) = 1;
-					delayUs(100);
-
-					*(registers_0_addr + REG_ROC_DDR_PATTERN_EN) = 0;
-					*(registers_0_addr + REG_ROC_DDR_PATTERN) = ddrpattern;
-					delayUs(100);
-
-					*(registers_0_addr + REG_ROC_DDR_OFFSET) = ddroffset;
-					delayUs(100);
-
-					// write pattern to DDR memory
-					*(registers_0_addr + REG_ROC_DDR_WEN) = 1;
-					delay_ms(10);
-
-					//read pattern from DDR memory to RAM
-					*(registers_0_addr + REG_ROC_DDR_REN) = 1;
-					delay_ms(10);
-
-					*(registers_0_addr + REG_ROC_DDR_IN) = ddrraddr;
-					delayUs(10);
-
-					uint32_t dataddr = *(registers_0_addr + REG_ROC_DDR_RAM);
-
-					outBuffer[bufcount++] = TESTDDR;
-					bufWrite(outBuffer, &bufcount, 12, 2);
-					bufWrite(outBuffer, &bufcount, ddrraddr, 4);
-					bufWrite(outBuffer, &bufcount, dataddr, 4);
-					bufWrite(outBuffer, &bufcount, ddroffset, 4);
-					outBufSend(g_uart, outBuffer, bufcount);
-
-				}else if (commandID == DDRRAMREAD){
-// MT -- command testing the write to different part of the memory (based on testDDR)
-//    It has only one parameter (ddroffset = memory offset in multiple of 1 kB).
-//    All other testDDR parameters fixed to write to DDR 1kB of increasing one data bits
-					uint32_t ddroffset = readU32fromBytes(&buffer[4]);
-					// MT 02/10/2020  add pattern parameter
-					uint32_t ddrpattern = readU32fromBytes(&buffer[8]);
-
-					*(registers_0_addr + REG_ROC_DDR_OFFSET) = ddroffset;
-					delayUs(100);
-					*(registers_0_addr + REG_ROC_DDR_NHITS) = 1;
-					*(registers_0_addr + REG_ROC_DDR_PATTERN_EN) = 0;
-					delayUs(100);
-					*(registers_0_addr + REG_ROC_DDR_PATTERN) = ddrpattern;
-					delayUs(100);
-
-					// write pattern to DDR memory
-					*(registers_0_addr + REG_ROC_DDR_WEN) = 1;
-					delay_ms(10);
-
-					//read pattern from DDR memory to RAM
-					*(registers_0_addr + REG_ROC_DDR_REN) = 1;
-					delay_ms(10);
-
-					// read the full 1kB page in the SRAM ( => 256 addresses of 32 bits each)
-					// and write it to file
-					readout_obloc = 0;
-					bufWrite(dataBuffer, &readout_obloc, STARTTRG, 2);
-					readout_obloc_place_holder = readout_obloc;
-					readout_obloc += 2;
-
-					for (uint32_t i= 0; i < 256; i++){
-						*(registers_0_addr + REG_ROC_DDR_IN) = i;
-						delayUs(10);
-
-						volatile uint32_t ramdata = *(registers_0_addr + REG_ROC_DDR_RAM);
-						bufWrite(dataBuffer, &readout_obloc, ramdata, 4);
-					}
-
-					// read error location
-					uint32_t errloc = *(registers_0_addr + REG_ROC_DDR_ERRLOC);
-
-					outBuffer[bufcount++] = DDRRAMREAD;
-					bufWrite(outBuffer, &bufcount, 4, 2);
-					bufWrite(outBuffer, &bufcount, errloc, 4);
-					outBufSend(g_uart, outBuffer, bufcount);
-
-					bufWrite(dataBuffer, &readout_obloc_place_holder, (readout_obloc-4), 2);
-					UART_send(&g_uart, dataBuffer, readout_obloc);
-
-					readout_obloc = 0;
-					bufWrite(dataBuffer, &readout_obloc, ENDOFDATA, 2);
-					UART_send(&g_uart, dataBuffer ,2);
+//				}else if (commandID == TESTDDR){
+//					// MT changed to have automatic memory write and read back
+//					uint8_t ddrpattern = (uint8_t) buffer[4];
+//					uint32_t ddrraddr = readU32fromBytes(&buffer[5]);
+//					uint32_t ddroffset = readU32fromBytes(&buffer[9]);
+//
+//					// MT added delay between passing of parameters
+//					*(registers_0_addr + REG_ROC_DDR_NHITS) = 1;
+//					delayUs(100);
+//
+//					*(registers_0_addr + REG_ROC_DDR_PATTERN_EN) = 0;
+//					*(registers_0_addr + REG_ROC_DDR_PATTERN) = ddrpattern;
+//					delayUs(100);
+//
+//					*(registers_0_addr + REG_ROC_DDR_OFFSET) = ddroffset;
+//					delayUs(100);
+//
+//					// write pattern to DDR memory
+//					*(registers_0_addr + REG_ROC_DDR_WEN) = 1;
+//					delay_ms(10);
+//
+//					//read pattern from DDR memory to RAM
+//					*(registers_0_addr + REG_ROC_DDR_REN) = 1;
+//					delay_ms(10);
+//
+//					*(registers_0_addr + REG_ROC_DDR_IN) = ddrraddr;
+//					delayUs(10);
+//
+//					uint32_t dataddr = *(registers_0_addr + REG_ROC_DDR_RAM);
+//
+//					outBuffer[bufcount++] = TESTDDR;
+//					bufWrite(outBuffer, &bufcount, 12, 2);
+//					bufWrite(outBuffer, &bufcount, ddrraddr, 4);
+//					bufWrite(outBuffer, &bufcount, dataddr, 4);
+//					bufWrite(outBuffer, &bufcount, ddroffset, 4);
+//					outBufSend(g_uart, outBuffer, bufcount);
+//
+//				}else if (commandID == DDRRAMREAD){
+//// MT -- command testing the write to different part of the memory (based on testDDR)
+////    It has only one parameter (ddroffset = memory offset in multiple of 1 kB).
+////    All other testDDR parameters fixed to write to DDR 1kB of increasing one data bits
+//					uint32_t ddroffset = readU32fromBytes(&buffer[4]);
+//					// MT 02/10/2020  add pattern parameter
+//					uint32_t ddrpattern = readU32fromBytes(&buffer[8]);
+//
+//					*(registers_0_addr + REG_ROC_DDR_OFFSET) = ddroffset;
+//					delayUs(100);
+//					*(registers_0_addr + REG_ROC_DDR_NHITS) = 1;
+//					*(registers_0_addr + REG_ROC_DDR_PATTERN_EN) = 0;
+//					delayUs(100);
+//					*(registers_0_addr + REG_ROC_DDR_PATTERN) = ddrpattern;
+//					delayUs(100);
+//
+//					// write pattern to DDR memory
+//					*(registers_0_addr + REG_ROC_DDR_WEN) = 1;
+//					delay_ms(10);
+//
+//					//read pattern from DDR memory to RAM
+//					*(registers_0_addr + REG_ROC_DDR_REN) = 1;
+//					delay_ms(10);
+//
+//					// read the full 1kB page in the SRAM ( => 256 addresses of 32 bits each)
+//					// and write it to file
+//					readout_obloc = 0;
+//					bufWrite(dataBuffer, &readout_obloc, STARTTRG, 2);
+//					readout_obloc_place_holder = readout_obloc;
+//					readout_obloc += 2;
+//
+//					for (uint32_t i= 0; i < 256; i++){
+//						*(registers_0_addr + REG_ROC_DDR_IN) = i;
+//						delayUs(10);
+//
+//						volatile uint32_t ramdata = *(registers_0_addr + REG_ROC_DDR_RAM);
+//						bufWrite(dataBuffer, &readout_obloc, ramdata, 4);
+//					}
+//
+//					// read error location
+//					uint32_t errloc = *(registers_0_addr + REG_ROC_DDR_ERRLOC);
+//
+//					outBuffer[bufcount++] = DDRRAMREAD;
+//					bufWrite(outBuffer, &bufcount, 4, 2);
+//					bufWrite(outBuffer, &bufcount, errloc, 4);
+//					outBufSend(g_uart, outBuffer, bufcount);
+//
+//					bufWrite(dataBuffer, &readout_obloc_place_holder, (readout_obloc-4), 2);
+//					UART_send(&g_uart, dataBuffer, readout_obloc);
+//
+//					readout_obloc = 0;
+//					bufWrite(dataBuffer, &readout_obloc, ENDOFDATA, 2);
+//					UART_send(&g_uart, dataBuffer ,2);
 
 				}else if (commandID == DDRPATTERNREAD){
 // MT --same as DDRRAMREAD but only reads and returns location of error register
