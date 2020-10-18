@@ -87,7 +87,7 @@
 #define DCSBLKREAD   69
 #define DCSBLKWRITE  70
 
-//"digi" command ID (1 byte)
+// "DIGI" command ID (1 byte)
 
 #define ADCRWCMDID 101
 #define BITSLIPCMDID 102

@@ -945,7 +945,7 @@ int main()
 					uint8_t ddr_pattern = (uint8_t) buffer[10];
 					uint8_t ddr_pattern_en = (uint8_t) buffer[11];
 
-					// this is how we set simulated clock to TOP_SERDES, whicj in tuen becomes ALGO_CLK to DDRInterface
+					// this is how we set simulated clock to TOP_SERDES, which in turn becomes ALGO_CLK to DDRInterface
 					*(registers_0_addr + REG_ROC_DTC_SIM_PARAM) = (1<<28);
 					delayUs(100);
 					// PATTERN_EN must be set BEFORE page_no to prevent write to DDR3 from standard digififo
@@ -1061,10 +1061,14 @@ int main()
 					delay_ms(1);
 					*(registers_0_addr + REG_ROC_DTC_SIM_START) = 1;
 
-					// read back all relevant parameters
+					// read data after DCS reply
+					delay_ms(1);
 					outBuffer[bufcount++] = DCSREAD;
-					bufWrite(outBuffer, &bufcount, 2, 2);
-					bufWrite(outBuffer, &bufcount,  dtc_addr, 2);
+
+					uint32_t dtcsim_read_data = *(registers_0_addr + REG_ROC_DTC_SIM_DATA_READ);
+					bufWrite(outBuffer, &bufcount, 4, 2);
+					bufWrite(outBuffer, &bufcount, (dtcsim_read_data>>16) & 0xFFFF, 2);
+					bufWrite(outBuffer, &bufcount, (dtcsim_read_data)     & 0xFFFF, 2);
 					outBufSend(g_uart, outBuffer, bufcount);
 
 
@@ -1174,8 +1178,8 @@ int main()
 
 				}else if (commandID == DCSBLKREAD){
 					uint8_t  blk_type = (uint8_t)  buffer[4];
-					uint8_t  blk_word = (uint8_t)  buffer[5];
-					uint8_t  blk_addr = (uint8_t)  buffer[6];
+					uint16_t blk_word  = readU16fromBytes(&buffer[5]);
+					uint16_t blk_addr  = readU16fromBytes(&buffer[7]);
 
 					// set Simulation Enable, DTC Simulator as output,
 					// Packet Type to DCSRequest and OP_CODE to appropriate Block Read
@@ -1203,17 +1207,19 @@ int main()
 
 					// read back all relevant parameters
 					outBuffer[bufcount++] = DCSBLKREAD;
-					bufWrite(outBuffer, &bufcount, 3, 2);
+					bufWrite(outBuffer, &bufcount, 5, 2);
 					bufWrite(outBuffer, &bufcount, blk_type, 1);
-					bufWrite(outBuffer, &bufcount, blk_word, 1);
-					bufWrite(outBuffer, &bufcount, blk_addr, 1);
+					bufWrite(outBuffer, &bufcount, blk_word, 2);
+					bufWrite(outBuffer, &bufcount, blk_addr, 2);
 					outBufSend(g_uart, outBuffer, bufcount);
 
 
 				}else if (commandID == DCSBLKWRITE){
 					uint8_t  blk_type = (uint8_t)  buffer[4];
-					uint8_t  blk_word = (uint8_t)  buffer[5];
-					uint8_t  blk_addr = (uint8_t)  buffer[6];
+					uint16_t blk_word  = readU16fromBytes(&buffer[5]);
+					uint16_t blk_addr  = readU16fromBytes(&buffer[7]);
+					//uint8_t  blk_word = (uint8_t)  buffer[5];
+					//uint8_t  blk_addr = (uint8_t)  buffer[6];
 
 					// set Simulation Enable, DTC Simulator as output,
 					// Packet Type to DCSRequest and OP_CODE to appropriate Block Read
@@ -1236,15 +1242,18 @@ int main()
 					*(registers_0_addr + REG_ROC_DTC_SIM_DATA) = (blk_word<<16);
 
 					// send out simulated packet
-					delay_ms(1);
 					*(registers_0_addr + REG_ROC_DTC_SIM_START) = 1;
 
 					// read back all relevant parameters
 					outBuffer[bufcount++] = DCSBLKWRITE;
-					bufWrite(outBuffer, &bufcount, 3, 2);
+					//bufWrite(outBuffer, &bufcount, 3, 2);
+					//bufWrite(outBuffer, &bufcount, blk_type, 1);
+					//bufWrite(outBuffer, &bufcount, blk_word, 1);
+					//bufWrite(outBuffer, &bufcount, blk_addr, 1);
+					bufWrite(outBuffer, &bufcount, 5, 2);
 					bufWrite(outBuffer, &bufcount, blk_type, 1);
-					bufWrite(outBuffer, &bufcount, blk_word, 1);
-					bufWrite(outBuffer, &bufcount, blk_addr, 1);
+					bufWrite(outBuffer, &bufcount, blk_word, 2);
+					bufWrite(outBuffer, &bufcount, blk_addr, 2);
 					outBufSend(g_uart, outBuffer, bufcount);
 
 
@@ -1308,7 +1317,12 @@ int main()
 
 
 				}else if (commandID == DCSDATAREQ){
-					uint16_t dtc_evttag  = readU16fromBytes(&buffer[4]);
+					uint8_t  dtc_mem_dis = (uint8_t) buffer[4];
+					uint16_t dtc_evttag  = readU16fromBytes(&buffer[5]);
+
+					// set MEMFIFO disable/enable
+					*(registers_0_addr + REG_ROC_DDR_SET) = dtc_mem_dis;
+					delay_ms(1);
 
 					// set Simulation Enable, DTC Simulator as output and
 					// Packet Type to Data Request
@@ -1323,15 +1337,22 @@ int main()
 					// pass event window
 					uint32_t dtc_sim_spill = dtc_evttag & 0x0000FFFF;
 					*(registers_0_addr + REG_ROC_DTC_SIM_SPILL) = dtc_sim_spill;
+					delay_ms(1);
 
+					volatile uint8_t  ddr_select = *(registers_0_addr + REG_ROC_DDR_SEL);
+					*(registers_0_addr + REG_ROC_DDR_SEL) = 0;
 					// send out simulated packet
 					delay_ms(1);
 					*(registers_0_addr + REG_ROC_DTC_SIM_START) = 1;
 
+					delay_ms(1);
+					*(registers_0_addr + REG_ROC_DDR_SEL) = ddr_select;
+
 					// read back all relevant parameters
 					outBuffer[bufcount++] = DCSDATAREQ;
-					bufWrite(outBuffer, &bufcount, 2, 2);
-					bufWrite(outBuffer, &bufcount, dtc_evttag, 2);
+					bufWrite(outBuffer, &bufcount, 3, 2);
+					bufWrite(outBuffer, &bufcount, dtc_evttag,  2);
+					bufWrite(outBuffer, &bufcount, dtc_mem_dis, 1);
 					outBufSend(g_uart, outBuffer, bufcount);
 
 
@@ -1340,12 +1361,12 @@ int main()
 					uint8_t blk_offset = (uint8_t) buffer[5];
 
 					uint8_t blk_address = blk_offset;
-					uint16_t blk_word;
+					uint16_t blk_data;
 					// pass 16-bit word to RAM_DATA and enable RAM_WE for increasing RAM_ADDR starting from offset
 					for (uint8_t i=0; i<blk_size; i++) {
 
-						blk_word  = readU16fromBytes(&buffer[6+(i*2)]);
-						*(registers_0_addr + REG_ROC_DTC_SIM_BLK_DATA) = blk_word;
+						blk_data  = readU16fromBytes(&buffer[6+(i*2)]);
+						*(registers_0_addr + REG_ROC_DTC_SIM_BLK_DATA) = blk_data;
 
 						*(registers_0_addr + REG_ROC_DTC_SIM_BLK_ADDR) = blk_address;
 						if (i<(blk_size-1)) blk_address = blk_address + 1;
@@ -1359,7 +1380,7 @@ int main()
 					bufWrite(outBuffer, &bufcount, 4, 2);
 					bufWrite(outBuffer, &bufcount, blk_size,    1);
 					bufWrite(outBuffer, &bufcount, blk_address, 1);
-					bufWrite(outBuffer, &bufcount, blk_word,    2);
+					bufWrite(outBuffer, &bufcount, blk_data,    2);
 					outBufSend(g_uart, outBuffer, bufcount);
 
 
