@@ -317,7 +317,7 @@ int main()
 			int trigger_count = 0;
 			//UART_polled_tx_string( &g_uart, "datastream\n" );
 
-			read_data(&delay_count,&trigger_count);
+			read_data(&delay_count,&trigger_count,NULL);
 			readout_totalTriggers += trigger_count;
 		}
 
@@ -1050,16 +1050,13 @@ int main()
 					uint8_t dtc_packet_type = 0;
 
 					// pass simulation parameters
-					uint32_t dtc_sim_param = (dtc_sim_en<<28) | (dtc_output<<24) | (dtc_opcode<<16) |  dtc_packet_type;
-					*(registers_0_addr + REG_ROC_DTC_SIM_PARAM) = dtc_sim_param;
+					DCS_pass_sim_param(dtc_sim_en, dtc_output, dtc_opcode, dtc_packet_type);
 
 					// pass address
-					uint32_t dtc_sim_address =  dtc_addr & 0x0000FFFF;
-					*(registers_0_addr + REG_ROC_DTC_SIM_ADDR) = dtc_sim_address;
+					DCS_pass_addr_data(dtc_addr, 0, 0);
 
 					// send out simulated packet
-					delay_ms(1);
-					*(registers_0_addr + REG_ROC_DTC_SIM_START) = 1;
+					DCS_sim_packet_send();
 
 					// read data after DCS reply
 					delay_ms(1);
@@ -1084,20 +1081,16 @@ int main()
 					uint8_t dtc_packet_type = 0;
 
 					// pass simulation parameters
-					uint32_t dtc_sim_param = (dtc_sim_en<<28) | (dtc_output<<24) | (dtc_opcode<<16) |  dtc_packet_type;
-					*(registers_0_addr + REG_ROC_DTC_SIM_PARAM) = dtc_sim_param;
+					DCS_pass_sim_param(dtc_sim_en, dtc_output, dtc_opcode, dtc_packet_type);
 
 					// pass address
-					uint32_t dtc_sim_address =  dtc_addr & 0x0000FFFF;
-					*(registers_0_addr + REG_ROC_DTC_SIM_ADDR) = dtc_sim_address;
+					DCS_pass_addr_data(dtc_addr, 0, 0);
 
 					// pass data
-					uint32_t dtc_sim_data =  dtc_data & 0x0000FFFF;
-					*(registers_0_addr + REG_ROC_DTC_SIM_DATA) = dtc_sim_data;
+					DCS_pass_addr_data(dtc_data, 0, 1);
 
 					// send out simulated packet
-					delay_ms(1);
-					*(registers_0_addr + REG_ROC_DTC_SIM_START) = 1;
+					DCS_sim_packet_send();
 
 					// read back all relevant parameters
 					outBuffer[bufcount++] = DCSWRITE;
@@ -1119,16 +1112,13 @@ int main()
 					uint8_t dtc_packet_type = 0;
 
 					// pass simulation parameters
-					uint32_t dtc_sim_param = (dtc_sim_en<<28) | (dtc_output<<24) | (dtc_opcode<<16) |  dtc_packet_type;
-					*(registers_0_addr + REG_ROC_DTC_SIM_PARAM) = dtc_sim_param;
+					DCS_pass_sim_param(dtc_sim_en, dtc_output, dtc_opcode, dtc_packet_type);
 
 					// pass address
-					uint32_t dtc_sim_address =  (dtc_module<<16) | dtc_addr;
-					*(registers_0_addr + REG_ROC_DTC_SIM_ADDR) = dtc_sim_address;
+					uint32_t dtc_sim_address = DCS_pass_addr_data(dtc_addr, (uint16_t)dtc_module, 0);
 
 					// send out simulated packet
-					delay_ms(1);
-					*(registers_0_addr + REG_ROC_DTC_SIM_START) = 1;
+					DCS_sim_packet_send();
 
 					// read back all relevant parameters
 					outBuffer[bufcount++] = DCSMODREAD;
@@ -1152,20 +1142,16 @@ int main()
 					uint8_t dtc_packet_type = 0;
 
 					// pass simulation parameters
-					uint32_t dtc_sim_param = (dtc_sim_en<<28) | (dtc_output<<24) | (dtc_opcode<<16) |  dtc_packet_type;
-					*(registers_0_addr + REG_ROC_DTC_SIM_PARAM) = dtc_sim_param;
+					DCS_pass_sim_param(dtc_sim_en, dtc_output, dtc_opcode, dtc_packet_type);
 
 					// pass address
-					uint32_t dtc_sim_address =  (dtc_module<<16) | dtc_addr;
-					*(registers_0_addr + REG_ROC_DTC_SIM_ADDR) = dtc_sim_address;
+					uint32_t dtc_sim_address = DCS_pass_addr_data(dtc_addr, (uint16_t)dtc_module, 0);
 
 					// pass data
-					uint32_t dtc_sim_data =  dtc_data & 0x0000FFFF;
-					*(registers_0_addr + REG_ROC_DTC_SIM_DATA) = dtc_sim_data;
+					DCS_pass_addr_data(dtc_data, 0, 1);
 
 					// send out simulated packet
-					delay_ms(1);
-					*(registers_0_addr + REG_ROC_DTC_SIM_START) = 1;
+					DCS_sim_packet_send();
 
 					// read back all relevant parameters
 					outBuffer[bufcount++] = DCSMODWRITE;
@@ -1191,19 +1177,16 @@ int main()
 					uint8_t dtc_packet_type = 0;
 
 					// pass simulation parameters
-					uint32_t dtc_sim_param = (dtc_sim_en<<28) | (dtc_output<<24) | (dtc_opcode<<16) |  dtc_packet_type;
-					*(registers_0_addr + REG_ROC_DTC_SIM_PARAM) = dtc_sim_param;
+					DCS_pass_sim_param(dtc_sim_en, dtc_output, dtc_opcode, dtc_packet_type);
 
 					// pass starting address
-					uint32_t dtc_sim_address = blk_addr & 0x0000FFFF;
-					*(registers_0_addr + REG_ROC_DTC_SIM_ADDR) = dtc_sim_address;
+					DCS_pass_addr_data(blk_addr, 0, 0);
 
 					// pass block word count
-					*(registers_0_addr + REG_ROC_DTC_SIM_DATA) = (blk_word<<16);
+					DCS_pass_addr_data(0, blk_word, 1);
 
 					// send out simulated packet
-					delay_ms(1);
-					*(registers_0_addr + REG_ROC_DTC_SIM_START) = 1;
+					DCS_sim_packet_send();
 
 					// read back all relevant parameters
 					outBuffer[bufcount++] = DCSBLKREAD;
@@ -1231,18 +1214,16 @@ int main()
 					uint8_t dtc_packet_type = 0;
 
 					// pass simulation parameters
-					uint32_t dtc_sim_param = (dtc_sim_en<<28) | (dtc_output<<24) | (dtc_opcode<<16) |  dtc_packet_type;
-					*(registers_0_addr + REG_ROC_DTC_SIM_PARAM) = dtc_sim_param;
+					DCS_pass_sim_param(dtc_sim_en, dtc_output, dtc_opcode, dtc_packet_type);
 
 					// pass starting address
-					uint32_t dtc_sim_address = blk_addr & 0x0000FFFF;
-					*(registers_0_addr + REG_ROC_DTC_SIM_ADDR) = dtc_sim_address;
+					DCS_pass_addr_data(blk_addr, 0, 0);
 
 					// pass block word count
-					*(registers_0_addr + REG_ROC_DTC_SIM_DATA) = (blk_word<<16);
+					DCS_pass_addr_data(0, blk_word, 1);
 
 					// send out simulated packet
-					*(registers_0_addr + REG_ROC_DTC_SIM_START) = 1;
+					DCS_sim_packet_send();
 
 					// read back all relevant parameters
 					outBuffer[bufcount++] = DCSBLKWRITE;
@@ -1266,13 +1247,10 @@ int main()
 					uint8_t dtc_output = 1;
 
 					// pass simulation parameters
-					uint32_t dtc_sim_param = (dtc_sim_en<<28) | (dtc_output<<24) |
-											 (dtc_seq_num<<8) | (dtc_marker_type<<4);
-					*(registers_0_addr + REG_ROC_DTC_SIM_PARAM) = dtc_sim_param;
+					uint32_t dtc_sim_param = DCS_pass_sim_param(dtc_sim_en, dtc_output, dtc_seq_num, dtc_marker_type);
 
 					// send out simulated marker
-					delay_ms(1);
-					*(registers_0_addr + REG_ROC_DTC_SIM_START) = 1;
+					DCS_sim_packet_send();
 
 					// read back all relevant parameters
 					outBuffer[bufcount++] = DCSMARKER;
@@ -1295,16 +1273,14 @@ int main()
 					uint8_t dtc_packet_type = 1;
 
 					// pass simulation parameters
-					uint32_t dtc_sim_param = (dtc_sim_en<<28) | (dtc_output<<24) | dtc_packet_type;
-					*(registers_0_addr + REG_ROC_DTC_SIM_PARAM) = dtc_sim_param;
+					DCS_pass_sim_param(dtc_sim_en, dtc_output, 0, dtc_packet_type);
 
 					// pass hearbeat packer info
 					uint32_t dtc_sim_spill = (dtc_onspill<<31) | (dtc_rfmarker<<24) | (dtc_evtmode<<16) | dtc_evttag;
 					*(registers_0_addr + REG_ROC_DTC_SIM_SPILL) = dtc_sim_spill;
 
 					// send out simulated packet
-					delay_ms(1);
-					*(registers_0_addr + REG_ROC_DTC_SIM_START) = 1;
+					DCS_sim_packet_send();
 
 					// read back all relevant parameters
 					outBuffer[bufcount++] = DCSHEARTBEAT;
@@ -1331,8 +1307,7 @@ int main()
 					uint8_t dtc_packet_type = 2;
 
 					// pass simulation parameters
-					uint32_t dtc_sim_param = (dtc_sim_en<<28) | (dtc_output<<24) | dtc_packet_type;
-					*(registers_0_addr + REG_ROC_DTC_SIM_PARAM) = dtc_sim_param;
+					DCS_pass_sim_param(dtc_sim_en, dtc_output, 0, dtc_packet_type);
 
 					// pass event window
 					uint32_t dtc_sim_spill = dtc_evttag & 0x0000FFFF;
@@ -1342,8 +1317,7 @@ int main()
 					volatile uint8_t  ddr_select = *(registers_0_addr + REG_ROC_DDR_SEL);
 					*(registers_0_addr + REG_ROC_DDR_SEL) = 0;
 					// send out simulated packet
-					delay_ms(1);
-					*(registers_0_addr + REG_ROC_DTC_SIM_START) = 1;
+					DCS_sim_packet_send();
 
 					delay_ms(1);
 					*(registers_0_addr + REG_ROC_DDR_SEL) = ddr_select;
@@ -1641,12 +1615,7 @@ int main()
 						// reset fifo
 						*(registers_0_addr + REG_ROC_USE_LANE) = 0xF;
 						resetFIFO();
-						*(registers_0_addr + REG_ROC_CR_FIFO_RESET) = 0;
-						*(registers_0_addr + REG_ROC_CR_FIFO_RESET) = 1;
 						resetFIFO();
-						*(registers_0_addr + REG_ROC_CR_FIFO_RESET) = 0;
-						*(registers_0_addr + REG_ROC_CR_FIFO_RESET) = 1;
-
 						*(registers_0_addr + REG_ROC_EWW_PULSER) = 1;
 
 
@@ -1675,7 +1644,7 @@ int main()
 						int delay_count = 0;
 						int trigger_count = 0;
 
-						read_data(&delay_count,&trigger_count);
+						read_data(&delay_count,&trigger_count,NULL);
 
 						//sprintf(&dataBuffer[readout_obloc],"\nend\n");
 						//UART_polled_tx_string( &g_uart, dataBuffer );
@@ -1704,7 +1673,7 @@ int main()
 						int delay_count = 0;
 						int trigger_count = 0;
 
-						read_data(&delay_count,&trigger_count);
+						read_data(&delay_count,&trigger_count,NULL);
 
 						//sprintf(&dataBuffer[readout_obloc],"\nend\n");
 						//UART_polled_tx_string( &g_uart, dataBuffer );
@@ -1784,47 +1753,47 @@ int main()
 //						outBuffer[bufcount++] = i%256;
 //					outBufSend(g_uart, outBuffer, bufcount);
 							
-				}else if (commandID == FINDTHRESHOLDSCMDID){
-					uint16_t num_lookback = readU16fromBytes(&buffer[4]);
-					uint16_t num_samples = readU16fromBytes(&buffer[6]);
-					channel_mask[0] = readU32fromBytes(&buffer[8]);
-					channel_mask[1] = readU32fromBytes(&buffer[12]);
-					channel_mask[2] = readU32fromBytes(&buffer[16]);
-					uint16_t target_rate = readU16fromBytes(&buffer[20]);
-					uint8_t verbose = (uint8_t) buffer[22];
-					//if single channel, verbose = 1 prints the detailed process for cal/hv
-
-					outBuffer[bufcount++] = FINDTHRESHOLDSCMDID;
-					bufcount_place_holder = bufcount;
-					bufWrite(outBuffer, &bufcount, 0, 2);
-					bufWrite(outBuffer, &bufcount, num_lookback, 2);
-					bufWrite(outBuffer, &bufcount, num_samples, 2);
-					bufWrite(outBuffer, &bufcount, target_rate, 2);
-					bufWrite(outBuffer, &bufcount, verbose, 1);
-
-					//disable pulser
-					digi_write(DG_ADDR_ENABLE_PULSER,0,0);
-
-					for (uint8_t channel=0; channel<96; channel++){
-						thischanmask = (((uint32_t) 0x1)<<(channel%32));
-						if 	( ((channel<32) && ((thischanmask & channel_mask[0]) == 0x0))||
-								((channel>=32) && (channel<64) && ((thischanmask & channel_mask[1]) == 0x0))||
-								((channel>=64) && ((thischanmask & channel_mask[2]) == 0x0))	){
-							continue;
-						}
-						//prints initial settings
-						bufWrite(outBuffer, &bufcount, channel, 1);
-						bufWrite(outBuffer, &bufcount, default_gains_cal[channel], 2);
-						bufWrite(outBuffer, &bufcount, default_threshs_cal[channel], 2);
-						bufWrite(outBuffer, &bufcount, default_gains_hv[channel], 2);
-						bufWrite(outBuffer, &bufcount, default_threshs_hv[channel], 2);
-
-						findChThreshold(num_lookback, num_samples, channel, target_rate, verbose);
-						findChThreshold(num_lookback, num_samples, channel+96, target_rate, verbose);
-					}
-
-					bufWrite(outBuffer, &bufcount_place_holder, (bufcount-3), 2);
-					outBufSend(g_uart, outBuffer, bufcount);
+//				}else if (commandID == FINDTHRESHOLDSCMDID){
+//					uint16_t num_lookback = readU16fromBytes(&buffer[4]);
+//					uint16_t num_samples = readU16fromBytes(&buffer[6]);
+//					channel_mask[0] = readU32fromBytes(&buffer[8]);
+//					channel_mask[1] = readU32fromBytes(&buffer[12]);
+//					channel_mask[2] = readU32fromBytes(&buffer[16]);
+//					uint16_t target_rate = readU16fromBytes(&buffer[20]);
+//					uint8_t verbose = (uint8_t) buffer[22];
+//					//if single channel, verbose = 1 prints the detailed process for cal/hv
+//
+//					outBuffer[bufcount++] = FINDTHRESHOLDSCMDID;
+//					bufcount_place_holder = bufcount;
+//					bufWrite(outBuffer, &bufcount, 0, 2);
+//					bufWrite(outBuffer, &bufcount, num_lookback, 2);
+//					bufWrite(outBuffer, &bufcount, num_samples, 2);
+//					bufWrite(outBuffer, &bufcount, target_rate, 2);
+//					bufWrite(outBuffer, &bufcount, verbose, 1);
+//
+//					//disable pulser
+//					digi_write(DG_ADDR_ENABLE_PULSER,0,0);
+//
+//					for (uint8_t channel=0; channel<96; channel++){
+//						thischanmask = (((uint32_t) 0x1)<<(channel%32));
+//						if 	( ((channel<32) && ((thischanmask & channel_mask[0]) == 0x0))||
+//								((channel>=32) && (channel<64) && ((thischanmask & channel_mask[1]) == 0x0))||
+//								((channel>=64) && ((thischanmask & channel_mask[2]) == 0x0))	){
+//							continue;
+//						}
+//						//prints initial settings
+//						bufWrite(outBuffer, &bufcount, channel, 1);
+//						bufWrite(outBuffer, &bufcount, default_gains_cal[channel], 2);
+//						bufWrite(outBuffer, &bufcount, default_threshs_cal[channel], 2);
+//						bufWrite(outBuffer, &bufcount, default_gains_hv[channel], 2);
+//						bufWrite(outBuffer, &bufcount, default_threshs_hv[channel], 2);
+//
+//						findChThreshold(num_lookback, num_samples, channel, target_rate, verbose);
+//						findChThreshold(num_lookback, num_samples, channel+96, target_rate, verbose);
+//					}
+//
+//					bufWrite(outBuffer, &bufcount_place_holder, (bufcount-3), 2);
+//					outBufSend(g_uart, outBuffer, bufcount);
 
 				}else if (commandID == MEASURETHRESHOLDCMDID){
 					channel_mask[0] = readU32fromBytes(&buffer[4]);

@@ -664,11 +664,7 @@ void autobitslip()
 
 				*(registers_0_addr + REG_ROC_USE_LANE) = 0xF;
 				resetFIFO();
-				*(registers_0_addr + REG_ROC_CR_FIFO_RESET) = 0;
-				*(registers_0_addr + REG_ROC_CR_FIFO_RESET) = 1;
 				resetFIFO();
-				*(registers_0_addr + REG_ROC_CR_FIFO_RESET) = 0;
-				*(registers_0_addr + REG_ROC_CR_FIFO_RESET) = 1;
 				*(registers_0_addr + REG_ROC_EWW_PULSER) = 1;
 				readout_obloc = 0;
 				readout_maxDelay = 50;
@@ -682,7 +678,7 @@ void autobitslip()
 				for (uint8_t i=0;i<readout_wordsPerTrigger;i++)
 					lasthit[i] = 0;
 
-				read_data2(&delay_count,&trigger_count,lasthit);
+				read_data(&delay_count,&trigger_count,lasthit);
 
 				if (trigger_count != 11){
 					not_enough_trigger[ichan/32] |= (((uint32_t)0x1)<<(ichan%32));

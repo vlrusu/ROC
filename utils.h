@@ -369,8 +369,12 @@ void hwdelay (uint32_t tdelay);
 //void delayCore(uint32_t cycles);
 //char * print_float(char *fchars, float value);
 
-void read_data(int *delay_count, int *trigger_count);
-void read_data2(int *delay_count, int *trigger_count, uint16_t *lasthit);
+uint32_t DCS_pass_sim_param(uint8_t dtc_sim_en, uint8_t dtc_output, uint8_t dtc_opcode_or_seq_num, uint8_t dtc_packet_type_or_marker_type);
+uint32_t DCS_pass_addr_data(uint16_t lsb, uint16_t msb, uint8_t is_data);
+void DCS_sim_packet_send();
+
+void read_data(int *delay_count, int *trigger_count, uint16_t *lasthit);
+//void read_data2(int *delay_count, int *trigger_count, uint16_t *lasthit);
 uint32_t get_rates(int num_delays, int num_samples, uint8_t channel, uint32_t* timecounts);
 void get_mapped_channels();
 void read_histogram(uint8_t channel, uint8_t hv_or_cal, uint16_t *output);
@@ -390,7 +394,7 @@ void outBufSend(UART_instance_t g_uart, char *outBuffer, uint16_t bufcount);
 int resetFIFO();
 void setPreampGain(uint16_t channel, uint16_t value);
 void setPreampThreshold(uint16_t channel, uint16_t value);
-void findChThreshold(int num_delays, int num_samples, uint16_t channel, uint16_t target_rate, uint8_t verbose);
+//void findChThreshold(int num_delays, int num_samples, uint16_t channel, uint16_t target_rate, uint8_t verbose);
 
 #endif /* UTILS_H_ */
 
