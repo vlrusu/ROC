@@ -317,7 +317,7 @@ int main()
 			int trigger_count = 0;
 			//UART_polled_tx_string( &g_uart, "datastream\n" );
 
-			read_data(&delay_count,&trigger_count,NULL);
+			read_data(&delay_count,&trigger_count);
 			readout_totalTriggers += trigger_count;
 		}
 
@@ -1644,7 +1644,7 @@ int main()
 						int delay_count = 0;
 						int trigger_count = 0;
 
-						read_data(&delay_count,&trigger_count,NULL);
+						read_data(&delay_count,&trigger_count);
 
 						//sprintf(&dataBuffer[readout_obloc],"\nend\n");
 						//UART_polled_tx_string( &g_uart, dataBuffer );
@@ -1673,7 +1673,7 @@ int main()
 						int delay_count = 0;
 						int trigger_count = 0;
 
-						read_data(&delay_count,&trigger_count,NULL);
+						read_data(&delay_count,&trigger_count);
 
 						//sprintf(&dataBuffer[readout_obloc],"\nend\n");
 						//UART_polled_tx_string( &g_uart, dataBuffer );

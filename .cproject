@@ -287,7 +287,7 @@
                             							
                             <option id="ilg.gnumcueclipse.managedbuild.cross.riscv.option.toolchain.id.490587099" superClass="ilg.gnumcueclipse.managedbuild.cross.riscv.option.toolchain.id" useByScannerDiscovery="false" value="-2032619395" valueType="string"/>
                             							
-                            <option id="ilg.gnumcueclipse.managedbuild.cross.riscv.option.optimization.lto.2114839411" name="Link-time optimizer (-flto)" superClass="ilg.gnumcueclipse.managedbuild.cross.riscv.option.optimization.lto" useByScannerDiscovery="true" value="true" valueType="boolean"/>
+                            <option id="ilg.gnumcueclipse.managedbuild.cross.riscv.option.optimization.lto.2114839411" name="Link-time optimizer (-flto)" superClass="ilg.gnumcueclipse.managedbuild.cross.riscv.option.optimization.lto" useByScannerDiscovery="true" value="false" valueType="boolean"/>
                             							
                             <option id="ilg.gnumcueclipse.managedbuild.cross.riscv.option.target.isa.atomic.1032222960" name="Atomic extension (RVA)" superClass="ilg.gnumcueclipse.managedbuild.cross.riscv.option.target.isa.atomic" useByScannerDiscovery="false" value="false" valueType="boolean"/>
                             							

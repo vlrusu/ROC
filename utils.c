@@ -495,7 +495,7 @@ uint8_t adc_read(uint16_t address, uint8_t adc_num){
 
 #define max_buffer 10
 
-void read_data(int *delay_count, int *trigger_count, uint16_t *lasthit)
+void read_data(int *delay_count, int *trigger_count)
 {
 
 	volatile uint32_t * ewm = registers_0_addr + REG_ROC_EWM_SINGLE;
@@ -572,11 +572,9 @@ void read_data(int *delay_count, int *trigger_count, uint16_t *lasthit)
 				if ((*delay_count) >= readout_maxDelay){
 					// if not doing continuous readout, tell python to end the run now
 					//if (readout_mode != 1){
-					if (lasthit == NULL){
 						readout_obloc = 0;
 						bufWrite(dataBuffer, &readout_obloc, EMPTY, 2);
 						UART_send(&g_uart, dataBuffer ,2);
-					}
 					//}
 					break;
 				}
@@ -592,10 +590,7 @@ void read_data(int *delay_count, int *trigger_count, uint16_t *lasthit)
 			*(registers_0_addr + re) = 1;
 			digioutput = *(registers_0_addr + data_reg);
 			memlevel -= 1;
-			if (lasthit == NULL)
-				hit_buffer[hit_ptr][j] = digioutput;
-			else
-				lasthit[j] = (uint16_t) ((digioutput & 0x3FF00000)>>20);
+			hit_buffer[hit_ptr][j] = digioutput;
 		}
 		total_reads += readout_wordsPerTrigger;
 /*
@@ -614,7 +609,6 @@ void read_data(int *delay_count, int *trigger_count, uint16_t *lasthit)
 
 		// if not requiring coincidence, immediately send out this hit
 //		if (readout_mode < 4){
-		if (lasthit == NULL){
 			readout_obloc = 0;
 			bufWrite(dataBuffer, &readout_obloc, STARTTRG, 2);
 			bufWrite(dataBuffer, &readout_obloc, 4*readout_wordsPerTrigger,2);
@@ -623,10 +617,6 @@ void read_data(int *delay_count, int *trigger_count, uint16_t *lasthit)
 				bufWrite(dataBuffer, &readout_obloc, (hit_buffer[hit_ptr][j] & 0xFFFF), 2);
 			}
 			UART_send(&g_uart, dataBuffer ,readout_obloc);
-
-			hit_ptr = (hit_ptr+1)%max_buffer;
-
-		}
 
 			(*trigger_count)++;
 //		}else{
@@ -675,7 +665,7 @@ void read_data(int *delay_count, int *trigger_count, uint16_t *lasthit)
 //			}
 //
 //		}
-//		hit_ptr = (hit_ptr+1)%max_buffer;
+		hit_ptr = (hit_ptr+1)%max_buffer;
 
 
 //		if (total_reads >= (64000 - (64000 % readout_wordsPerTrigger))){
@@ -690,11 +680,9 @@ void read_data(int *delay_count, int *trigger_count, uint16_t *lasthit)
 
 
 		if ((*trigger_count) >= readout_numTriggers){
-			if (lasthit == NULL){
-				readout_obloc = 0;
-				bufWrite(dataBuffer, &readout_obloc, ENDOFDATA, 2);
-				UART_send(&g_uart, dataBuffer ,2);
-			}
+			readout_obloc = 0;
+			bufWrite(dataBuffer, &readout_obloc, ENDOFDATA, 2);
+			UART_send(&g_uart, dataBuffer ,2);
 			break;
 		}
 	}

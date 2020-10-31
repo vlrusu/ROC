@@ -152,21 +152,25 @@
 #define DG_ADDR_SMADATA 0x52
 
 #define DG_ADDR_RX_CH_MASK1 0x60
-#define DG_ADDR_RX_CH_MASK2 0x61
-#define DG_ADDR_RX_CH_MASK3 0x62
+//#define DG_ADDR_RX_CH_MASK2 0x61
+//#define DG_ADDR_RX_CH_MASK3 0x62
 #define DG_ADDR_BITALIGN_EWM_WIDTH 0x63
 #define DG_ADDR_BITALIGN_RSTRT 0x64
 #define DG_ADDR_BITSLIP_STRT 0x65
 #define DG_ADDR_BITALIGN_CMP1 0x66
-#define DG_ADDR_BITALIGN_CMP2 0x67
-#define DG_ADDR_BITALIGN_CMP3 0x68
+//#define DG_ADDR_BITALIGN_CMP2 0x67
+//#define DG_ADDR_BITALIGN_CMP3 0x68
 #define DG_ADDR_BITALIGN_ERR1 0x69
-#define DG_ADDR_BITALIGN_ERR2 0x6A
-#define DG_ADDR_BITALIGN_ERR3 0x6B
+//#define DG_ADDR_BITALIGN_ERR2 0x6A
+//#define DG_ADDR_BITALIGN_ERR3 0x6B
 #define DG_ADDR_BITSLIP_DONE1 0x6C
-#define DG_ADDR_BITSLIP_DONE2 0x6D
-#define DG_ADDR_BITSLIP_DONE3 0x6E
-#define DG_AGGR_BITALIGN_RSETN 0x6F
+//#define DG_ADDR_BITSLIP_DONE2 0x6D
+//#define DG_ADDR_BITSLIP_DONE3 0x6E
+#define DG_ADDR_BITALIGN_RSETN 0x6F
+#define DG_ADDR_BSC_OPERATION_TYPE 0x70
+#define DG_ADDR_BSC_PATTERN_MATCH1 0x71
+//#define DG_ADDR_BSC_PATTERN_MATCH2 0x72
+//#define DG_ADDR_BSC_PATTERN_MATCH3 0x73
 
 //#define DG_ADDR_EWMCNTER 0x80
 #define DG_ADDR_EWS 0x81 // (event window start 160MHz clock ticks)
@@ -373,7 +377,7 @@ uint32_t DCS_pass_sim_param(uint8_t dtc_sim_en, uint8_t dtc_output, uint8_t dtc_
 uint32_t DCS_pass_addr_data(uint16_t lsb, uint16_t msb, uint8_t is_data);
 void DCS_sim_packet_send();
 
-void read_data(int *delay_count, int *trigger_count, uint16_t *lasthit);
+void read_data(int *delay_count, int *trigger_count);
 //void read_data2(int *delay_count, int *trigger_count, uint16_t *lasthit);
 uint32_t get_rates(int num_delays, int num_samples, uint8_t channel, uint32_t* timecounts);
 void get_mapped_channels();
