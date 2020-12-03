@@ -7,6 +7,7 @@
 
 #include "riscv_hal.h"
 
+//#define DTCDDRTEST
 
 #include "setup.h"
 //#include "Commands.h"
@@ -323,7 +324,7 @@ int main()
 
 		if (loopCount == 20000){
 			ledPattern ^= 0x1;
-//			GPIO_set_output( &g_gpio, GPIO_0, (uint32_t)ledPattern);
+			GPIO_set_output( &g_gpio, GPIO_0, (uint32_t)ledPattern);
 
 			loopCount = 0;
 		}
@@ -499,18 +500,7 @@ int main()
 					bufWrite(outBuffer, &bufcount, 0, 2);
 				 	outBufSend(g_uart, outBuffer, bufcount);
 				
-				}else if (commandID == READHISTO){
-					 uint8_t channel = (uint8_t) buffer[4];
-					 uint8_t hv_or_cal = (uint8_t) buffer[5];
-					 uint16_t output[256];
-					 read_histogram(channel,hv_or_cal,output);
 
-					outBuffer[bufcount++] = READHISTO;
-					bufWrite(outBuffer, &bufcount, 512, 2);
-					for (int i=0;i<256;i++){
-						bufWrite(outBuffer, &bufcount, output[i], 2);
-					}
-					outBufSend(g_uart, outBuffer, bufcount);
 
 				}else if (commandID == DUMPSETTINGS){
 					uint16_t channel = (uint16_t) buffer[4];
@@ -599,20 +589,21 @@ int main()
 					//					outBuffer[bufcount++] = channel >> 8;
 					//
 					//					UART_send(&g_uart, outBuffer ,bufcount );
-				}else if (commandID == GETDEVICEID){
 
-				 	uint8_t data_buffer[16];
-				 	uint8_t dinfo_buffer[36];
-				 	uint8_t status;
-				 	status = SYS_get_serial_number(data_buffer, 0);
-				 	status = SYS_get_design_info(dinfo_buffer,0);
-				 	outBuffer[bufcount++] = GETDEVICEID;
-				 	bufWrite(outBuffer, &bufcount, 52, 2);
-				 	for (uint8_t i = 0 ; i < 16; i++)
-				 		outBuffer[bufcount++] = data_buffer[i];
-				 	for (uint8_t i = 0 ; i < 36; i++)
-				 		outBuffer[bufcount++] = dinfo_buffer[i];
-				 	outBufSend(g_uart, outBuffer, bufcount);
+
+				}else if (commandID == READHISTO){
+					 uint8_t channel = (uint8_t) buffer[4];
+					 uint8_t hv_or_cal = (uint8_t) buffer[5];
+					 uint16_t output[256];
+					 read_histogram(channel,hv_or_cal,output);
+
+					outBuffer[bufcount++] = READHISTO;
+					bufWrite(outBuffer, &bufcount, 512, 2);
+					for (int i=0;i<256;i++){
+						bufWrite(outBuffer, &bufcount, output[i], 2);
+					}
+					outBufSend(g_uart, outBuffer, bufcount);
+
 
 				}else if (commandID == READBMES){
 					/*
@@ -748,6 +739,22 @@ int main()
 //					bufWrite(outBuffer, &bufcount, address, 1);
 //					bufWrite(outBuffer, &bufcount, data, 2);
 //					outBufSend(g_uart, outBuffer, bufcount);
+#ifndef	DTCDDRTEST
+
+				}else if (commandID == GETDEVICEID){
+
+				 	uint8_t data_buffer[16];
+				 	uint8_t dinfo_buffer[36];
+				 	uint8_t status;
+				 	status = SYS_get_serial_number(data_buffer, 0);
+				 	status = SYS_get_design_info(dinfo_buffer,0);
+				 	outBuffer[bufcount++] = GETDEVICEID;
+				 	bufWrite(outBuffer, &bufcount, 52, 2);
+				 	for (uint8_t i = 0 ; i < 16; i++)
+				 		outBuffer[bufcount++] = data_buffer[i];
+				 	for (uint8_t i = 0 ; i < 36; i++)
+				 		outBuffer[bufcount++] = dinfo_buffer[i];
+				 	outBufSend(g_uart, outBuffer, bufcount);
 
 				}else if (commandID == SETFUSEON){
 					uint8_t preamp_number = (uint8_t) buffer[4];
@@ -792,6 +799,7 @@ int main()
 					bufWrite(outBuffer, &bufcount, v2p5, 2);
 					bufWrite(outBuffer, &bufcount, v5p1, 2);
 					outBufSend(g_uart, outBuffer, bufcount);
+#endif
 
 //***********************************begin of DDR commands****************************************************************************************
 
@@ -886,6 +894,8 @@ int main()
 //					bufWrite(dataBuffer, &readout_obloc, ENDOFDATA, 2);
 //					UART_send(&g_uart, dataBuffer ,2);
 
+
+#ifdef DTCDDRTEST
 				}else if (commandID == DDRPATTERNREAD){
 // MT --same as DDRRAMREAD but only reads and returns location of error register
 //    It has only one parameter (ddroffset = memory offset in multiple of 1 kB).
@@ -1368,7 +1378,7 @@ int main()
 					bufWrite(outBuffer, &bufcount, (dtcsim_read_data)     & 0xFFFF, 2);
 					outBufSend(g_uart, outBuffer, bufcount);
 
-
+#endif
 //***********************************begin of control_digi commands*******************************************************************************
 //				}else if (commandID == ADCRWCMDID){
 //					// adc read/write
