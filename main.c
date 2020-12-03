@@ -956,8 +956,8 @@ int main()
 					uint8_t ddr_pattern_en = (uint8_t) buffer[11];
 
 					// this is how we set simulated clock to TOP_SERDES, which in turn becomes ALGO_CLK to DDRInterface
-					*(registers_0_addr + REG_ROC_DTC_SIM_PARAM) = (1<<28);
-					delayUs(100);
+					//*(registers_0_addr + REG_ROC_DTC_SIM_PARAM) = (1<<28);
+					//delayUs(100);
 					// PATTERN_EN must be set BEFORE page_no to prevent write to DDR3 from standard digififo
 					*(registers_0_addr + REG_ROC_DDR_PATTERN_EN) = ddr_pattern_en;
 					delayUs(100);
