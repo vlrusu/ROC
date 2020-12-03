@@ -301,7 +301,7 @@ int main()
 
 	for (uint8_t i=0;i<4;i++)		{
 		LTC2634_write(&caldac0,i,default_caldac[i]);
-		LTC2634_write(&caldac1,i+4,default_caldac[i+4]);
+		LTC2634_write(&caldac1,i,default_caldac[i+4]);
 	}
 
 	init_DIGIs();
