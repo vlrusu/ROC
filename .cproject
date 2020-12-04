@@ -237,7 +237,7 @@
                             							
                             <option id="ilg.gnumcueclipse.managedbuild.cross.riscv.option.addtools.createflash.1451050146" name="Create flash image" superClass="ilg.gnumcueclipse.managedbuild.cross.riscv.option.addtools.createflash" useByScannerDiscovery="false" value="true" valueType="boolean"/>
                             							
-                            <option id="ilg.gnumcueclipse.managedbuild.cross.riscv.option.addtools.createlisting.406075795" name="Create extended listing" superClass="ilg.gnumcueclipse.managedbuild.cross.riscv.option.addtools.createlisting" useByScannerDiscovery="false" value="true" valueType="boolean"/>
+                            <option id="ilg.gnumcueclipse.managedbuild.cross.riscv.option.addtools.createlisting.406075795" name="Create extended listing" superClass="ilg.gnumcueclipse.managedbuild.cross.riscv.option.addtools.createlisting" useByScannerDiscovery="false" value="false" valueType="boolean"/>
                             							
                             <option id="ilg.gnumcueclipse.managedbuild.cross.riscv.option.addtools.printsize.1140950203" name="Print size" superClass="ilg.gnumcueclipse.managedbuild.cross.riscv.option.addtools.printsize" useByScannerDiscovery="false" value="true" valueType="boolean"/>
                             							
@@ -292,6 +292,8 @@
                             <option id="ilg.gnumcueclipse.managedbuild.cross.riscv.option.target.isa.atomic.1032222960" name="Atomic extension (RVA)" superClass="ilg.gnumcueclipse.managedbuild.cross.riscv.option.target.isa.atomic" useByScannerDiscovery="false" value="false" valueType="boolean"/>
                             							
                             <option id="ilg.gnumcueclipse.managedbuild.cross.riscv.option.target.codemodel.936489641" name="Code model" superClass="ilg.gnumcueclipse.managedbuild.cross.riscv.option.target.codemodel" useByScannerDiscovery="false" value="ilg.gnumcueclipse.managedbuild.cross.riscv.option.target.codemodel.default" valueType="enumerated"/>
+                            							
+                            <option id="ilg.gnumcueclipse.managedbuild.cross.riscv.option.target.align.1231153909" name="Align" superClass="ilg.gnumcueclipse.managedbuild.cross.riscv.option.target.align" useByScannerDiscovery="false" value="ilg.gnumcueclipse.managedbuild.cross.riscv.option.target.align.strict" valueType="enumerated"/>
                             							
                             <targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="ilg.gnumcueclipse.managedbuild.cross.riscv.targetPlatform.331849526" isAbstract="false" osList="all" superClass="ilg.gnumcueclipse.managedbuild.cross.riscv.targetPlatform"/>
                             							
