@@ -1843,7 +1843,7 @@ int main()
 									hwdelay(500000);//wait for 10ms gain to reach written value and for SMA to settle
 
 									digi_write(DG_ADDR_SMARDREQ, 1, ihvcal);
-									delayUs(1);//write READREQ to 1 and freeze SMA module
+									delayUs(5);//write READREQ to 1 and freeze SMA module
 
 									threshold_array[96*i+straw_num] = digi_read(DG_ADDR_SMADATA,ihvcal);
 									digi_write(DG_ADDR_SMARDREQ, 0, ihvcal); //unfreeze SMA module
