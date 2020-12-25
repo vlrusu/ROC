@@ -955,16 +955,12 @@ int main()
 					uint8_t ddr_pattern = (uint8_t) buffer[10];
 					uint8_t ddr_pattern_en = (uint8_t) buffer[11];
 
-					// this is how we set simulated clock to TOP_SERDES, which in turn becomes ALGO_CLK to DDRInterface
-					//*(registers_0_addr + REG_ROC_DTC_SIM_PARAM) = (1<<28);
-					//delayUs(100);
 					// PATTERN_EN must be set BEFORE page_no to prevent write to DDR3 from standard digififo
 					*(registers_0_addr + REG_ROC_DDR_PATTERN_EN) = ddr_pattern_en;
 					delayUs(100);
 					*(registers_0_addr + REG_ROC_DDR_PAGENO) = ddr_pageno;
 
 					*(registers_0_addr + REG_ROC_DDR_SEL) = ddr_select;
-					//*(registers_0_addr + REG_ROC_DDR_SET) = ddr_set;
 					*(registers_0_addr + REG_ROC_DDR_PATTERN) = ddr_pattern;
 					delayUs(100);
 
@@ -1069,10 +1065,12 @@ int main()
 					DCS_sim_packet_send();
 
 					// read data after DCS reply
-					delay_ms(1);
-					outBuffer[bufcount++] = DCSREAD;
-
 					uint32_t dtcsim_read_data = *(registers_0_addr + REG_ROC_DTC_SIM_DATA_READ);
+
+					// clear simulation parameters
+					DCS_pass_sim_param(0, 0, 0, 0);
+
+					outBuffer[bufcount++] = DCSREAD;
 					bufWrite(outBuffer, &bufcount, 4, 2);
 					bufWrite(outBuffer, &bufcount, (dtcsim_read_data>>16) & 0xFFFF, 2);
 					bufWrite(outBuffer, &bufcount, (dtcsim_read_data)     & 0xFFFF, 2);
@@ -1102,6 +1100,9 @@ int main()
 					// send out simulated packet
 					DCS_sim_packet_send();
 
+					// clear simulation parameters
+					DCS_pass_sim_param(0, 0, 0, 0);
+
 					// read back all relevant parameters
 					outBuffer[bufcount++] = DCSWRITE;
 					bufWrite(outBuffer, &bufcount, 4, 2);
@@ -1130,11 +1131,17 @@ int main()
 					// send out simulated packet
 					DCS_sim_packet_send();
 
+					uint32_t dtcsim_read_data = *(registers_0_addr + REG_ROC_DTC_SIM_DATA_READ);
+
+					// clear simulation parameters
+					DCS_pass_sim_param(0, 0, 0, 0);
+
 					// read back all relevant parameters
 					outBuffer[bufcount++] = DCSMODREAD;
-					bufWrite(outBuffer, &bufcount, 3, 2);
+					bufWrite(outBuffer, &bufcount, 5, 2);
 					bufWrite(outBuffer, &bufcount, (dtc_sim_address>>16)&0xFF,   1);
 					bufWrite(outBuffer, &bufcount, (dtc_sim_address)    &0xFFFF, 2);
+					bufWrite(outBuffer, &bufcount, (dtcsim_read_data)   & 0xFFFF,2);
 					outBufSend(g_uart, outBuffer, bufcount);
 
 
@@ -1162,6 +1169,9 @@ int main()
 
 					// send out simulated packet
 					DCS_sim_packet_send();
+
+					// clear simulation parameters
+					DCS_pass_sim_param(0, 0, 0, 0);
 
 					// read back all relevant parameters
 					outBuffer[bufcount++] = DCSMODWRITE;
@@ -1197,6 +1207,9 @@ int main()
 
 					// send out simulated packet
 					DCS_sim_packet_send();
+
+					// clear simulation parameters
+					DCS_pass_sim_param(0, 0, 0, 0);
 
 					// read back all relevant parameters
 					outBuffer[bufcount++] = DCSBLKREAD;
@@ -1235,6 +1248,9 @@ int main()
 					// send out simulated packet
 					DCS_sim_packet_send();
 
+					// clear simulation parameters
+					DCS_pass_sim_param(0, 0, 0, 0);
+
 					// read back all relevant parameters
 					outBuffer[bufcount++] = DCSBLKWRITE;
 					//bufWrite(outBuffer, &bufcount, 3, 2);
@@ -1261,6 +1277,9 @@ int main()
 
 					// send out simulated marker
 					DCS_sim_packet_send();
+
+					// clear simulation parameters
+					DCS_pass_sim_param(0, 0, 0, 0);
 
 					// read back all relevant parameters
 					outBuffer[bufcount++] = DCSMARKER;
@@ -1292,6 +1311,9 @@ int main()
 					// send out simulated packet
 					DCS_sim_packet_send();
 
+					// clear simulation parameters
+					DCS_pass_sim_param(0, 0, 0, 0);
+
 					// read back all relevant parameters
 					outBuffer[bufcount++] = DCSHEARTBEAT;
 					bufWrite(outBuffer, &bufcount, 6, 2);
@@ -1303,11 +1325,11 @@ int main()
 
 
 				}else if (commandID == DCSDATAREQ){
-					uint8_t  dtc_mem_dis = (uint8_t) buffer[4];
+					uint8_t  sim_data = (uint8_t) buffer[4];
 					uint16_t dtc_evttag  = readU16fromBytes(&buffer[5]);
 
 					// set MEMFIFO disable/enable
-					*(registers_0_addr + REG_ROC_DDR_SET) = dtc_mem_dis;
+					*(registers_0_addr + REG_ROC_DDR_SET) = sim_data;
 					delay_ms(1);
 
 					// set Simulation Enable, DTC Simulator as output and
@@ -1324,19 +1346,19 @@ int main()
 					*(registers_0_addr + REG_ROC_DTC_SIM_SPILL) = dtc_sim_spill;
 					delay_ms(1);
 
-					volatile uint8_t  ddr_select = *(registers_0_addr + REG_ROC_DDR_SEL);
-					*(registers_0_addr + REG_ROC_DDR_SEL) = 0;
+
 					// send out simulated packet
 					DCS_sim_packet_send();
 
-					delay_ms(1);
-					*(registers_0_addr + REG_ROC_DDR_SEL) = ddr_select;
+
+					// clear simulation parameters
+					DCS_pass_sim_param(0, 0, 0, 0);
 
 					// read back all relevant parameters
 					outBuffer[bufcount++] = DCSDATAREQ;
 					bufWrite(outBuffer, &bufcount, 3, 2);
 					bufWrite(outBuffer, &bufcount, dtc_evttag,  2);
-					bufWrite(outBuffer, &bufcount, dtc_mem_dis, 1);
+					bufWrite(outBuffer, &bufcount, sim_data, 1);
 					outBufSend(g_uart, outBuffer, bufcount);
 
 
