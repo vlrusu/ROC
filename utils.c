@@ -553,14 +553,6 @@ void read_data(int *delay_count, int *trigger_count)
 		digi_write(DG_ADDR_MASK3,0x0, 2);
 	}
 
-
-	uint32_t hit_buffer[max_buffer][readout_wordsPerTrigger];
-	int hit_ptr = 0;
-	int nhits = 0;
-	int pmt_counter = 0;
-	int total_reads = 0;
-
-
 	// loop until read enough triggers or delay times out
 	while (1){
 
@@ -585,98 +577,22 @@ void read_data(int *delay_count, int *trigger_count)
 
 
 		// have enough data, read from FPGA FIFO
+
+		readout_obloc = 0;
+		bufWrite(dataBuffer, &readout_obloc, STARTTRG, 2);
+		bufWrite(dataBuffer, &readout_obloc, 4*readout_wordsPerTrigger,2);
+
 		for (int j=0;j<readout_wordsPerTrigger;j++){
 			volatile uint32_t digioutput;
 			*(registers_0_addr + re) = 1;
 			digioutput = *(registers_0_addr + data_reg);
 			memlevel -= 1;
-			hit_buffer[hit_ptr][j] = digioutput;
-		}
-		total_reads += readout_wordsPerTrigger;
-/*
-		if (total_reads > 64000){
-			readout_wordsPerTrigger = 9;
+			bufWrite(dataBuffer, &readout_obloc, ((digioutput & 0xFFFF0000)>>16), 2);
+			bufWrite(dataBuffer, &readout_obloc, ((digioutput & 0xFFFF)), 2);
 		}
 
-		if (total_reads > 32000){
-			readout_wordsPerTrigger = 9;
-		}
-
-		if (total_reads > 63900){
-			readout_wordsPerTrigger = 9;
-		}
-		*/
-
-		// if not requiring coincidence, immediately send out this hit
-//		if (readout_mode < 4){
-			readout_obloc = 0;
-			bufWrite(dataBuffer, &readout_obloc, STARTTRG, 2);
-			bufWrite(dataBuffer, &readout_obloc, 4*readout_wordsPerTrigger,2);
-			for (int j=0;j<readout_wordsPerTrigger;j++){
-				bufWrite(dataBuffer, &readout_obloc, ((hit_buffer[hit_ptr][j] & 0xFFFF0000)>>16), 2);
-				bufWrite(dataBuffer, &readout_obloc, (hit_buffer[hit_ptr][j] & 0xFFFF), 2);
-			}
-			UART_send(&g_uart, dataBuffer ,readout_obloc);
-
-			(*trigger_count)++;
-//		}else{
-//			// otherwise check if you have a PMT coincidence
-//
-//			int is_pmt = 0;
-//			if ((hit_buffer[hit_ptr][0]&0x3F) == 0 && (hit_buffer[hit_ptr][0]&0x40) > 0)
-//				is_pmt = 1;
-//
-//
-//			// if we have gotten events since last PMT hit, read out up to 10 of them
-//			// also read out this PMT event
-//			if (is_pmt){
-//				for (int k=0;k<nhits+1;k++){
-//					int ptr = (hit_ptr+max_buffer-nhits+k) % max_buffer;
-//					readout_obloc = 0;
-//					bufWrite(dataBuffer, &readout_obloc, STARTTRG, 2);
-//					bufWrite(dataBuffer, &readout_obloc, 4*readout_wordsPerTrigger,2);
-//					for (int j=0;j<readout_wordsPerTrigger;j++){
-//						bufWrite(dataBuffer, &readout_obloc, ((hit_buffer[ptr][j] & 0xFFFF0000)>>16), 2);
-//						bufWrite(dataBuffer, &readout_obloc, (hit_buffer[ptr][j] & 0xFFFF), 2);
-//					}
-//					UART_send(&g_uart, dataBuffer ,readout_obloc);
-//
-//					(*trigger_count)++;
-//				}
-//				nhits = 0;
-//				pmt_counter = 10;
-//			}else if (pmt_counter > 0){
-//				readout_obloc = 0;
-//				bufWrite(dataBuffer, &readout_obloc, STARTTRG, 2);
-//				bufWrite(dataBuffer, &readout_obloc, 4*readout_wordsPerTrigger,2);
-//				for (int j=0;j<readout_wordsPerTrigger;j++){
-//				//	if (j == 0 && ((hit_buffer[hit_ptr][0]&0x3F) == 0 && (hit_buffer[hit_ptr][0]&0x40) > 0))
-//				//		readout_wordsPerTrigger = 9;
-//					bufWrite(dataBuffer, &readout_obloc, ((hit_buffer[hit_ptr][j] & 0xFFFF0000)>>16), 2);
-//					bufWrite(dataBuffer, &readout_obloc, (hit_buffer[hit_ptr][j] & 0xFFFF), 2);
-//				}
-//				UART_send(&g_uart, dataBuffer ,readout_obloc);
-//
-//				(*trigger_count)++;
-//				pmt_counter--;
-//			}else{
-//				if (nhits < max_buffer-1)
-//					nhits++;
-//			}
-//
-//		}
-		hit_ptr = (hit_ptr+1)%max_buffer;
-
-
-//		if (total_reads >= (64000 - (64000 % readout_wordsPerTrigger))){
-//			// if we read any more we will get junk right now
-//			if (readout_mode != 1){
-//				readout_obloc = 0;
-//				bufWrite(dataBuffer, &readout_obloc, EMPTY, 2);
-//				UART_send(&g_uart, dataBuffer ,2);
-//			}
-//			break;
-//		}
+		UART_send(&g_uart, dataBuffer ,readout_obloc);
+		(*trigger_count)++;
 
 
 		if ((*trigger_count) >= readout_numTriggers){
