@@ -45,7 +45,7 @@ uint8_t adc_map[12] = {0,1,2,3,4,5,6,7,8,9,10,11};
 uint8_t adc_phases[12] = {0};
 
 char outBuffer[2000]; // buffer for printing to serial port
-char dataBuffer[2000];
+char dataBuffer[4096];
 char init_buff[30];// buffer for storing adc_init returns
 uint8_t rx_buff[100];
 uint8_t buffer[256]; // buffer for reading from serial port

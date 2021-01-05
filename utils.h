@@ -333,7 +333,7 @@ extern uint16_t readout_obloc;
 extern uint16_t readout_obloc_place_holder;
 
 extern char init_buff[30];
-extern char dataBuffer[2000];
+extern char dataBuffer[4096];
 extern char outBuffer[2000]; // buffer for printing to serial port
 extern uint8_t rx_buff[100];
 extern uint8_t buffer[256]; // buffer for reading from serial port
