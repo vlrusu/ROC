@@ -929,7 +929,7 @@ int main()
 					bufWrite(outBuffer, &bufcount, 4, 2);
 					bufWrite(outBuffer, &bufcount, errloc, 4);
 					outBufSend(g_uart, outBuffer, bufcount);
-
+#endif
 				}else if (commandID == DDRSTATUS){
 					outBuffer[bufcount++] = DDRSTATUS;
 					bufWrite(outBuffer, &bufcount, 37, 2);
@@ -1181,7 +1181,7 @@ int main()
 					bufWrite(outBuffer, &bufcount,  dtc_data,                	 2);
 					outBufSend(g_uart, outBuffer, bufcount);
 
-
+#ifdef DTCDDRTEST
 				}else if (commandID == DCSBLKREAD){
 					uint8_t  blk_type = (uint8_t)  buffer[4];
 					uint16_t blk_word  = readU16fromBytes(&buffer[5]);
@@ -1262,7 +1262,7 @@ int main()
 					bufWrite(outBuffer, &bufcount, blk_word, 2);
 					bufWrite(outBuffer, &bufcount, blk_addr, 2);
 					outBufSend(g_uart, outBuffer, bufcount);
-
+#endif
 
 				}else if (commandID == DCSMARKER){
 					uint8_t dtc_marker_type = (uint8_t) buffer[4];
@@ -1361,7 +1361,7 @@ int main()
 					bufWrite(outBuffer, &bufcount, sim_data, 1);
 					outBufSend(g_uart, outBuffer, bufcount);
 
-
+#ifdef DTCDDRTEST
 				}else if (commandID == DCSRAMWRITE){
 					uint8_t blk_size   = (uint8_t) buffer[4];
 					uint8_t blk_offset = (uint8_t) buffer[5];
@@ -1388,7 +1388,7 @@ int main()
 					bufWrite(outBuffer, &bufcount, blk_address, 1);
 					bufWrite(outBuffer, &bufcount, blk_data,    2);
 					outBufSend(g_uart, outBuffer, bufcount);
-
+#endif
 
 				}else if (commandID == DCSREPLY){
 					outBuffer[bufcount++] = DCSREPLY;
@@ -1400,7 +1400,7 @@ int main()
 					bufWrite(outBuffer, &bufcount, (dtcsim_read_data)     & 0xFFFF, 2);
 					outBufSend(g_uart, outBuffer, bufcount);
 
-#endif
+
 //***********************************begin of control_digi commands*******************************************************************************
 //				}else if (commandID == ADCRWCMDID){
 //					// adc read/write
