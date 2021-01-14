@@ -1518,7 +1518,19 @@ int main()
 					uint8_t clock = (uint8_t) buffer[26];
 					uint8_t enable_pulser = (uint8_t) buffer[27];
 					uint16_t max_total_delay = readU16fromBytes(&buffer[28]);
-					uint8_t mode = buffer[30];
+					//uint8_t mode = buffer[30];
+					uint8_t mode = 0;
+					uint8_t marker_clock = buffer[30];
+
+					if (marker_clock & 0x1)
+					  *(registers_0_addr + REG_ROC_ENABLE_FIBER_CLOCK) = 1;
+					else
+					  *(registers_0_addr + REG_ROC_ENABLE_FIBER_CLOCK) = 0;
+
+					if (marker_clock & 0x2)
+					  *(registers_0_addr + REG_ROC_ENABLE_FIBER_MARKER) = 1;
+					else
+					  *(registers_0_addr + REG_ROC_ENABLE_FIBER_MARKER) = 0;
 
 
 					digi_write(DG_ADDR_ENABLE_PULSER,enable_pulser,0);
