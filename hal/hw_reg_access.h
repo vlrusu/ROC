@@ -1,17 +1,18 @@
 /***************************************************************************//**
- * (c) Copyright 2016 Actel Corporation.  All rights reserved.
+ * (c) Copyright 2007-2018 Microsemi SoC Products Group. All rights reserved.
  * 
  * Hardware registers access functions.
  * The implementation of these function is platform and toolchain specific.
  * The functions declared here are implemented using assembler as part of the 
  * processor/toolchain specific HAL.
  * 
- * SVN $Revision: 8315 $
- * SVN $Date: 2016-03-14 14:25:46 +0000 (Mon, 14 Mar 2016) $
+ * SVN $Revision: 9661 $
+ * SVN $Date: 2018-01-15 16:13:33 +0530 (Mon, 15 Jan 2018) $
  */
 #ifndef HW_REG_ACCESS
 #define HW_REG_ACCESS
 
+#include "cpu_types.h"
 /***************************************************************************//**
  * HW_set_32bit_reg is used to write the content of a 32 bits wide peripheral
  * register.
@@ -23,8 +24,8 @@
 void
 HW_set_32bit_reg
 (
-	addr_t reg_addr,
-	uint32_t value
+    addr_t reg_addr,
+    uint32_t value
 );
 
 /***************************************************************************//**
@@ -38,7 +39,7 @@ HW_set_32bit_reg
 uint32_t
 HW_get_32bit_reg
 (
-	addr_t reg_addr
+    addr_t reg_addr
 );
 
 /***************************************************************************//**
@@ -95,8 +96,8 @@ HW_get_32bit_reg_field
 void
 HW_set_16bit_reg
 (
-	addr_t reg_addr,
-	uint_fast16_t value
+    addr_t reg_addr,
+    uint_fast16_t value
 );
 
 /***************************************************************************//**
@@ -110,7 +111,7 @@ HW_set_16bit_reg
 uint16_t
 HW_get_16bit_reg
 (
-	addr_t reg_addr
+    addr_t reg_addr
 );
 
 /***************************************************************************//**
@@ -165,8 +166,8 @@ uint16_t HW_get_16bit_reg_field
 void
 HW_set_8bit_reg
 (
-	addr_t reg_addr,
-	uint_fast8_t value
+    addr_t reg_addr,
+    uint_fast8_t value
 );
 
 /***************************************************************************//**
@@ -214,7 +215,7 @@ void HW_set_8bit_reg_field
  * @param mask      Bit mask to be applied to the raw register value to filter
  *                  out the other register fields values.
  *
- * @return          16 bits value containing the register field value specified
+ * @return          8 bits value containing the register field value specified
  *                  as parameter.
  */
 uint8_t HW_get_8bit_reg_field
@@ -225,3 +226,4 @@ uint8_t HW_get_8bit_reg_field
 );
 
 #endif /* HW_REG_ACCESS */
+

@@ -1,6 +1,5 @@
 #include "utils.h"
-#include "./CMSIS/cortexm1_cfg.h"
-#include "./CMSIS/system_cortexm1_cfg.h"
+
 #include "hw_platform.h"
 #include "setup.h"
 
@@ -46,7 +45,7 @@ uint8_t adc_map[12] = {0,1,2,3,4,5,6,7,8,9,10,11};
 uint8_t adc_phases[12] = {0};
 
 char outBuffer[2000]; // buffer for printing to serial port
-char dataBuffer[2000];
+char dataBuffer[4096];
 char init_buff[30];// buffer for storing adc_init returns
 uint8_t rx_buff[100];
 uint8_t buffer[256]; // buffer for reading from serial port
@@ -129,7 +128,7 @@ void hwdelay (uint32_t tdelay)//20ns per count
 
 void delay_ms(uint32_t ms)
 {
-//    volatile uint32_t delay_count = SystemCoreClock / 1000 * ms;
+//    volatile uint32_t delay_count = SYS_CLK_FREQ / 1000 * ms;
 //
 //    while(delay_count > 0u)
 //    {
@@ -140,7 +139,7 @@ void delay_ms(uint32_t ms)
 
 void delayUs(int us)
 {
-//	volatile uint32_t delay_count = SystemCoreClock / 1000000 * us;
+//	volatile uint32_t delay_count = SYS_CLK_FREQ / 1000000 * us;
 //
 //	while(delay_count > 0u)
 //	{
@@ -174,6 +173,29 @@ void delayUs(int us)
 //}
 //in-line assembly implementation of delay loop.
 //Nominal 50MHz CPU(?) core rate, debugging mode runs 1.25x nominal time, sNvM ~3.75x
+
+uint32_t DCS_pass_sim_param(uint8_t dtc_sim_en, uint8_t dtc_output, uint8_t dtc_opcode_or_seq_num, uint8_t dtc_packet_type_or_marker_type){
+	uint32_t dtc_sim_param = 0;
+	if (dtc_output == 0)
+		dtc_sim_param = (dtc_sim_en<<28) | (dtc_output<<24) | (dtc_opcode_or_seq_num<<16) |  dtc_packet_type_or_marker_type;
+	else
+		dtc_sim_param = (dtc_sim_en<<28) | (dtc_output<<24) | (dtc_opcode_or_seq_num<<8) | (dtc_packet_type_or_marker_type<<4);
+	*(registers_0_addr + REG_ROC_DTC_SIM_PARAM) = dtc_sim_param;
+	return dtc_sim_param;
+}
+
+uint32_t DCS_pass_addr_data(uint16_t lsb, uint16_t msb, uint8_t is_data){
+	uint32_t roc_addr = (is_data) ? REG_ROC_DTC_SIM_DATA : REG_ROC_DTC_SIM_ADDR;
+	uint32_t content = (msb<<16) | (lsb & 0x0000FFFF);
+	*(registers_0_addr + roc_addr) = content;
+	return content;
+}
+
+void DCS_sim_packet_send(){
+	delay_ms(1);
+	*(registers_0_addr + REG_ROC_DTC_SIM_START) = 1;
+}
+
 
 void GPIO_write(uint8_t pin, uint8_t value)
 {
@@ -477,11 +499,11 @@ void read_data(int *delay_count, int *trigger_count)
 {
 
 	volatile uint32_t * ewm = registers_0_addr + REG_ROC_EWM_SINGLE;
-	for (int i=0;i<1000;i++){
+	//for (int i=0;i<1000;i++){
 	//	*ewm = 1;
 	//	*ewm = 0;
 	//	delayTicks(100);
-	}
+	//}
 	uint32_t memlevel = 0;
 
 	uint32_t rdcnt = REG_ROC_FIFO_RDCNT;
@@ -531,14 +553,6 @@ void read_data(int *delay_count, int *trigger_count)
 		digi_write(DG_ADDR_MASK3,0x0, 2);
 	}
 
-
-	uint32_t hit_buffer[max_buffer][readout_wordsPerTrigger];
-	int hit_ptr = 0;
-	int nhits = 0;
-	int pmt_counter = 0;
-	int total_reads = 0;
-
-
 	// loop until read enough triggers or delay times out
 	while (1){
 
@@ -563,98 +577,22 @@ void read_data(int *delay_count, int *trigger_count)
 
 
 		// have enough data, read from FPGA FIFO
+
+		readout_obloc = 0;
+		bufWrite(dataBuffer, &readout_obloc, STARTTRG, 2);
+		bufWrite(dataBuffer, &readout_obloc, 4*readout_wordsPerTrigger,2);
+
 		for (int j=0;j<readout_wordsPerTrigger;j++){
 			volatile uint32_t digioutput;
 			*(registers_0_addr + re) = 1;
 			digioutput = *(registers_0_addr + data_reg);
 			memlevel -= 1;
-			hit_buffer[hit_ptr][j] = digioutput;
-		}
-		total_reads += readout_wordsPerTrigger;
-/*
-		if (total_reads > 64000){
-			readout_wordsPerTrigger = 9;
+			bufWrite(dataBuffer, &readout_obloc, ((digioutput & 0xFFFF0000)>>16), 2);
+			bufWrite(dataBuffer, &readout_obloc, ((digioutput & 0xFFFF)), 2);
 		}
 
-		if (total_reads > 32000){
-			readout_wordsPerTrigger = 9;
-		}
-
-		if (total_reads > 63900){
-			readout_wordsPerTrigger = 9;
-		}
-		*/
-
-		// if not requiring coincidence, immediately send out this hit
-		if (readout_mode < 4){
-			readout_obloc = 0;
-			bufWrite(dataBuffer, &readout_obloc, STARTTRG, 2);
-			bufWrite(dataBuffer, &readout_obloc, 4*readout_wordsPerTrigger,2);
-			for (int j=0;j<readout_wordsPerTrigger;j++){
-				bufWrite(dataBuffer, &readout_obloc, ((hit_buffer[hit_ptr][j] & 0xFFFF0000)>>16), 2);
-				bufWrite(dataBuffer, &readout_obloc, (hit_buffer[hit_ptr][j] & 0xFFFF), 2);
-			}
-			UART_send(&g_uart, dataBuffer ,readout_obloc);
-
-			(*trigger_count)++;
-		}else{
-			// otherwise check if you have a PMT coincidence
-
-			int is_pmt = 0;
-			if ((hit_buffer[hit_ptr][0]&0x3F) == 0 && (hit_buffer[hit_ptr][0]&0x40) > 0)
-				is_pmt = 1;
-
-
-			// if we have gotten events since last PMT hit, read out up to 10 of them
-			// also read out this PMT event
-			if (is_pmt){
-				for (int k=0;k<nhits+1;k++){
-					int ptr = (hit_ptr+max_buffer-nhits+k) % max_buffer;
-					readout_obloc = 0;
-					bufWrite(dataBuffer, &readout_obloc, STARTTRG, 2);
-					bufWrite(dataBuffer, &readout_obloc, 4*readout_wordsPerTrigger,2);
-					for (int j=0;j<readout_wordsPerTrigger;j++){
-						bufWrite(dataBuffer, &readout_obloc, ((hit_buffer[ptr][j] & 0xFFFF0000)>>16), 2);
-						bufWrite(dataBuffer, &readout_obloc, (hit_buffer[ptr][j] & 0xFFFF), 2);
-					}
-					UART_send(&g_uart, dataBuffer ,readout_obloc);
-
-					(*trigger_count)++;
-				}
-				nhits = 0;
-				pmt_counter = 10;
-			}else if (pmt_counter > 0){
-				readout_obloc = 0;
-				bufWrite(dataBuffer, &readout_obloc, STARTTRG, 2);
-				bufWrite(dataBuffer, &readout_obloc, 4*readout_wordsPerTrigger,2);
-				for (int j=0;j<readout_wordsPerTrigger;j++){
-				//	if (j == 0 && ((hit_buffer[hit_ptr][0]&0x3F) == 0 && (hit_buffer[hit_ptr][0]&0x40) > 0))
-				//		readout_wordsPerTrigger = 9;
-					bufWrite(dataBuffer, &readout_obloc, ((hit_buffer[hit_ptr][j] & 0xFFFF0000)>>16), 2);
-					bufWrite(dataBuffer, &readout_obloc, (hit_buffer[hit_ptr][j] & 0xFFFF), 2);
-				}
-				UART_send(&g_uart, dataBuffer ,readout_obloc);
-
-				(*trigger_count)++;
-				pmt_counter--;
-			}else{
-				if (nhits < max_buffer-1)
-					nhits++;
-			}
-
-		}
-		hit_ptr = (hit_ptr+1)%max_buffer;
-
-
-//		if (total_reads >= (64000 - (64000 % readout_wordsPerTrigger))){
-//			// if we read any more we will get junk right now
-//			if (readout_mode != 1){
-//				readout_obloc = 0;
-//				bufWrite(dataBuffer, &readout_obloc, EMPTY, 2);
-//				UART_send(&g_uart, dataBuffer ,2);
-//			}
-//			break;
-//		}
+		UART_send(&g_uart, dataBuffer ,readout_obloc);
+		(*trigger_count)++;
 
 
 		if ((*trigger_count) >= readout_numTriggers){
@@ -666,52 +604,52 @@ void read_data(int *delay_count, int *trigger_count)
 	}
 }
 
-void read_data2(int *delay_count, int *trigger_count, uint16_t *lasthit)
-{
-	uint32_t memlevel = 0;
-	int fail_count = 0;
-
-	uint32_t rdcnt = REG_ROC_FIFO_RDCNT;
-	uint32_t re = REG_ROC_FIFO_RE;
-	uint32_t data_reg = REG_ROC_FIFO_DATA;
-
-	while (1){
-		if (memlevel < readout_wordsPerTrigger){
-			volatile uint32_t fifoinfo = *(registers_0_addr + rdcnt);
-			memlevel = fifoinfo & 0x1FFFF;
-			if (memlevel < readout_wordsPerTrigger){
-				(*delay_count)++;
-				if ((*delay_count) >= readout_maxDelay)
-					break;
-				delayUs(1000);
-				continue;
-			}
-		}
-
-		// have enough data, see if can read
-		int failed = 0;
-		for (int j=0;j<readout_wordsPerTrigger;j++){
-
-			volatile uint32_t digioutput;
-			*(registers_0_addr + re) = 1;
-			digioutput = *(registers_0_addr + data_reg);
-			memlevel -= 1;
-			if ((j == 0) && ((digioutput&0x80000000) != 0x80000000)){
-				failed = 1;
-				fail_count++;
-				break;
-			}
-			lasthit[j] = (uint16_t) ((digioutput & 0x3FF00000)>>20);
-		}
-		if (fail_count >= readout_wordsPerTrigger*10)
-			break;
-		if (failed)
-			continue;
-		(*trigger_count)++;
-		if ((*trigger_count) >= readout_numTriggers)
-			break;
-	}
-}
+//void read_data2(int *delay_count, int *trigger_count, uint16_t *lasthit)
+//{
+//	uint32_t memlevel = 0;
+//	//int fail_count = 0;
+//
+//	uint32_t rdcnt = REG_ROC_FIFO_RDCNT;
+//	uint32_t re = REG_ROC_FIFO_RE;
+//	uint32_t data_reg = REG_ROC_FIFO_DATA;
+//
+//	while (1){
+//		if (memlevel < readout_wordsPerTrigger){
+//			volatile uint32_t fifoinfo = *(registers_0_addr + rdcnt);
+//			memlevel = fifoinfo & 0x1FFFF;
+//			if (memlevel < readout_wordsPerTrigger){
+//				(*delay_count)++;
+//				if ((*delay_count) >= readout_maxDelay)
+//					break;
+//				delayUs(1000);
+//				continue;
+//			}
+//		}
+//
+//		// have enough data, see if can read
+//		//int failed = 0;
+//		for (int j=0;j<readout_wordsPerTrigger;j++){
+//
+//			volatile uint32_t digioutput;
+//			*(registers_0_addr + re) = 1;
+//			digioutput = *(registers_0_addr + data_reg);
+//			memlevel -= 1;
+//			//if ((j == 0) && ((digioutput&0x80000000) != 0x80000000)){
+//			//	failed = 1;
+//			//	fail_count++;
+//			//	break;
+//			//}
+//			lasthit[j] = (uint16_t) ((digioutput & 0x3FF00000)>>20);
+//		}
+//		//if (fail_count >= readout_wordsPerTrigger*10)
+//		//	break;
+//		//if (failed)
+//		//	continue;
+//		(*trigger_count)++;
+//		if ((*trigger_count) >= readout_numTriggers)
+//			break;
+//	}
+//}
 
 uint32_t get_rates(int num_delays, int num_samples, uint8_t channel, uint32_t* timecounts){
 	mapped_channel_mask[0] = 0x0;
@@ -860,12 +798,16 @@ int resetFIFO(){
 	  digi_write(DG_ADDR_RESET, 1, 0);
 
 	  delayUs(1);
-	  uint16_t is_aligned = *(registers_0_addr + 0x47);
+	  uint16_t is_aligned = *(registers_0_addr + REG_ROC_SERDES_ALIGN);
 	  if (is_aligned == 0xF){
+		*(registers_0_addr + REG_ROC_CR_FIFO_RESET) = 0;
+		*(registers_0_addr + REG_ROC_CR_FIFO_RESET) = 1;
 		return 0;
 	  }
 	}
 	// failed to align correctly
+	*(registers_0_addr + REG_ROC_CR_FIFO_RESET) = 0;
+	*(registers_0_addr + REG_ROC_CR_FIFO_RESET) = 1;
 	return 1;
 //	reset_fabric();
 }
@@ -934,107 +876,107 @@ void init_DIGIs(){
 }
 
 
-void findChThreshold(int num_delays, int num_samples, uint16_t channel, uint16_t target_rate, uint8_t verbose){
-	uint16_t threshold = 0;
-	uint32_t timecounts = 0;
-	if (channel < 96)
-		threshold = default_threshs_cal[channel];
-	else
-		threshold = default_threshs_hv[channel-96];
-	uint32_t lastrate = 10000000;
-	uint32_t thisrate = 0;
-	uint16_t initThreshold = threshold;
-	uint16_t lastThreshold = threshold;
-	uint8_t zerocounts = 0;
-	uint16_t nonzero = 0;
-	uint32_t nonzerorate = 0;
-	uint8_t panic_mode = 0;
-
-	uint16_t local_bufcount_place_holder = bufcount;
-	if (verbose==1)
-		bufWrite(outBuffer, &bufcount, 0, 2);
-
-	while(1){
-		uint32_t thiscount = get_rates(num_delays, num_samples, channel, &timecounts);
-		thisrate = (uint32_t)(((uint64_t)thiscount)*50000000/timecounts);
-
-		if ((verbose==1)&&(bufcount<1950)){//buffer overflow protection
-			bufWrite(outBuffer, &bufcount, threshold, 2);
-			bufWrite(outBuffer, &bufcount, thisrate, 4);
-		}
-
-		if ( (panic_mode == 1)&&(threshold > (THRESHOLDEND-THRESHOLDSTEP)) ){
-			setPreampThreshold(channel, initThreshold);
-			bufWrite(outBuffer, &bufcount, initThreshold, 2);
-			bufWrite(outBuffer, &bufcount, 0, 4);
-			break;
-		}
-
-		if (thisrate == 0){
-			if (panic_mode == 0) zerocounts += 1;
-			if (nonzero==0){
-				if (zerocounts==15){
-					//if never see a rate for 15 iterations, go to panic mode
-					//and scan the whole range
-					panic_mode = 1;
-					threshold = THRESHOLDSTART-THRESHOLDSTEP;
-					zerocounts = 0;
-				}
-			}
-			else {
-				if (zerocounts==3){//saw a rate at one point but change to 0 again for 3 times, use the last non-zero threshold
-					setPreampThreshold(channel, nonzero);
-					bufWrite(outBuffer, &bufcount, nonzero, 2);
-					bufWrite(outBuffer, &bufcount, nonzerorate, 4);
-					break;
-				}
-			}
-		}
-		else {
-			if (panic_mode == 0){
-				nonzero = threshold;
-				nonzerorate = thisrate;
-				zerocounts = 0;
-			}
-			else{
-				panic_mode = 0;
-			}
-		}
-
-		if ((lastrate!=10000000)&&(lastrate!=0)){
-			if ( ((lastrate<=target_rate)&&(thisrate>target_rate))||
-					((lastrate>target_rate)&&(thisrate<=target_rate)) ){
-				if (threshold>lastThreshold){
-					threshold = lastThreshold;
-					thisrate = lastrate;
-				}
-				setPreampThreshold(channel, threshold);
-				bufWrite(outBuffer, &bufcount, threshold, 2);
-				bufWrite(outBuffer, &bufcount, thisrate, 4);
-				break;
-			}
-		}
-
-		lastThreshold = threshold;
-		lastrate = thisrate;
-
-		if (panic_mode == 0){
-			if (thisrate > target_rate){
-				threshold-=1;
-				setPreampThreshold(channel, threshold);
-				continue;
-			}
-			if (thisrate <= target_rate){
-				threshold+=1;
-				setPreampThreshold(channel, threshold);
-				continue;
-			}
-		}
-		else{
-			threshold+=THRESHOLDSTEP;
-			setPreampThreshold(channel, threshold);
-		}
-	}
-	if (verbose==1)
-		bufWrite(outBuffer, &local_bufcount_place_holder, (bufcount-local_bufcount_place_holder-2)/6, 2);
-}
+//void findChThreshold(int num_delays, int num_samples, uint16_t channel, uint16_t target_rate, uint8_t verbose){
+//	uint16_t threshold = 0;
+//	uint32_t timecounts = 0;
+//	if (channel < 96)
+//		threshold = default_threshs_cal[channel];
+//	else
+//		threshold = default_threshs_hv[channel-96];
+//	uint32_t lastrate = 10000000;
+//	uint32_t thisrate = 0;
+//	uint16_t initThreshold = threshold;
+//	uint16_t lastThreshold = threshold;
+//	uint8_t zerocounts = 0;
+//	uint16_t nonzero = 0;
+//	uint32_t nonzerorate = 0;
+//	uint8_t panic_mode = 0;
+//
+//	uint16_t local_bufcount_place_holder = bufcount;
+//	if (verbose==1)
+//		bufWrite(outBuffer, &bufcount, 0, 2);
+//
+//	while(1){
+//		uint32_t thiscount = get_rates(num_delays, num_samples, channel, &timecounts);
+//		thisrate = (uint32_t)(((uint64_t)thiscount)*50000000/timecounts);
+//
+//		if ((verbose==1)&&(bufcount<1950)){//buffer overflow protection
+//			bufWrite(outBuffer, &bufcount, threshold, 2);
+//			bufWrite(outBuffer, &bufcount, thisrate, 4);
+//		}
+//
+//		if ( (panic_mode == 1)&&(threshold > (THRESHOLDEND-THRESHOLDSTEP)) ){
+//			setPreampThreshold(channel, initThreshold);
+//			bufWrite(outBuffer, &bufcount, initThreshold, 2);
+//			bufWrite(outBuffer, &bufcount, 0, 4);
+//			break;
+//		}
+//
+//		if (thisrate == 0){
+//			if (panic_mode == 0) zerocounts += 1;
+//			if (nonzero==0){
+//				if (zerocounts==15){
+//					//if never see a rate for 15 iterations, go to panic mode
+//					//and scan the whole range
+//					panic_mode = 1;
+//					threshold = THRESHOLDSTART-THRESHOLDSTEP;
+//					zerocounts = 0;
+//				}
+//			}
+//			else {
+//				if (zerocounts==3){//saw a rate at one point but change to 0 again for 3 times, use the last non-zero threshold
+//					setPreampThreshold(channel, nonzero);
+//					bufWrite(outBuffer, &bufcount, nonzero, 2);
+//					bufWrite(outBuffer, &bufcount, nonzerorate, 4);
+//					break;
+//				}
+//			}
+//		}
+//		else {
+//			if (panic_mode == 0){
+//				nonzero = threshold;
+//				nonzerorate = thisrate;
+//				zerocounts = 0;
+//			}
+//			else{
+//				panic_mode = 0;
+//			}
+//		}
+//
+//		if ((lastrate!=10000000)&&(lastrate!=0)){
+//			if ( ((lastrate<=target_rate)&&(thisrate>target_rate))||
+//					((lastrate>target_rate)&&(thisrate<=target_rate)) ){
+//				if (threshold>lastThreshold){
+//					threshold = lastThreshold;
+//					thisrate = lastrate;
+//				}
+//				setPreampThreshold(channel, threshold);
+//				bufWrite(outBuffer, &bufcount, threshold, 2);
+//				bufWrite(outBuffer, &bufcount, thisrate, 4);
+//				break;
+//			}
+//		}
+//
+//		lastThreshold = threshold;
+//		lastrate = thisrate;
+//
+//		if (panic_mode == 0){
+//			if (thisrate > target_rate){
+//				threshold-=1;
+//				setPreampThreshold(channel, threshold);
+//				continue;
+//			}
+//			if (thisrate <= target_rate){
+//				threshold+=1;
+//				setPreampThreshold(channel, threshold);
+//				continue;
+//			}
+//		}
+//		else{
+//			threshold+=THRESHOLDSTEP;
+//			setPreampThreshold(channel, threshold);
+//		}
+//	}
+//	if (verbose==1)
+//		bufWrite(outBuffer, &local_bufcount_place_holder, (bufcount-local_bufcount_place_holder-2)/6, 2);
+//}

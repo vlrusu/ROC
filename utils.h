@@ -28,7 +28,7 @@
 
 #define LEDn             0
 
-#define NUMTDCWORDS      4
+#define NUMTDCWORDS      5 //1 event window counter + 4 header words
 #define HVANDCAL         0
 #define CALONLY          1
 #define HVONLY           2
@@ -70,8 +70,24 @@
 #define DDRREAD 51
 #define DDRSTATUS 52
 #define DDRFILL 53
+#define DDRRAMREAD 54
+#define DDRWRITE 55
+#define DDRPATTERNREAD 56
 
-//"digi" command ID (1 byte)
+// DTC SIM command ID
+#define DCSRAMWRITE  60
+#define DCSREPLY     61
+#define DCSREAD  	 62
+#define DCSWRITE 	 63
+#define DCSMODREAD   64
+#define DCSMODWRITE  65
+#define DCSMARKER  	 66
+#define DCSHEARTBEAT 67
+#define DCSDATAREQ   68
+#define DCSBLKREAD   69
+#define DCSBLKWRITE  70
+
+// "DIGI" command ID (1 byte)
 
 #define ADCRWCMDID 101
 #define BITSLIPCMDID 102
@@ -136,21 +152,25 @@
 #define DG_ADDR_SMADATA 0x52
 
 #define DG_ADDR_RX_CH_MASK1 0x60
-#define DG_ADDR_RX_CH_MASK2 0x61
-#define DG_ADDR_RX_CH_MASK3 0x62
+//#define DG_ADDR_RX_CH_MASK2 0x61
+//#define DG_ADDR_RX_CH_MASK3 0x62
 #define DG_ADDR_BITALIGN_EWM_WIDTH 0x63
 #define DG_ADDR_BITALIGN_RSTRT 0x64
 #define DG_ADDR_BITSLIP_STRT 0x65
 #define DG_ADDR_BITALIGN_CMP1 0x66
-#define DG_ADDR_BITALIGN_CMP2 0x67
-#define DG_ADDR_BITALIGN_CMP3 0x68
+//#define DG_ADDR_BITALIGN_CMP2 0x67
+//#define DG_ADDR_BITALIGN_CMP3 0x68
 #define DG_ADDR_BITALIGN_ERR1 0x69
-#define DG_ADDR_BITALIGN_ERR2 0x6A
-#define DG_ADDR_BITALIGN_ERR3 0x6B
+//#define DG_ADDR_BITALIGN_ERR2 0x6A
+//#define DG_ADDR_BITALIGN_ERR3 0x6B
 #define DG_ADDR_BITSLIP_DONE1 0x6C
-#define DG_ADDR_BITSLIP_DONE2 0x6D
-#define DG_ADDR_BITSLIP_DONE3 0x6E
-#define DG_AGGR_BITALIGN_RSETN 0x6F
+//#define DG_ADDR_BITSLIP_DONE2 0x6D
+//#define DG_ADDR_BITSLIP_DONE3 0x6E
+#define DG_ADDR_BITALIGN_RSETN 0x6F
+#define DG_ADDR_BSC_OPERATION_TYPE 0x70
+#define DG_ADDR_BSC_PATTERN_MATCH1 0x71
+//#define DG_ADDR_BSC_PATTERN_MATCH2 0x72
+//#define DG_ADDR_BSC_PATTERN_MATCH3 0x73
 
 //#define DG_ADDR_EWMCNTER 0x80
 #define DG_ADDR_EWS 0x81 // (event window start 160MHz clock ticks)
@@ -164,31 +184,37 @@
 #define REG_TIMERRESET 0x13
 #define REG_TIMERCOUNTER 0x14
 
-#define REG_ROC_DDR_NHITS 0x20
-#define REG_ROC_DDR_OFFSET 0x21
-#define REG_ROC_DDR_CS 0x22
-#define REG_ROC_DDR_WEN 0x23
-#define REG_ROC_DDR_REN 0x24
-#define REG_ROC_DDR_DMAEN 0x25
-#define REG_ROC_DDR_DIAG0 0x26
-#define REG_ROC_DDR_IN 0x27
-#define REG_ROC_DDR_DIAG1 0x28
-#define REG_ROC_DDR_PATTERN 0x29
+#define REG_ROC_DDR_NHITS 0x20  //W  set number of blocks to write to memory
+#define REG_ROC_DDR_OFFSET 0x21 //W  set DDR3 memory start offset (as multiple of 1kB)
+#define REG_ROC_DDR_CS 0x22		//W  enable memory to be written: 0 => DDR3, 1= > SRAM
+#define REG_ROC_DDR_WEN 0x23	//W  enable write of pattern to memory - self clearing
+#define REG_ROC_DDR_REN 0x24	//W  enable read back of pattern from memory - self clearing
+#define REG_ROC_DDR_FIFOWEN 0x25//W  enable DMA transfer between memories - self clearing
+#define REG_ROC_DDR_DIAG0 0x26  //R  diagnostic: used for MEMFIFO_RD_CNT
+#define REG_ROC_DDR_IN 0x27		//W  bit [9:0] are Pattern generator RAM address
+#define REG_ROC_DDR_DIAG1 0x28  //R  diagnostic: used for DDR_RD_CNT
+#define REG_ROC_DDR_PATTERN 0x29//W  set pattern: 0 => +1, 1 => -1, 2 => As, 3 => 5s
+#define REG_ROC_DDR_RAM 0x2A	//R  32 bits RAM output saving data after DDR3 memory read
+#define REG_ROC_DDR_ISERR 0x2B  //R  pattern read back has error
+#define REG_ROC_DDR_ERRLOC 0x2C	//R  pattern read back error location
+#define REG_ROC_DDR_PATTERN_EN 0x2D //W enable pattern writing to memory for tests with DTC
 
-#define REG_ROC_DDR_SEL 0x30 	//RW toggle between DTC commands (if 0) or simulated commands (if 1)
-#define REG_ROC_DDR_FULL 0x31  	//RO  1 while number ROC_DDR_PAGENO pages are read from DDR memory
-#define REG_ROC_DDR_FIFO_RE 0x32//RW  send simulated read of DDR page into MEMFIFO  (need ROC_DDR_SEL = 1)
-#define REG_ROC_DDR_SET 0x33	//RW  enable simulation of ALGO_CLK (for when fiber to DTC not used)
-#define REG_ROC_DDR_PAGENO 0x34	//RW  set number of pages to write from DIGIFIFO to DDR memory
-#define REG_ROC_DDR_PAGEWR 0x35	//RO  number of pages written to DDR
-#define REG_ROC_DDR_PAGERD 0x36	//RO  number of pages read from DDR
-#define REG_ROC_DDR_MEMFIFO_DATA0 0x37	//RO  lsb 32 bits read from MEMFIFO DATA
-#define REG_ROC_DDR_MEMFIFO_DATA1 0x38	//RO  msb 32 bits read from MEMFIFO DATA
-#define REG_ROC_DDR_MEMFIFO_FULL 0x39	//RO  MEMFIFO FULL status
-#define REG_ROC_DDR_MEMFIFO_EMPTY 0x3A	//RO  MEMFIFO EMPTY status
-#define REG_ROC_DDR_MEMFIFO_RE 0x3B	//RW  send simulated read enables to MEMFIFO (need ROC_DDR_SEL = 1)
-#define REG_ROC_DDR_TEMPFIFO_FULL 0x3C	//RO  TEMPFIFO FULL status
-#define REG_ROC_DDR_TEMPFIFO_EMPTY 0x3D	//RO  TEMPFIFO EMPTY status
+#define REG_ROC_DDR_SEL 0x30 	//R  toggle between DTC commands (if 0) or simulated commands (if 1)
+#define REG_ROC_DDR_FULL 0x31  	//R  high while ROC_DDR_PAGENO pages are read from DDR memory
+#define REG_ROC_DDR_FIFO_RE 0x32//W  send simulated read of DDR page into MEMFIFO  (need ROC_DDR_SEL = 1)
+#define REG_ROC_DDR_SET 0x33	//W  enable simulation of ALGO_CLK (for when fiber to DTC not used)
+#define REG_ROC_DDR_PAGENO 0x34	//W  set number of pages to write from DIGIFIFO to DDR memory
+#define REG_ROC_DDR_PAGEWR 0x35	//R  number of pages written to DDR
+#define REG_ROC_DDR_PAGERD 0x36	//R  number of pages read from DDR
+#define REG_ROC_DDR_MEMFIFO_DATA0 0x37	//R  lsb 32 bits read from MEMFIFO DATA
+#define REG_ROC_DDR_MEMFIFO_DATA1 0x38	//R  msb 32 bits read from MEMFIFO DATA
+#define REG_ROC_DDR_MEMFIFO_FULL 0x39	//R  MEMFIFO FULL status
+#define REG_ROC_DDR_MEMFIFO_EMPTY 0x3A	//R  MEMFIFO EMPTY status
+#define REG_ROC_DDR_MEMFIFO_RE 0x3B		//W  send simulated read enables to MEMFIFO (need ROC_DDR_SEL = 1)
+#define REG_ROC_DDR_TEMPFIFO_FULL 0x3C	//R  TEMPFIFO FULL status
+#define REG_ROC_DDR_TEMPFIFO_EMPTY 0x3D	//R  TEMPFIFO EMPTY status
+#define REG_ROC_DDR_CONV_DATA 0x3E 	//R  CONVFIFO data (if DDR_PATTERN_EN=1)
+#define REG_ROC_DDR_CONV_RDCNT 0x3F	//R  CONVFIFO rdcnt (if DDR_PATTERN_EN=1)
 
 #define REG_ROC_FIFO_RE 0x40
 #define REG_ROC_FIFO_DATA 0x41
@@ -197,7 +223,18 @@
 #define REG_ROC_FIFO_RESET 0x44
 #define REG_ROC_FIFO_RDCNT 0x45
 #define REG_ROC_FIFO_HOWMANY 0x46
-#define REG_ROC_READREG 0x47
+#define REG_ROC_SERDES_ALIGN 0x47
+#define REG_ROC_USE_LANE 0x48
+
+#define REG_ROC_DTC_SIM_START 0x51
+#define REG_ROC_DTC_SIM_PARAM 0x52
+#define REG_ROC_DTC_SIM_ADDR  0x53
+#define REG_ROC_DTC_SIM_DATA  0x54
+#define REG_ROC_DTC_SIM_SPILL 0x55
+#define REG_ROC_DTC_SIM_BLK_EN   0x56
+#define REG_ROC_DTC_SIM_BLK_DATA 0x57
+#define REG_ROC_DTC_SIM_BLK_ADDR 0x58
+#define REG_ROC_DTC_SIM_DATA_READ 0x59
 
 #define REG_ROC_CAL_BUSY_P 0x61
 #define REG_ROC_CAL_DATA_P 0x63
@@ -219,6 +256,11 @@
 
 #define REG_ROC_TVS_VAL 0x90
 #define REG_ROC_TVS_ADDR 0x91
+
+#define REG_ROC_CR_FIFO_RESET 0xA3
+
+#define REG_ROC_ENABLE_FIBER_CLOCK 0xB0
+#define REG_ROC_ENABLE_FIBER_MARKER 0xB1
 
 //***********************ADC_ADDR_* are the ADC addresses
 										//AD9212 memory map:
@@ -294,7 +336,7 @@ extern uint16_t readout_obloc;
 extern uint16_t readout_obloc_place_holder;
 
 extern char init_buff[30];
-extern char dataBuffer[2000];
+extern char dataBuffer[4096];
 extern char outBuffer[2000]; // buffer for printing to serial port
 extern uint8_t rx_buff[100];
 extern uint8_t buffer[256]; // buffer for reading from serial port
@@ -328,14 +370,18 @@ uint32_t GPIO_read(uint8_t pin);
 uint16_t readU16fromBytes(uint8_t data[]);
 uint32_t readU32fromBytes(uint8_t data[]);
 void delayUs(int us);
-void delay_ms(uint32_t us);
-void delayTicks(uint8_t ticks);
+void delay_ms(uint32_t ms);
+//void delayTicks(uint8_t ticks);
 void hwdelay (uint32_t tdelay);
 //void delayCore(uint32_t cycles);
-char * print_float(char *fchars, float value);
+//char * print_float(char *fchars, float value);
+
+uint32_t DCS_pass_sim_param(uint8_t dtc_sim_en, uint8_t dtc_output, uint8_t dtc_opcode_or_seq_num, uint8_t dtc_packet_type_or_marker_type);
+uint32_t DCS_pass_addr_data(uint16_t lsb, uint16_t msb, uint8_t is_data);
+void DCS_sim_packet_send();
 
 void read_data(int *delay_count, int *trigger_count);
-void read_data2(int *delay_count, int *trigger_count, uint16_t *lasthit);
+//void read_data2(int *delay_count, int *trigger_count, uint16_t *lasthit);
 uint32_t get_rates(int num_delays, int num_samples, uint8_t channel, uint32_t* timecounts);
 void get_mapped_channels();
 void read_histogram(uint8_t channel, uint8_t hv_or_cal, uint16_t *output);
@@ -350,12 +396,12 @@ void init_DIGIs();
 void digi_write(uint8_t address, uint16_t data, uint8_t hvcal);
 uint16_t digi_read(uint8_t address, uint8_t hvcal);
 void bufWrite(char *outBuffer, uint16_t *bufcount, uint32_t data, uint16_t nbytes);
-void bufWriteN(char *outBuffer, uint16_t bufaddr, uint32_t data, uint16_t nbytes);
+//void bufWriteN(char *outBuffer, uint16_t bufaddr, uint32_t data, uint16_t nbytes);
 void outBufSend(UART_instance_t g_uart, char *outBuffer, uint16_t bufcount);
 int resetFIFO();
 void setPreampGain(uint16_t channel, uint16_t value);
 void setPreampThreshold(uint16_t channel, uint16_t value);
-void findChThreshold(int num_delays, int num_samples, uint16_t channel, uint16_t target_rate, uint8_t verbose);
+//void findChThreshold(int num_delays, int num_samples, uint16_t channel, uint16_t target_rate, uint8_t verbose);
 
 #endif /* UTILS_H_ */
 

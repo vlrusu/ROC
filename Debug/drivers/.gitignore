@@ -1,1 +1,5 @@
 /CoreSysServices_PF/
+/CoreGPIO/
+/CorePWM/
+/CoreSPI/
+/CoreUARTapb/

@@ -450,7 +450,7 @@ void autobitslip()
 	outBufSend(g_uart, outBuffer, bufcount_end);
 
 	*/
-	uint8_t checksamples = 5;
+	uint8_t checksamples = 1;
 
 	uint8_t eye_monitor_width = (uint8_t) buffer[4];
 	uint8_t init_adc_phase = (uint8_t) buffer[5];
@@ -473,9 +473,9 @@ void autobitslip()
 	{
 		faulted_adc = 0;
 
-		digi_write(DG_AGGR_BITALIGN_RSETN, 0, 0);
+		digi_write(DG_ADDR_BITALIGN_RSETN, 0, 0);
 		delayUs(8);
-		digi_write(DG_AGGR_BITALIGN_RSETN, 1, 0);
+		digi_write(DG_ADDR_BITALIGN_RSETN, 1, 0);
 
 		digi_write(DG_ADDR_SAMPLE,1,0);
 		digi_write(DG_ADDR_LOOKBACK,1,0);
@@ -510,34 +510,25 @@ void autobitslip()
 		//set minimum eye monitor width
 		digi_write(DG_ADDR_BITALIGN_EWM_WIDTH, (uint16_t)eye_monitor_width,0);
 
-		uint16_t active_ch_cal1 = (uint16_t)(mapped_channel_mask[0] & 0xffff);
-		uint16_t active_ch_cal2 = (uint16_t)((mapped_channel_mask[0] >> 16) & 0xffff);
-		uint16_t active_ch_cal3 = (uint16_t)(mapped_channel_mask[1] & 0xffff);
-		uint16_t active_ch_hv1 = (uint16_t)((mapped_channel_mask[1] >> 16) & 0xffff);
-		uint16_t active_ch_hv2 = (uint16_t)(mapped_channel_mask[2] & 0xffff);
-		uint16_t active_ch_hv3 = (uint16_t)((mapped_channel_mask[2] >> 16) & 0xffff);
+		uint16_t active_ch[6] = {0};
+		active_ch[0] = (uint16_t)(mapped_channel_mask[0] & 0xffff);
+		active_ch[1] = (uint16_t)((mapped_channel_mask[0] >> 16) & 0xffff);
+		active_ch[2] = (uint16_t)(mapped_channel_mask[1] & 0xffff);
+		active_ch[3] = (uint16_t)((mapped_channel_mask[1] >> 16) & 0xffff);
+		active_ch[4] = (uint16_t)(mapped_channel_mask[2] & 0xffff);
+		active_ch[5] = (uint16_t)((mapped_channel_mask[2] >> 16) & 0xffff);
 
-		digi_write(DG_ADDR_MASK1, active_ch_cal1, 1);
-		digi_write(DG_ADDR_MASK2, active_ch_cal2, 1);
-		digi_write(DG_ADDR_MASK3, active_ch_cal3, 1);
-		digi_write(DG_ADDR_MASK1, active_ch_hv1, 2);
-		digi_write(DG_ADDR_MASK2, active_ch_hv2, 2);
-		digi_write(DG_ADDR_MASK3, active_ch_hv3, 2);
+		digi_write(DG_ADDR_MASK1, active_ch[0], 1);
+		digi_write(DG_ADDR_MASK2, active_ch[1], 1);
+		digi_write(DG_ADDR_MASK3, active_ch[2], 1);
+		digi_write(DG_ADDR_MASK1, active_ch[3], 2);
+		digi_write(DG_ADDR_MASK2, active_ch[4], 2);
+		digi_write(DG_ADDR_MASK3, active_ch[5], 2);
 
-		digi_write(DG_ADDR_RX_CH_MASK1, active_ch_cal1, 1);
-		digi_write(DG_ADDR_RX_CH_MASK2, active_ch_cal2, 1);
-		digi_write(DG_ADDR_RX_CH_MASK3, active_ch_cal3, 1);
-		digi_write(DG_ADDR_RX_CH_MASK1, active_ch_hv1, 2);
-		digi_write(DG_ADDR_RX_CH_MASK2, active_ch_hv2, 2);
-		digi_write(DG_ADDR_RX_CH_MASK3, active_ch_hv3, 2);
-
-		//Output:
-		bufWrite(outBuffer, &bufcount, active_ch_cal1, 2);
-		bufWrite(outBuffer, &bufcount, active_ch_cal2, 2);
-		bufWrite(outBuffer, &bufcount, active_ch_cal3, 2);
-		bufWrite(outBuffer, &bufcount, active_ch_hv1, 2);
-		bufWrite(outBuffer, &bufcount, active_ch_hv2, 2);
-		bufWrite(outBuffer, &bufcount, active_ch_hv3, 2);
+		for (uint8_t i = 0; i < 6; i++){
+			digi_write(DG_ADDR_RX_CH_MASK1+i%3, active_ch[i], 1+i/3);
+			bufWrite(outBuffer, &bufcount, active_ch[i], 2);
+		}
 
 		//start bit align, set corresponding channel's restart to 1, then back to 0 after 8 ticks
 		digi_write(DG_ADDR_BITALIGN_RSTRT, 1, 0);
@@ -550,27 +541,15 @@ void autobitslip()
 		//wait until all channels are completed; timeout after 30 secs
 		for (uint8_t i=0; i<30; i++){
 			hwdelay(50000000);//check every 1 second if is done
+			uint8_t bitalign_done = 1;
+			for (uint8_t j = 0; j < 6; j++){
+				completion[j] = digi_read(DG_ADDR_BITALIGN_CMP1+j%3, 1+j/3);
+				error[j] = digi_read(DG_ADDR_BITALIGN_ERR1+j%3, 1+j/3);
+				if ((completion[j] & active_ch[j]) != active_ch[j])
+					bitalign_done = 0;
+			}
 
-			completion[0] = digi_read(DG_ADDR_BITALIGN_CMP1, 1);
-			completion[1] = digi_read(DG_ADDR_BITALIGN_CMP2, 1);
-			completion[2] = digi_read(DG_ADDR_BITALIGN_CMP3, 1);
-			completion[3] = digi_read(DG_ADDR_BITALIGN_CMP1, 2);
-			completion[4] = digi_read(DG_ADDR_BITALIGN_CMP2, 2);
-			completion[5] = digi_read(DG_ADDR_BITALIGN_CMP3, 2);
-			error[0] = digi_read(DG_ADDR_BITALIGN_ERR1, 1);
-			error[1] = digi_read(DG_ADDR_BITALIGN_ERR2, 1);
-			error[2] = digi_read(DG_ADDR_BITALIGN_ERR3, 1);
-			error[3] = digi_read(DG_ADDR_BITALIGN_ERR1, 2);
-			error[4] = digi_read(DG_ADDR_BITALIGN_ERR2, 2);
-			error[5] = digi_read(DG_ADDR_BITALIGN_ERR3, 2);
-
-			if (((completion[0] & active_ch_cal1) == active_ch_cal1) &&
-				((completion[1] & active_ch_cal2) == active_ch_cal1) &&
-				((completion[2] & active_ch_cal3) == active_ch_cal1) &&
-				((completion[3] & active_ch_hv1) == active_ch_hv1) &&
-				((completion[4] & active_ch_hv2) == active_ch_hv2) &&
-				((completion[5] & active_ch_hv3) == active_ch_hv3))
-				break;
+			if (bitalign_done) break;
 		}
 
 		for (uint8_t i=0; i<6; i++){
@@ -600,16 +579,13 @@ void autobitslip()
 		for (uint8_t i=0; i<10; i++){
 			hwdelay(50);
 
+			digi_write(DG_ADDR_BSC_OPERATION_TYPE, 0, 0);
 			digi_write(DG_ADDR_BITSLIP_STRT, 1, 0);
 			delayUs(10);
 			digi_write(DG_ADDR_BITSLIP_STRT, 0, 0);
 
-			bitstlip_done[0] = digi_read(DG_ADDR_BITSLIP_DONE1, 1);
-			bitstlip_done[1] = digi_read(DG_ADDR_BITSLIP_DONE2, 1);
-			bitstlip_done[2] = digi_read(DG_ADDR_BITSLIP_DONE3, 1);
-			bitstlip_done[3] = digi_read(DG_ADDR_BITSLIP_DONE1, 2);
-			bitstlip_done[4] = digi_read(DG_ADDR_BITSLIP_DONE2, 2);
-			bitstlip_done[5] = digi_read(DG_ADDR_BITSLIP_DONE3, 2);
+			for (uint8_t j = 0; j < 6; j++)
+				bitstlip_done[j] = digi_read(DG_ADDR_BITSLIP_DONE1+j%3, 1+j/3);
 
 			for (uint8_t ichan=0; ichan<96; ichan++){
 				uint16_t this_chan_mask = (uint16_t) 0x1 << (ichan%16);
@@ -633,85 +609,29 @@ void autobitslip()
 
 		// check with mixed frequency ADC
 
-		uint32_t not_enough_trigger[3] = {0};
-		uint32_t pattern_fail[3] = {0};
+		uint16_t pattern_match[6] = {0};
 		if (ifcheck){
-
-			digi_write(DG_ADDR_SAMPLE,checksamples,0);
-			hwdelay(50);
-
 			for (uint8_t i=0;i<12;i++){
 				if ((0x1<<i) & ENABLED_ADCS)
 					adc_write(ADC_ADDR_TESTIO,0xC,(0x1<<i));
 			}
 
-			hvcal = 1;
-			for (uint8_t ichan=0;ichan<96;ichan++){
-				if (ichan > 47)	hvcal =2;
-				thischanmask = (((uint32_t) 0x1)<<(ichan%32));
-				if ((thischanmask & mapped_channel_mask[ichan/32]) == 0x0)
-					continue;
+			digi_write(DG_ADDR_BSC_OPERATION_TYPE, 1, 0);
+			digi_write(DG_ADDR_BITSLIP_STRT, 1, 0);
+			delayUs(10);
+			digi_write(DG_ADDR_BITSLIP_STRT, 0, 0);
 
-				digi_write(DG_ADDR_MASK1, 0x0, 0);
-				digi_write(DG_ADDR_MASK2, 0x0, 0);
-				digi_write(DG_ADDR_MASK3, 0x0, 0);
-				if ((ichan%48) < 16)
-					digi_write(DG_ADDR_MASK1,(uint16_t) (0x1<<(ichan%48)), hvcal);
-				else if ((ichan%48) < 32)
-					digi_write(DG_ADDR_MASK2,(uint16_t) (0x1<<((ichan%48)-16)), hvcal);
-				else
-					digi_write(DG_ADDR_MASK3,(uint16_t) (0x1<<((ichan%48)-32)), hvcal);
-
-				resetFIFO();
-				*(registers_0_addr + REG_ROC_EWW_PULSER) = 1;
-				readout_obloc = 0;
-				readout_maxDelay = 50;
-				readout_mode = 0;
-				readout_wordsPerTrigger = NUMTDCWORDS+checksamples;
-				readout_numTriggers = 11;
-
-				int delay_count = 0;
-				int trigger_count = 0;
-				uint16_t lasthit[readout_wordsPerTrigger];
-
-				read_data2(&delay_count,&trigger_count,lasthit);
-
-				if (trigger_count != 11){
-					not_enough_trigger[ichan/32] |= (((uint32_t)0x1)<<(ichan%32));
-					continue;
-				}
-
-				uint8_t checkfail = 0;
-				for (uint8_t i=0;i<checksamples;i++){
-					if (lasthit[readout_wordsPerTrigger-1-i] != 0x319)
-						checkfail = 1;
-				}
-				if (checkfail == 1){
-					pattern_fail[ichan/32] |= (((uint32_t)0x1)<<(ichan%32));
-				}
+			for (uint8_t j = 0; j < 6; j++){
+				pattern_match[j] = digi_read(DG_ADDR_BSC_PATTERN_MATCH1+j%3, 1+j/3);
+				bufWrite(outBuffer, &bufcount, pattern_match[j], 2);
+				if ((pattern_match[j] & active_ch[j] & 0x00ff) != (active_ch[j] & 0x00ff))
+					faulted_adc |= ((uint16_t)0x1 << (2*j));
+				if ((pattern_match[j] & active_ch[j] & 0xff00) != (active_ch[j] & 0xff00))
+					faulted_adc |= ((uint16_t)0x1 << (2*j+1));
 			}
-
-			for (uint8_t i=0; i<3; i++){
-				bufWrite(outBuffer, &bufcount, not_enough_trigger[i], 4);
-				bufWrite(outBuffer, &bufcount, pattern_fail[i], 4);
-
-				if (pattern_fail[i] & 0x000000ff)
-					faulted_adc |= ((uint16_t)0x1 << (4*i));
-				if (pattern_fail[i] & 0x0000ff00)
-					faulted_adc |= ((uint16_t)0x1 << (4*i+1));
-				if (pattern_fail[i] & 0x00ff0000)
-					faulted_adc |= ((uint16_t)0x1 << (4*i+2));
-				if (pattern_fail[i] & 0xff000000)
-					faulted_adc |= ((uint16_t)0x1 << (4*i+3));
-			}
-			for (uint8_t i=0; i<3; i++){
-				if (not_enough_trigger[i] != 0) faulted_adc = 0;
-			}
-			//not enough trigger indicates a SERDES error. abort immediately
-			//put in a separate loop so faulted_adc is not overwritten again
 		}
 		else{
-			for (uint8_t i=0;i<6;i++) bufWrite(outBuffer, &bufcount, 0, 4);
+			for (uint8_t i=0;i<6;i++) bufWrite(outBuffer, &bufcount, 0, 2);
 		}
 
 		iteration ++;
@@ -719,8 +639,8 @@ void autobitslip()
 		if (iteration == 6) break; //maximum: 3 trials at phase 0, 3 for faulted adc at different phase
 		if (iteration == 3) init_adc_phase = (init_adc_phase+3)%12;
 		if (iteration >= 3){
+			for (uint8_t i=0; i<3; i++) mapped_channel_mask[i] = 0;
 			for (uint8_t i=0; i<12; i++){
-				mapped_channel_mask[i/4] &= (~(((uint32_t)0x000000ff)<<((i%4)*8)));
 				if (faulted_adc & ((uint16_t)0x1 << (i))){
 					mapped_channel_mask[i/4] |= ((uint32_t)0x000000ff)<<((i%4)*8);
 				}
