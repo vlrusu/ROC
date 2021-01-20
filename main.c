@@ -951,7 +951,7 @@ int main()
 				}else if (commandID == DDRSETUP){
 					uint32_t ddr_pageno = readU32fromBytes(&buffer[4]); //maximum is 256
 					uint8_t ddr_select = (uint8_t) buffer[8]; // enable simulated DTC request to DDR independently of fiber being there
-					uint8_t ddr_set    = (uint8_t) buffer[9]; // unused from v12.4
+					uint8_t ddr_set    = (uint8_t) buffer[9]; // enable setting of simulated DDR configuration parameters
 					uint8_t ddr_pattern = (uint8_t) buffer[10];
 					uint8_t ddr_pattern_en = (uint8_t) buffer[11];
 
@@ -961,6 +961,7 @@ int main()
 					*(registers_0_addr + REG_ROC_DDR_PAGENO) = ddr_pageno;
 
 					*(registers_0_addr + REG_ROC_DDR_SEL) = ddr_select;
+					*(registers_0_addr + REG_ROC_DDR_CS) = ddr_set;													
 					*(registers_0_addr + REG_ROC_DDR_PATTERN) = ddr_pattern;
 					delayUs(100);
 
