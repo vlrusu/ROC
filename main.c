@@ -541,8 +541,11 @@ int main()
 				 			SPI_set_slave_select( &g_spi[i] , ((j>=8)?SPI_SLAVE_2:(j<4?SPI_SLAVE_0:SPI_SLAVE_1)));
 				 			uint16_t addr = (j%4 <<11 );
 				 			SPI_transfer_frame( &g_spi[i], addr);
+				 			SPI_transfer_frame( &g_spi[i], addr);
 				 			rx0 = SPI_transfer_frame( &g_spi[i], addr);
 				 			SPI_clear_slave_select( &g_spi[i] , ((j>=8)?SPI_SLAVE_2:(j<4?SPI_SLAVE_0:SPI_SLAVE_1)));
+
+
 				 			bufWrite(outBuffer, &bufcount, rx0, 2);
 				 		}
 				 	}
