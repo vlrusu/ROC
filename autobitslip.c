@@ -539,7 +539,7 @@ void autobitslip()
 		volatile uint16_t error[6] = {0};
 
 		//wait until all channels are completed; timeout after 30 secs
-		for (uint8_t i=0; i<30; i++){
+		for (uint8_t i=0; i<3; i++){
 			hwdelay(50000000);//check every 1 second if is done
 			uint8_t bitalign_done = 1;
 			for (uint8_t j = 0; j < 6; j++){
