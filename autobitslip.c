@@ -648,6 +648,12 @@ void autobitslip()
 		}
 	}
 
+	for (uint8_t i=0;i<12;i++){
+		if ((0x1<<i) & ENABLED_ADCS)
+			adc_write(ADC_ADDR_TESTIO,0x0,(0x1<<i));
+			//make sure find_alignment exits with tracking incoming data not ADC pattern
+	}
+
 	bufWrite(outBuffer, &bufcount_place_holder, (bufcount-3), 2);
 	outBufSend(g_uart, outBuffer, bufcount);
 }
