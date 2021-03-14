@@ -91,6 +91,8 @@
 #define CALSPI_BASE_ADDR     0x70007000UL
 #define CSS_PF_BASE_ADDRESS  0x70008000UL
 #define SPI2_BASE_ADDR       0x70009000UL
+#define SPI_CAL_PROG_BASE_ADDR       0x7000B000UL
+#define SPI_HV_PROG_BASE_ADDR       0x7000A000UL
 
 /***************************************************************************//**
  * Peripheral Interrupts are mapped to the corresponding Cortex-M1 interrupt

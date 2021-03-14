@@ -8,6 +8,12 @@
 #include "riscv_hal.h"
 
 //#define DTCDDRTEST
+#define PROGRAMMING
+
+#include "dpuser.h"
+#include "dputil.h"
+#include "dpDUTspi.h"
+#include "dpalg.h"
 
 #include "setup.h"
 //#include "Commands.h"
@@ -90,6 +96,13 @@ int main()
 	SPI_configure_master_mode( &g_spi[3] );
 	SPI_init( &g_spi[4], SPI2_BASE_ADDR, 8 );
 	SPI_configure_master_mode( &g_spi[4] );
+
+
+	SPI_init( &g_cal_pro_spi, SPI_CAL_PROG_BASE_ADDR, 8 );
+	SPI_configure_master_mode( &g_cal_pro_spi );
+	SPI_init( &g_hv_pro_spi, SPI_HV_PROG_BASE_ADDR, 8 );
+	SPI_configure_master_mode( &g_hv_pro_spi );
+
 
 	//setup MCPs
 	for (int imcp = MCPCAL0; imcp<=MCPFC2; imcp++){
@@ -742,6 +755,30 @@ int main()
 //					bufWrite(outBuffer, &bufcount, address, 1);
 //					bufWrite(outBuffer, &bufcount, data, 2);
 //					outBufSend(g_uart, outBuffer, bufcount);
+
+#ifdef PROGRAMMING
+				}else if (commandID == PROGRAMDIGIS){
+
+				       uint8_t actionCodes[8] = {
+				          DP_DEVICE_INFO_ACTION_CODE,
+				          DP_READ_IDCODE_ACTION_CODE,
+				          DP_ERASE_ACTION_CODE,
+				          DP_PROGRAM_ACTION_CODE,
+				          DP_VERIFY_ACTION_CODE,
+				          DP_ENC_DATA_AUTHENTICATION_ACTION_CODE,
+				          DP_VERIFY_DIGEST_ACTION_CODE
+				          };
+
+					uint8_t indata = (uint8_t) buffer[4];
+					_Bool whichdigi = indata & 0x80;
+					uint8_t action = indata & 0xF;
+					Action_code = actionCodes[action];
+					device_family = G5M_DEVICE_FAMILY;
+					outBuffer[bufcount++] = PROGRAMDIGIS;
+					g_pro_spi = (whichdigi==0?g_cal_pro_spi:g_hv_pro_spi);
+					outBufSend(g_uart, outBuffer, bufcount);
+					dp_top();
+#endif
 #ifndef	DTCDDRTEST
 
 				}else if (commandID == GETDEVICEID){

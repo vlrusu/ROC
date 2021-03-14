@@ -101,6 +101,8 @@
 
 #define PACKAGETESTCMDID 151
 
+#define PROGRAMDIGIS 152
+
 //******************************************************************************
 //                             Registers & Addresses
 //******************************************************************************
@@ -262,6 +264,8 @@
 #define REG_ROC_ENABLE_FIBER_CLOCK 0xB0
 #define REG_ROC_ENABLE_FIBER_MARKER 0xB1
 
+
+
 //***********************ADC_ADDR_* are the ADC addresses
 										//AD9212 memory map:
 #define ADC_ADDR_CONFIG 0x00			// x00: Config: 0 | LSBFIRST | SOFTRESET | 1 | 1 | SOFTRESET | LSBFIRST | 0
@@ -357,6 +361,9 @@ extern UART_instance_t g_uart;
 extern spi_instance_t g_spi[5];
 extern gpio_instance_t g_gpio;
 extern pwm_instance_t g_pwm;
+extern spi_instance_t g_cal_pro_spi;
+extern spi_instance_t g_hv_pro_spi;
+extern spi_instance_t g_pro_spi;
 
 //******************************************************************************
 //                             Functions
