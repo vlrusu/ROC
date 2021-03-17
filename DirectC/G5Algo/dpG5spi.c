@@ -90,25 +90,27 @@ communications whether written or oral.                                     */
 #ifdef ENABLE_G5M_SUPPORT
 void dp_G5M_check_hwstatus(DPUCHAR mask)
 {
+
     DPULONG timeout;
-    DPUCHAR spi_hwcmd;
-    timeout = 0xffffffffu;
+
+    timeout = 0xffffffu;
     do_SPI_SCAN_in(G5M_SPI_HWSTATUS, 0u, (DPUCHAR*)(DPUCHAR*)DPNULL);
     while (timeout != 0)
     {
-    	spi_hwcmd = G5M_SPI_HWSTATUS;
-        do_SPI_SCAN_out(8u, &spi_hwcmd, 8u,&spi_hwstatus_buffer );
+        spi_hwstatus_buffer = G5M_SPI_HWSTATUS;
+        do_SPI_SCAN_out(8u, &spi_hwstatus_buffer, 0, (DPUCHAR*)(DPUCHAR*)DPNULL);
         
- //       if ((spi_hwstatus_buffer & mask) == (G5_READY_BIT & mask))
-
- //       {
+        if ((spi_hwstatus_buffer & mask) == (G5_READY_BIT & mask))
+        {
             // Silicon bug. SAR 803711 Need to add one more read to inspect Bits 7:2
-        	spi_hwcmd = G5M_SPI_HWSTATUS;
-            do_SPI_SCAN_out(8u, &spi_hwcmd, 8u, &spi_hwstatus_buffer);
+            spi_hwstatus_buffer = G5M_SPI_HWSTATUS;
+            do_SPI_SCAN_out(8u, &spi_hwstatus_buffer, 0, (DPUCHAR*)(DPUCHAR*)DPNULL);
             break;
-//        }
+        }
         timeout--;
     }
+
+
     if (timeout == 0u)
     {
         #ifdef ENABLE_DISPLAY
@@ -118,21 +120,21 @@ void dp_G5M_check_hwstatus(DPUCHAR mask)
         error_code = DPE_POLL_ERROR;
     }
     
-//    if(spi_hwstatus_buffer & G5_SPI_VIOLATION_BIT)
-//    {
-//        #ifdef ENABLE_DISPLAY
-//        dp_display_text("\r\nSPI VIOLATION...");
-//        #endif
-//        error_code = DPE_POLL_ERROR;
-//    }
-//    if(spi_hwstatus_buffer & G5_SPIERR_BIT)
-//    {
-//        #ifdef ENABLE_DISPLAY
-//        dp_display_text("\r\nSPI Error...");
-//        #endif
-//        error_code = DPE_POLL_ERROR;
-//    }
-//
+    if(spi_hwstatus_buffer & G5_SPI_VIOLATION_BIT)
+    {
+        #ifdef ENABLE_DISPLAY
+        dp_display_text("\r\nSPI VIOLATION...");
+        #endif
+        error_code = DPE_POLL_ERROR;
+    }
+    if(spi_hwstatus_buffer & G5_SPIERR_BIT)
+    {
+        #ifdef ENABLE_DISPLAY
+        dp_display_text("\r\nSPI Error...");
+        #endif
+        error_code = DPE_POLL_ERROR;
+    }
+
     return;
 }
 

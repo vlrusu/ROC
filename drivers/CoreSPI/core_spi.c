@@ -9,6 +9,12 @@
  *
  * SVN $Revision: 9667 $
  * SVN $Date: 2018-01-16 16:43:50 +0530 (Tue, 16 Jan 2018) $
+ *
+ * 3/17/21 -- Vadim R - WARNING - DO NOT OVERWRITE this with Microsemi drivers
+ * I made the transfer_block return the cmd_buffer (const before)
+ * cmd_buffer[transfer_idx]  = HAL_get_32bit_reg( this_spi->base_addr, RXDATA );
+ * instead of read and discard
+ *
  */
 
 #include "core_spi.h"
@@ -297,7 +303,7 @@ uint32_t SPI_transfer_frame
 void SPI_transfer_block
 (
     spi_instance_t * this_spi,
-    const uint8_t * cmd_buffer,
+    uint8_t * cmd_buffer,
     uint16_t cmd_byte_size,
     uint8_t * rx_buffer,
     uint16_t rx_byte_size
@@ -308,6 +314,7 @@ void SPI_transfer_block
     uint16_t tx_idx = 0u;          /* Number of valid data bytes sent */
     uint16_t rx_idx = 0u;          /* Number of valid response bytes received */
     uint16_t transit = 0U;         /* Number of bytes "in flight" to avoid FIFO errors */
+
 
     HAL_ASSERT( NULL_INSTANCE != this_spi );
 
@@ -405,7 +412,7 @@ void SPI_transfer_block
                 if( !HAL_get_8bit_reg_field( this_spi->base_addr, STATUS_RXEMPTY ) )
                 {
                     /* Read and discard. */
-                    HAL_get_32bit_reg( this_spi->base_addr, RXDATA );
+                	cmd_buffer[transfer_idx]  = HAL_get_32bit_reg( this_spi->base_addr, RXDATA );
                     ++transfer_idx;
                     --transit;
                 }
@@ -429,7 +436,7 @@ void SPI_transfer_block
                 if( !HAL_get_8bit_reg_field(this_spi->base_addr, STATUS_RXEMPTY ) )
                 {
                     /* Read and discard. */
-                    HAL_get_32bit_reg( this_spi->base_addr, RXDATA );
+                	cmd_buffer[transfer_idx] = HAL_get_32bit_reg( this_spi->base_addr, RXDATA );
                     ++transfer_idx;
                     --transit;
                 }

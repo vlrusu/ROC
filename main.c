@@ -775,6 +775,7 @@ int main()
 					Action_code = actionCodes[action];
 					device_family = G5M_DEVICE_FAMILY;
 					outBuffer[bufcount++] = PROGRAMDIGIS;
+					bufWrite(outBuffer, &bufcount, 0, 2);
 					g_pro_spi = (whichdigi==0?g_cal_pro_spi:g_hv_pro_spi);
 					outBufSend(g_uart, outBuffer, bufcount);
 					dp_top();
