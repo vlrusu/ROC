@@ -175,7 +175,7 @@ int main()
 	digi_write(DG_ADDR_RESET,1,0);
 
 	digi_write(DG_ADDR_EWS,0x0000,HVANDCAL);
-	digi_write(DG_ADDR_EWE,0x4FFB,HVANDCAL);
+	digi_write(DG_ADDR_EWE,0xFFFB,HVANDCAL);
 	*(registers_0_addr + REG_ROC_EWMSTART_PMT) = 0x0001;
 	*(registers_0_addr + REG_ROC_EWMSTOP_PMT) = 0x0FFF;
 	digi_write(DG_ADDR_DIGINUMBER,0,CALONLY);
@@ -183,6 +183,13 @@ int main()
 
 	writePtr = 0;
 	
+	//enable serdes resets
+	//digi_write(0xA1,0xF,HVANDCAL);
+	//digi_write(0xA2,0xF,HVANDCAL);
+	//*(registers_0_addr + 0xB2) = 0xF;
+	//*(registers_0_addr + 0xB3) = 0xF;
+	*(registers_0_addr + 0xB4) = 0xF;
+
 	// set defaults
 	//!!! I2C configuration for an older version of DRAC !!!
 	//!!! Newer version uses pin 9 and 10                !!!
@@ -305,6 +312,93 @@ int main()
 	}
 
 	init_DIGIs();
+
+
+	uint32_t read_value = digi_read(0xC0,1);
+	if ((read_value & 0x3FF) != 0x047)
+		UART_polled_tx_string( &g_uart, "ROC->Cal unaligned\n" );
+	else
+		UART_polled_tx_string( &g_uart, "ROC->Cal aligned\n" );
+	read_value = digi_read(0xC0,2);
+	if ((read_value & 0x3FF) != 0x047)
+		UART_polled_tx_string( &g_uart, "ROC->HV unaligned\n" );
+	else
+		UART_polled_tx_string( &g_uart, "ROC->HV aligned\n" );
+	read_value = *(registers_0_addr+0xC2);
+	if ((read_value & 0xFF) != 0x11)
+		UART_polled_tx_string( &g_uart, "CAL->ROC unaligned\n" );
+	else
+		UART_polled_tx_string( &g_uart, "CAL->ROC aligned\n" );
+	if ((read_value & 0xFF00) != 0x1100)
+		UART_polled_tx_string( &g_uart, "HV->ROC unaligned\n" );
+	else
+		UART_polled_tx_string( &g_uart, "HV->ROC aligned\n" );
+
+
+
+/*
+	uint32_t read_value = digi_read(0xA5,1);
+		char hex_string[11];
+		for (int i=0;i<10;i++){
+			if ((0x1<<i) & read_value)
+				hex_string[9-i] = '1';
+			else
+				hex_string[9-i] = '0';
+		}
+		hex_string[10] = '\0';
+		UART_polled_tx_string( &g_uart, hex_string );
+		UART_polled_tx_string( &g_uart, " ROC->Cal " );
+		if (((read_value & 0x3) != 0x3))
+			UART_polled_tx_string( &g_uart, " unaligned " );
+		if (((read_value & 0x3C) != 0x04))
+			UART_polled_tx_string( &g_uart, " .L0. " );
+		if (((read_value & 0x3C0) != 0x040))
+			UART_polled_tx_string( &g_uart, " .L1. " );
+
+	read_value = digi_read(0xA5,2);
+	for (int i=0;i<10;i++){
+		if ((0x1<<i) & read_value)
+			hex_string[9-i] = '1';
+		else
+			hex_string[9-i] = '0';
+	}
+	hex_string[10] = '\0';
+	UART_polled_tx_string( &g_uart, hex_string );
+	UART_polled_tx_string( &g_uart, " ROC->HV " );
+	if (((read_value & 0x3) != 0x3))
+		UART_polled_tx_string( &g_uart, " unaligned " );
+	if (((read_value & 0x3C) != 0x04))
+		UART_polled_tx_string( &g_uart, " .L0. " );
+	if (((read_value & 0x3C0) != 0x040))
+		UART_polled_tx_string( &g_uart, " .L1. " );
+
+	read_value = *(registers_0_addr+0xC2);
+		char hex_string2[9];
+		for (int i=0;i<8;i++){
+			if ((0x1<<i) & read_value)
+				hex_string2[7-i] = '1';
+			else
+				hex_string2[7-i] = '0';
+		}
+		hex_string2[8] = '\0';
+		UART_polled_tx_string( &g_uart, hex_string2 );
+		UART_polled_tx_string( &g_uart, " Cal->ROC " );
+		if ((read_value & 0xFF) != 0x11){
+		UART_polled_tx_string( &g_uart, " unaligned " );
+	}
+		for (int i=0;i<8;i++){
+			if ((0x1<<i) & read_value)
+				hex_string2[7-i] = '1';
+			else
+				hex_string2[7-i] = '0';
+		}
+		hex_string2[0] = '\0';
+		UART_polled_tx_string( &g_uart, hex_string2 );
+		UART_polled_tx_string( &g_uart, " HV->ROC " );
+		if ((read_value & 0xFF00) != 0x1100){
+			UART_polled_tx_string( &g_uart, " unaligned " );
+		}
+		*/
 
 	UART_polled_tx_string( &g_uart, "Initialization completed" );
 
@@ -1635,6 +1729,7 @@ int main()
 					//sprintf(outBuffer,"CM: %08x %08x %08x, ep: %d\n",digi_read(0xb),digi_read(0xe),digi_read(0xd),digi_read(0xc));
 					//UART_polled_tx_string( &g_uart, outBuffer );
 
+
 					outBuffer[bufcount++] = READDATACMDID;
 					//outBuffer[bufcount++] = 33;
 					bufWrite(outBuffer, &bufcount, 35, 2);
@@ -1663,6 +1758,7 @@ int main()
 						*(registers_0_addr + REG_ROC_USE_LANE) = 0xF;
 						resetFIFO();
 						resetFIFO();
+						delayUs(10000);
 						*(registers_0_addr + REG_ROC_EWW_PULSER) = 1;
 
 

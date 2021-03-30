@@ -792,24 +792,33 @@ void outBufSend(UART_instance_t g_uart, char *outBuffer, uint16_t bufcount){
 }
 
 int resetFIFO(){
-	for (int i=0;i<10;i++){
+	digi_write(DG_ADDR_RESET, 0, 0); // digi 0x10, sends tdc_reset_n which resets all fifos and TDCs in old version
+	*(registers_0_addr + REG_ROC_CR_FIFO_RESET) = 0; //0xA3 (ROC reset_fifo_n, clears DigiInterface fifos and resets DigiController)
+	delayUs(10);
+	*(registers_0_addr + REG_ROC_CR_FIFO_RESET) = 1; //0xA3 (ROC reset_fifo_n, clears DigiInterface fifos and resets DigiController)
+	delayUs(10);
+	digi_write(DG_ADDR_RESET, 1, 0); // digi 0x10, sends tdc_reset_n which resets all fifos and TDCs in old version
+	return 0;
+	/*
+//	for (int i=0;i<10;i++){
 	  digi_write(DG_ADDR_RESET, 0, 0);
-	  *(registers_0_addr + REG_ROC_FIFO_RESET) = 1;
+	  *(registers_0_addr + REG_ROC_FIFO_RESET) = 1; //0x44 (ROC DIGI_RESET, sends device reset when set to 0)
 	  digi_write(DG_ADDR_RESET, 1, 0);
 
 	  delayUs(1);
-	  uint16_t is_aligned = *(registers_0_addr + REG_ROC_SERDES_ALIGN);
-	  if (is_aligned == 0xF){
-		*(registers_0_addr + REG_ROC_CR_FIFO_RESET) = 0;
-		*(registers_0_addr + REG_ROC_CR_FIFO_RESET) = 1;
+	  //uint16_t is_aligned = *(registers_0_addr + REG_ROC_SERDES_ALIGN);
+	  //if (is_aligned == 0xF){
+//		*(registers_0_addr + REG_ROC_CR_FIFO_RESET) = 0;
+//		*(registers_0_addr + REG_ROC_CR_FIFO_RESET) = 1;
 		return 0;
-	  }
-	}
+//	  }
+//	}
 	// failed to align correctly
-	*(registers_0_addr + REG_ROC_CR_FIFO_RESET) = 0;
-	*(registers_0_addr + REG_ROC_CR_FIFO_RESET) = 1;
-	return 1;
+//	*(registers_0_addr + REG_ROC_CR_FIFO_RESET) = 0;
+//	*(registers_0_addr + REG_ROC_CR_FIFO_RESET) = 1;
+//	return 1;
 //	reset_fabric();
+ */
 }
 
 void setPreampGain(uint16_t channel, uint16_t value){
