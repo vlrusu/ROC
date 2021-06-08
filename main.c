@@ -29,8 +29,12 @@ const uint8_t MCPCALIBCHAN[8] = {1,2,3,4,9,10,11,12};
 int main()
 {
 
-	UART_init( &g_uart, UART_BASE_ADDRESS, (SYS_CLK_FREQ/(16 * BAUD_VALUE))-1, (DATA_8_BITS | NO_PARITY));
+	UART_init( &g_uart, RS485_BASE_ADDR, (SYS_CLK_FREQ/(16 * BAUD_VALUE))-1, (DATA_8_BITS | NO_PARITY));
 
+	//register address for bit banging
+	registers_0_addr = (volatile uint32_t *) REGISTERBASEADDR;
+
+	*(registers_0_addr + REG_ROC_RS485_RS) = 1;
 	const uint8_t greeting[] = "\n\r\"Welcome to the ROC\"\n"
 			"\t - Sean Connery\n";
 
@@ -46,9 +50,6 @@ int main()
 	uint8_t readout_enabled = 0;
 	uint8_t calibration_enabled = 0;
 	int readout_totalTriggers = 0;
-
-	//register address for bit banging
-	registers_0_addr = (volatile uint32_t *) REGISTERBASEADDR;
 
 	//enabling hw counter
 	//granularity is clock period=25ns -- period is (gr+1)*1000=50us
@@ -425,6 +426,7 @@ int main()
 		*/
 
 	UART_polled_tx_string( &g_uart, "Initialization completed" );
+	*(registers_0_addr + REG_ROC_RS485_RS) = 0; // Write out the greeting message and then switch to read mode
 
 	GPIO_set_output( &g_gpio, GPIO_0, 0);
 	GPIO_set_output( &g_gpio, GPIO_1, 0);
@@ -463,7 +465,9 @@ int main()
 		{
 			if ((buffer[0] != 0xAA) || buffer[1] != 0xAA){
 				writePtr = 0;
+				*(registers_0_addr + REG_ROC_RS485_RS) = 1;
 				UART_polled_tx_string( &g_uart, "Problem synchronizing command\n" );
+				*(registers_0_addr + REG_ROC_RS485_RS) = 0;
 				continue;
 			}
 
@@ -1240,7 +1244,9 @@ int main()
 							bufWrite(outBuffer, &bufcount, (uint32_t)trigger_count, 4);
 						}
 
+						*(registers_0_addr + REG_ROC_RS485_RS) = 1;
 						UART_send(&g_uart, outBuffer ,bufcount );
+						*(registers_0_addr + REG_ROC_RS485_RS) = 0;
 
 						//UART_polled_tx_string( &g_uart, outBuffer );
 
@@ -1269,8 +1275,9 @@ int main()
 							bufWrite(outBuffer, &bufcount, (uint32_t)trigger_count, 4);
 						}
 
+						*(registers_0_addr + REG_ROC_RS485_RS) = 1;
 						UART_send(&g_uart, outBuffer ,bufcount );
-
+						*(registers_0_addr + REG_ROC_RS485_RS) = 0;
 
 						//readout_mode = 1;
 						//sprintf(outBuffer,"Run started\n");

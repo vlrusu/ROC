@@ -262,6 +262,9 @@
 #define REG_ROC_ENABLE_FIBER_CLOCK 0xB0
 #define REG_ROC_ENABLE_FIBER_MARKER 0xB1
 
+
+#define REG_ROC_RS485_RS 0xD1 // 0: Read; 1: Write
+
 //***********************ADC_ADDR_* are the ADC addresses
 										//AD9212 memory map:
 #define ADC_ADDR_CONFIG 0x00			// x00: Config: 0 | LSBFIRST | SOFTRESET | 1 | 1 | SOFTRESET | LSBFIRST | 0
