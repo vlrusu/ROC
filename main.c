@@ -464,7 +464,6 @@ int main()
 			continue;
 		if (writePtr > 0)
 		{
-			delay_ms(100);
 			if ((buffer[0] != 0xAA) || buffer[1] != 0xAA){
 				writePtr = 0;
 				*(registers_0_addr + REG_ROC_RS485_RS) = 1;
@@ -476,6 +475,7 @@ int main()
 
 			uint8_t numBytes = buffer[2];
 			if (writePtr >= (uint32_t)numBytes){
+				delay_ms(500);
 				uint8_t commandID = (uint8_t) buffer[3];
 				bufcount = 0;
 
