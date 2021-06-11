@@ -16,7 +16,7 @@
 #include "autobitslip.h"
 #include "version.h"
 
-#define BAUD_VALUE                  115200
+#define BAUD_VALUE                  19200
 
 const uint16_t default_caldac[8] = {1000,1000,1000,1000,1000,1000,1000,1000};
 
@@ -426,6 +426,7 @@ int main()
 		*/
 
 	UART_polled_tx_string( &g_uart, "Initialization completed" );
+	delay_ms(10);
 	*(registers_0_addr + REG_ROC_RS485_RS) = 0; // Write out the greeting message and then switch to read mode
 
 	GPIO_set_output( &g_gpio, GPIO_0, 0);
@@ -463,10 +464,12 @@ int main()
 			continue;
 		if (writePtr > 0)
 		{
+			delay_ms(100);
 			if ((buffer[0] != 0xAA) || buffer[1] != 0xAA){
 				writePtr = 0;
 				*(registers_0_addr + REG_ROC_RS485_RS) = 1;
 				UART_polled_tx_string( &g_uart, "Problem synchronizing command\n" );
+				delay_ms(10);
 				*(registers_0_addr + REG_ROC_RS485_RS) = 0;
 				continue;
 			}
@@ -1246,6 +1249,7 @@ int main()
 
 						*(registers_0_addr + REG_ROC_RS485_RS) = 1;
 						UART_send(&g_uart, outBuffer ,bufcount );
+						delay_ms(10);
 						*(registers_0_addr + REG_ROC_RS485_RS) = 0;
 
 						//UART_polled_tx_string( &g_uart, outBuffer );
@@ -1277,6 +1281,7 @@ int main()
 
 						*(registers_0_addr + REG_ROC_RS485_RS) = 1;
 						UART_send(&g_uart, outBuffer ,bufcount );
+						delay_ms(10);
 						*(registers_0_addr + REG_ROC_RS485_RS) = 0;
 
 						//readout_mode = 1;

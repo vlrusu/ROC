@@ -568,6 +568,7 @@ void read_data(int *delay_count, int *trigger_count)
 						bufWrite(dataBuffer, &readout_obloc, EMPTY, 2);
 						*(registers_0_addr + REG_ROC_RS485_RS) = 1;
 						UART_send(&g_uart, dataBuffer ,2);
+						delay_ms(10);
 						*(registers_0_addr + REG_ROC_RS485_RS) = 0;
 					//}
 					break;
@@ -595,6 +596,7 @@ void read_data(int *delay_count, int *trigger_count)
 
 		*(registers_0_addr + REG_ROC_RS485_RS) = 1;
 		UART_send(&g_uart, dataBuffer ,readout_obloc);
+		delay_ms(10);
 		*(registers_0_addr + REG_ROC_RS485_RS) = 0;
 		(*trigger_count)++;
 
@@ -604,6 +606,7 @@ void read_data(int *delay_count, int *trigger_count)
 			bufWrite(dataBuffer, &readout_obloc, ENDOFDATA, 2);
 			*(registers_0_addr + REG_ROC_RS485_RS) = 1;
 			UART_send(&g_uart, dataBuffer ,2);
+			delay_ms(10);
 			*(registers_0_addr + REG_ROC_RS485_RS) = 0;
 			break;
 		}
@@ -796,6 +799,7 @@ void outBufSend(UART_instance_t g_uart, char *outBuffer, uint16_t bufcount){
 	*(registers_0_addr + REG_ROC_RS485_RS) = 1;
 	UART_polled_tx_string( &g_uart, "monitoring\n" );
 	UART_send(&g_uart, outBuffer ,bufcount );
+	delay_ms(10);
 	*(registers_0_addr + REG_ROC_RS485_RS) = 0;
 }
 
