@@ -7,7 +7,8 @@
 
 #include "riscv_hal.h"
 
-//#define DTCDDRTEST
+//#define DTCDDRTEST  // if uncommented, skips all code inside    #ifndef	DTCDDRTEST ... #endif
+                      // if commented, skips all code inside      #ifdef  DTCDDRTEST ... #endif
 
 #include "setup.h"
 //#include "Commands.h"
@@ -199,6 +200,7 @@ int main()
 
 	digi_write(DG_ADDR_EWS,0x0000,HVANDCAL);
 	digi_write(DG_ADDR_EWE,0xFFFB,HVANDCAL);
+//	digi_write(DG_ADDR_EWE,0x4FFB,HVANDCAL);
 	*(registers_0_addr + REG_ROC_EWMSTART_PMT) = 0x0001;
 	*(registers_0_addr + REG_ROC_EWMSTOP_PMT) = 0x0FFF;
 	digi_write(DG_ADDR_DIGINUMBER,0,CALONLY);
@@ -869,7 +871,8 @@ int main()
 					bufWrite(outBuffer, &bufcount, address, 1);
 					bufWrite(outBuffer, &bufcount, data, 4);
 					outBufSend(g_uart, outBuffer, bufcount);
-#ifndef	DTCDDRTEST
+
+#ifndef	DTCDDRTEST  // Monica added for allowing all other DDR test functions
 
 				}else if (commandID == GETDEVICEID){
 
@@ -931,6 +934,873 @@ int main()
 					outBufSend(g_uart, outBuffer, bufcount);
 #endif
 
+//***********************************begin of DDR commands****************************************************************************************
+#ifdef	DTCDDRTEST
+
+				}else if (commandID == DDRRAMREAD){
+// MT 02/28/2021   simplified to pass a fixed size of RAM content to file, as specified by "ddr_addr2read"
+					uint32_t ddr_addr2read = readU32fromBytes(&buffer[4]);
+
+					outBuffer[bufcount++] = DDRRAMREAD;
+					bufWrite(outBuffer, &bufcount, 4, 2);
+					bufWrite(outBuffer, &bufcount, ddr_addr2read, 4);
+					outBufSend(g_uart, outBuffer, bufcount);
+
+					// read RAM
+					readout_obloc = 0;
+					bufWrite(dataBuffer, &readout_obloc, STARTTRG, 2);
+					readout_obloc_place_holder = readout_obloc;
+					readout_obloc += 2;
+
+					for (uint32_t i= 0; i < ddr_addr2read; i++){
+						*(registers_0_addr + REG_ROC_DDR_RAM_ADDR) = i;
+						delayUs(100);
+
+						*(registers_0_addr + REG_ROC_DDR_RAM_REN) = 1;
+						delayUs(100);
+
+						volatile uint32_t ramdata = *(registers_0_addr + REG_ROC_DDR_RAM_DATA);
+						bufWrite(dataBuffer, &readout_obloc, ramdata, 4);
+					}
+					bufWrite(dataBuffer, &readout_obloc_place_holder, (readout_obloc-4), 2);
+					UART_send(&g_uart, dataBuffer, readout_obloc);
+
+					readout_obloc = 0;
+					bufWrite(dataBuffer, &readout_obloc, ENDOFDATA, 2);
+					UART_send(&g_uart, dataBuffer ,2);
+
+				}else if (commandID == DDRSPEEDTEST){
+					uint8_t ddr_option = (uint8_t) buffer[4]; 	// which test: 1 -> WR;  2 -> RD&test;  3 -> WR&RD(&test)
+					uint8_t ddr_burst  = (uint8_t) buffer[5];  	// burst size: min=0, max=255)
+					uint8_t ddr_pattern= (uint8_t) buffer[6];	// pattern to write/test
+					uint32_t ddr_nhit   = readU32fromBytes(&buffer[7]);  // number of DDR bursts (1024 to fill FIFOs): max depends on burst size
+
+					*(registers_0_addr + REG_ROC_DDR_BURST) 	= ddr_burst;
+					*(registers_0_addr + REG_ROC_DDR_PATTERN) 	= ddr_pattern;
+					*(registers_0_addr + REG_ROC_DDR_NHITS) 	= ddr_nhit;
+
+					// PATTERN_EN needs to be 0 for this test and latched by SIM_EN (via DDR_CS)
+					*(registers_0_addr + REG_ROC_DDR_PATTERN_EN) = 0;
+					delayUs(100);
+
+					if (ddr_option == 1) { 			// write speed test
+						*(registers_0_addr + REG_ROC_DDR_WEN) = 1;
+					} else if (ddr_option == 2) { 	// read speed test
+						*(registers_0_addr + REG_ROC_DDR_REN) = 1;
+					} else if (ddr_option == 3) { 	// write & read speed test
+						*(registers_0_addr + REG_ROC_DDR_RWEN) = 1;
+					}
+
+					delay_ms(100);
+
+					// return FIFO status AFTER write
+					uint16_t ddr_fifo_diagn = *(registers_0_addr + REG_ROC_DDR_FIFODIA);
+
+					outBuffer[bufcount++] = DDRSPEEDTEST;
+					bufWrite(outBuffer, &bufcount, 2, 2);
+					bufWrite(outBuffer, &bufcount, ddr_fifo_diagn, 2);
+					outBufSend(g_uart, outBuffer, bufcount);
+
+
+				}else if (commandID == DDRSPEEDREAD){
+					uint8_t ddr_option = (uint8_t) buffer[4]; 	// which test: 1 -> WR;  2 -> RD&test;  3 -> WR&RD(&test)
+
+					//FIFO status BEFORE read
+					outBuffer[bufcount++] = DDRSPEEDREAD;
+					bufWrite(outBuffer, &bufcount, 2, 2);
+					bufWrite(outBuffer, &bufcount,  *(registers_0_addr + REG_ROC_DDR_FIFODIA), 2);
+					outBufSend(g_uart, outBuffer, bufcount);
+
+					volatile uint16_t ddr_write_empty, ddr_read_empty;
+					volatile uint32_t wrt_data, rdt_data;
+
+					// start reading appropriate timer FIFO until empty. ie while VALID is high
+					readout_obloc = 0;
+					bufWrite(dataBuffer, &readout_obloc, STARTTRG, 2);
+					readout_obloc_place_holder = readout_obloc;
+					readout_obloc += 2;
+
+					uint32_t wr_cnt = 0;
+					uint32_t rd_cnt = 0;
+					if (ddr_option == 1) {  			// write speed FIFO data
+
+						// loop to write to file only until FIFO is empty
+						for (uint32_t j=0;j<1000;j++) { // limiting to 1000 loops ensures that
+														// dataBuffer does not reach the size limit of 4096 bytes
+
+							volatile uint16_t ddr_fifo_diag = *(registers_0_addr + REG_ROC_DDR_FIFODIA);
+							ddr_write_empty = (ddr_fifo_diag & 0x0001);
+
+							if (ddr_write_empty == 0) {
+								wr_cnt++;
+								*(registers_0_addr + REG_ROC_DDR_WRT_REN) = 1;
+
+								delayUs(100);
+								wrt_data = *(registers_0_addr + REG_ROC_DDR_WRTIME);
+								bufWrite(dataBuffer, &readout_obloc, wrt_data, 4);
+							}
+						}
+
+					} else if (ddr_option == 2) {  // read speed FIFO data
+
+						for (uint32_t j=0;j<1000;j++) { // limiting to 1000 loops ensures that
+														// dataBuffer does not reach the size limit of 4096 bytes
+
+							volatile uint16_t ddr_fifo_diag = *(registers_0_addr + REG_ROC_DDR_FIFODIA);
+							ddr_read_empty = (ddr_fifo_diag & 0x0010);
+
+							if (ddr_read_empty == 0) {
+								rd_cnt++;
+								*(registers_0_addr + REG_ROC_DDR_RDT_REN) = 1;
+
+								delayUs(100);
+								rdt_data = *(registers_0_addr + REG_ROC_DDR_RDTIME);
+								bufWrite(dataBuffer, &readout_obloc, rdt_data, 4);
+							}
+						}
+					}
+					bufWrite(dataBuffer, &readout_obloc_place_holder, (readout_obloc-4), 2);
+					UART_send(&g_uart, dataBuffer, readout_obloc);
+
+					readout_obloc = 0;
+					bufWrite(dataBuffer, &readout_obloc, ENDOFDATA, 2);
+					UART_send(&g_uart, dataBuffer ,2);
+
+					// FIFO status AFTER read
+					bufcount = 0;
+					outBuffer[bufcount++] = DDRSPEEDREAD;
+					bufWrite(outBuffer, &bufcount, 10, 2);
+					bufWrite(outBuffer, &bufcount, wr_cnt, 4);
+					bufWrite(outBuffer, &bufcount, rd_cnt, 4);
+					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_FIFODIA), 2);
+					UART_send(&g_uart, outBuffer ,bufcount );
+
+
+				}else if (commandID == DDRSPEEDERR){
+
+					// report and number of errors found
+					uint32_t ddr_error = *(registers_0_addr + REG_ROC_DDR_ERRCNT);
+
+					outBuffer[bufcount++] = DDRSPEEDERR;
+					bufWrite(outBuffer, &bufcount, 4, 2);
+					bufWrite(outBuffer, &bufcount, ddr_error, 4);
+					outBufSend(g_uart, outBuffer, bufcount);
+
+					if (ddr_error==0) {
+
+						readout_obloc = 0;
+						bufWrite(dataBuffer, &readout_obloc, EMPTY, 2);
+						UART_send(&g_uart, dataBuffer, readout_obloc);
+
+					} else {
+
+						readout_obloc = 0;
+						bufWrite(dataBuffer, &readout_obloc, STARTTRG, 2);
+						readout_obloc_place_holder = readout_obloc;
+						readout_obloc += 2;
+
+						volatile uint16_t ddr_fifo_diag, ddr_err_empty;
+						volatile uint32_t err_loc_data, true_data_l, true_data_h, expc_data_l, expc_data_h;
+
+						for (uint16_t j=0;j<185;j++) {  // limiting to 185 loops ensures that
+														// dataBuffer does not reach the size limit of 4096 bytes
+
+							ddr_fifo_diag = *(registers_0_addr + REG_ROC_DDR_FIFODIA);
+							ddr_err_empty = (ddr_fifo_diag & 0x0100);
+
+							if (ddr_err_empty == 0) {
+
+								*(registers_0_addr + REG_ROC_DDR_ERR_REN) = 1;
+
+								delayUs(100);
+								err_loc_data = *(registers_0_addr + REG_ROC_DDR_ERRLOC);
+								true_data_l  = *(registers_0_addr + REG_ROC_DDR_TRUEL);
+								true_data_h  = *(registers_0_addr + REG_ROC_DDR_TRUEH);
+								expc_data_l  = *(registers_0_addr + REG_ROC_DDR_EXPCL);
+								expc_data_h  = *(registers_0_addr + REG_ROC_DDR_EXPCH);
+
+								delayUs(100);
+								bufWrite(dataBuffer, &readout_obloc, err_loc_data,4);
+								bufWrite(dataBuffer, &readout_obloc, true_data_l, 4);
+								bufWrite(dataBuffer, &readout_obloc, true_data_h, 4);
+								bufWrite(dataBuffer, &readout_obloc, expc_data_l, 4);
+								bufWrite(dataBuffer, &readout_obloc, expc_data_h, 4);
+								bufWrite(dataBuffer, &readout_obloc, 0xABBA, 2);
+							}
+						}
+
+						bufWrite(dataBuffer, &readout_obloc_place_holder, (readout_obloc-4), 2);
+						UART_send(&g_uart, dataBuffer, readout_obloc);
+
+						readout_obloc = 0;
+						bufWrite(dataBuffer, &readout_obloc, ENDOFDATA, 2);
+						UART_send(&g_uart, dataBuffer, 2);
+					}
+
+
+				}else if (commandID == DDRPATTERNREAD){
+// MT --same as DDRRAMREAD but only reads and returns location of error register
+//    It has only one parameter (ddroffset = memory offset in multiple of 1 kB).
+//    All other testDDR parameters fixed to write to DDR 1kB of increasing one data bits
+					uint32_t ddroffset = readU32fromBytes(&buffer[4]);
+					// MT 02/10/2020  add pattern parameter
+					uint32_t ddrpattern = readU32fromBytes(&buffer[8]);
+
+					*(registers_0_addr + REG_ROC_DDR_OFFSET) = ddroffset;
+					delayUs(100);
+
+					*(registers_0_addr + REG_ROC_DDR_NHITS) = 1;
+					*(registers_0_addr + REG_ROC_DDR_PATTERN_EN) = 0;
+					delayUs(100);
+
+					*(registers_0_addr + REG_ROC_DDR_PATTERN) = ddrpattern;
+					delayUs(100);
+
+					// write pattern to DDR memory
+					*(registers_0_addr + REG_ROC_DDR_WEN) = 1;
+					delay_ms(10);
+
+					//read pattern from DDR memory to RAM
+					*(registers_0_addr + REG_ROC_DDR_REN) = 1;
+					delay_ms(10);
+
+					// read error location
+					uint32_t errloc = *(registers_0_addr + REG_ROC_DDR_ERRLOC);
+
+					outBuffer[bufcount++] = DDRPATTERNREAD;
+					bufWrite(outBuffer, &bufcount, 4, 2);
+					bufWrite(outBuffer, &bufcount, errloc, 4);
+					outBufSend(g_uart, outBuffer, bufcount);
+
+
+				}else if (commandID == DDRRAMFILL){
+// MT same as DDRSPEEDTEST for option 2 (read-only)
+//	  plus extra register to specify DDR read address to start dumping to RAM
+					uint8_t ddrpattern = (uint8_t) buffer[4];
+					uint8_t ddrburst  = (uint8_t) buffer[5];  	// burst size: min=0, max=255)
+					uint32_t ddrnhit = readU32fromBytes(&buffer[6]);
+					uint32_t ddroffset = readU32fromBytes(&buffer[10]);
+
+					*(registers_0_addr + REG_ROC_DDR_PATTERN) 	= ddrpattern;
+					*(registers_0_addr + REG_ROC_DDR_BURST) 	= ddrburst;
+					*(registers_0_addr + REG_ROC_DDR_NHITS) 	= ddrnhit;
+					*(registers_0_addr + REG_ROC_DDR_LOCRAM)  	= ddroffset;
+
+					// PATTERN_EN needs to be 0 for this test and latched by SIM_EN (via DDR_CS)
+					*(registers_0_addr + REG_ROC_DDR_PATTERN_EN) = 0;
+					delayUs(100);
+
+					// read speed test
+					*(registers_0_addr + REG_ROC_DDR_REN) = 1;
+
+					delay_ms(1000);
+
+					outBuffer[bufcount++] = DDRRAMFILL;
+					bufWrite(outBuffer, &bufcount, 0, 2);
+					outBufSend(g_uart, outBuffer, bufcount);
+
+
+				}else if (commandID == DDRBURSTREAD){
+					// returns cnt of DDR WR-data and RD-data bursts
+					outBuffer[bufcount++] = DDRBURSTREAD;
+					bufWrite(outBuffer, &bufcount, 8, 2);
+					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_WRBCNT), 4);
+					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_RDBCNT), 4);
+					outBufSend(g_uart, outBuffer, bufcount);
+#endif
+
+				}else if (commandID == DDRSIMUSET){
+					// sets and returns ON/OFF status of DDR Simulator
+					uint8_t ddrsimuset = (uint8_t) buffer[4];
+					*(registers_0_addr + REG_ROC_DDR_SET) = ddrsimuset;
+
+					outBuffer[bufcount++] = DDRSIMUSET;
+					bufWrite(outBuffer, &bufcount, 1, 2);
+					bufWrite(outBuffer, &bufcount, ddrsimuset, 1);
+					outBufSend(g_uart, outBuffer, bufcount);
+
+				}else if (commandID == SERIALSET){
+					// set and returns enablew touse SERIAL commands to DDRInterface
+					uint8_t ser_en   = (uint8_t) buffer[4];
+					*(registers_0_addr + REG_ROC_DDR_CS) = ser_en; // enable DTCInterface signals to Core_PCS
+
+					outBuffer[bufcount++] = SERIALSET;
+					bufWrite(outBuffer, &bufcount, 1, 2);
+					bufWrite(outBuffer, &bufcount, ser_en, 1);
+					outBufSend(g_uart, outBuffer, bufcount);
+
+
+				}else if (commandID == DDRSTATUS){
+					outBuffer[bufcount++] = DDRSTATUS;
+					bufWrite(outBuffer, &bufcount, 37, 2);
+					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_CONV_RDCNT), 4);
+					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_CONV_DATA), 4);
+					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_FULL), 1);
+					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_PAGEWR), 4);
+					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_PAGERD), 4);
+					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_MEMFIFO_EMPTY), 1);
+					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_MEMFIFO_FULL), 1);
+					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_TEMPFIFO_EMPTY), 1);
+					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_TEMPFIFO_FULL), 1);
+					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_MEMFIFO_DATA0), 4);
+					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_MEMFIFO_DATA1), 4);
+					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_DIAG0), 4);
+					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_DIAG1), 4);
+					outBufSend(g_uart, outBuffer, bufcount);
+
+				}else if (commandID == DDRSETUP){
+					uint32_t ddr_pageno = readU32fromBytes(&buffer[4]); //maximum is 256
+					uint8_t ddr_select = (uint8_t) buffer[8]; 	// unused since v12.6. Set when needed in DDRFILL/DDRREAD
+					uint8_t ddr_set    = (uint8_t) buffer[9]; 	// unused since v12.4
+					uint8_t ddr_pattern = (uint8_t) buffer[10];
+					uint8_t ddr_pattern_en = (uint8_t) buffer[11];
+
+					// PATTERN_EN must be set BEFORE page_no to prevent write to DDR3 from standard digififo
+					*(registers_0_addr + REG_ROC_DDR_PATTERN_EN)= ddr_pattern_en;
+					*(registers_0_addr + REG_ROC_DDR_PAGENO) 	= ddr_pageno;
+					*(registers_0_addr + REG_ROC_DDR_PATTERN) 	= ddr_pattern;
+
+					// latched configuration via SIM_EN (via DDR_CS)
+					delayUs(100);
+
+					outBuffer[bufcount++] = DDRSETUP;
+					bufWrite(outBuffer, &bufcount, 6, 2);
+					bufWrite(outBuffer, &bufcount, ddr_pageno, 4);
+					bufWrite(outBuffer, &bufcount, ddr_pattern, 1);
+					bufWrite(outBuffer, &bufcount, ddr_pattern_en, 1);
+					outBufSend(g_uart, outBuffer, bufcount);
+
+				}else if (commandID == DDRFILL){
+					volatile uint32_t pages_read = *(registers_0_addr + REG_ROC_DDR_PAGERD);
+
+					outBuffer[bufcount++] = DDRFILL;
+					bufWrite(outBuffer, &bufcount, 8, 2);
+					bufWrite(outBuffer, &bufcount, pages_read, 4);
+
+					// enable simulated FIFO_RE
+					*(registers_0_addr + REG_ROC_DDR_SEL) = 1;
+
+					*(registers_0_addr + REG_ROC_DDR_FIFO_RE) = 1;
+					delay_ms(1);
+
+					// disable simulated FIFO_RE
+					*(registers_0_addr + REG_ROC_DDR_SEL) = 0;
+
+					pages_read = *(registers_0_addr + REG_ROC_DDR_PAGERD);
+					bufWrite(outBuffer, &bufcount, pages_read, 4);
+					outBufSend(g_uart, outBuffer, bufcount);
+
+				}else if (commandID == DDRWRITE){
+
+					*(registers_0_addr + REG_ROC_DDR_FIFOWEN) = 1;
+
+					outBuffer[bufcount++] = DDRWRITE;
+					bufWrite(outBuffer, &bufcount, 0, 2);
+					outBufSend(g_uart, outBuffer, bufcount);
+
+				}else if (commandID == DDRREAD){
+
+					uint8_t iffull = *(registers_0_addr + REG_ROC_DDR_FULL);
+					uint32_t pages_written = *(registers_0_addr + REG_ROC_DDR_PAGEWR);
+					volatile uint32_t pages_read = *(registers_0_addr + REG_ROC_DDR_PAGERD);
+
+					outBuffer[bufcount++] = DDRREAD;
+					bufWrite(outBuffer, &bufcount, 6, 2);
+					bufWrite(outBuffer, &bufcount, pages_read, 4);
+					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_MEMFIFO_EMPTY), 1);
+					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_MEMFIFO_FULL), 1);
+					outBufSend(g_uart, outBuffer, bufcount);
+
+					// read 1kB of MEMFIFO
+					readout_obloc = 0;
+					bufWrite(dataBuffer, &readout_obloc, STARTTRG, 2);
+					readout_obloc_place_holder = readout_obloc;
+					readout_obloc += 2;
+
+					// enable simulated MEMFIFO_RE
+					*(registers_0_addr + REG_ROC_DDR_SEL) = 1;
+
+					for (uint16_t j=0;j<128;j++){ // 8kb in 64bit = 128 reads
+						volatile uint32_t digioutput0, digioutput1;
+						*(registers_0_addr + REG_ROC_DDR_MEMFIFO_RE) = 1;
+						delayUs(100);
+						//*(registers_0_addr + REG_ROC_DDR_MEMFIFO_RE) = 0; // this is a level now, not a pulse, to accommodate simulated clock
+
+						digioutput0 = *(registers_0_addr + REG_ROC_DDR_MEMFIFO_DATA0);
+						digioutput1 = *(registers_0_addr + REG_ROC_DDR_MEMFIFO_DATA1);
+						delayUs(100);
+
+						bufWrite(dataBuffer, &readout_obloc, ((digioutput0 & 0xFFFF0000)>>16), 2);
+						bufWrite(dataBuffer, &readout_obloc, (digioutput0 & 0xFFFF), 2);
+						bufWrite(dataBuffer, &readout_obloc, ((digioutput1 & 0xFFFF0000)>>16), 2);
+						bufWrite(dataBuffer, &readout_obloc, (digioutput1 & 0xFFFF), 2);
+					}
+					bufWrite(dataBuffer, &readout_obloc_place_holder, (readout_obloc-4), 2);
+
+					UART_send(&g_uart, dataBuffer, readout_obloc);
+
+					readout_obloc = 0;
+					bufWrite(dataBuffer, &readout_obloc, ENDOFDATA, 2);
+					UART_send(&g_uart, dataBuffer ,2);
+
+					// disable simulated MEMFIFO_RE
+					*(registers_0_addr + REG_ROC_DDR_SEL) = 0;
+
+					bufcount = 0;
+					outBuffer[bufcount++] = DDRREAD;
+					bufWrite(outBuffer, &bufcount, 2, 2);
+					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_MEMFIFO_EMPTY), 1);
+					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_MEMFIFO_FULL), 1);
+					UART_send(&g_uart, outBuffer ,bufcount );
+
+//*********************************** begin of DTC SIM commands****************************************************************************************
+				}else if (commandID == DCSREAD){
+					uint16_t dtc_addr  = readU16fromBytes(&buffer[4]);
+
+					// set Simulation Enable, DTC Simulator as output,
+					// Packet Type to DCSRequest and OP_CODE to single read
+					uint8_t dtc_sim_en = 1;
+					uint8_t dtc_output = 0;
+					uint8_t dtc_opcode = 0;
+					uint8_t dtc_packet_type = 0;
+
+
+					// pass simulation parameters
+					//DCS_pass_sim_param(dtc_sim_en, dtc_output, dtc_opcode, dtc_packet_type);
+					DCS_pass_sim_param(1, dtc_output, dtc_opcode, dtc_packet_type);
+
+					// pass address
+					DCS_pass_addr_data(dtc_addr, 0, 0);
+
+					// send out simulated packet
+					DCS_sim_packet_send();
+
+					// read data after DCS reply
+					delay_ms(10);
+					uint32_t dtcsim_read_data = *(registers_0_addr + REG_ROC_DTC_SIM_DATA_READ);
+
+					// clear simulation parameters
+					//DCS_pass_sim_param(0, 0, 0, 0);
+					DCS_pass_sim_param(0, dtc_output, dtc_opcode, dtc_packet_type);
+
+					outBuffer[bufcount++] = DCSREAD;
+					bufWrite(outBuffer, &bufcount, 4, 2);
+					bufWrite(outBuffer, &bufcount, (dtcsim_read_data>>16) & 0xFFFF, 2);
+					bufWrite(outBuffer, &bufcount, (dtcsim_read_data)     & 0xFFFF, 2);
+					outBufSend(g_uart, outBuffer, bufcount);
+
+
+				}else if (commandID == DCSWRITE){
+					uint16_t dtc_addr  = readU16fromBytes(&buffer[4]);
+					uint16_t dtc_data  = readU16fromBytes(&buffer[6]);
+
+					// set Simulation Enable, DTC Simulator as output,
+					// Packet Type to DCSRequest and OP_CODE to single write
+					uint8_t dtc_sim_en = 1;
+					uint8_t dtc_output = 0;
+					uint8_t dtc_opcode = 1;
+					uint8_t dtc_packet_type = 0;
+
+					// pass simulation parameters
+					//DCS_pass_sim_param(dtc_sim_en, dtc_output, dtc_opcode, dtc_packet_type);
+					DCS_pass_sim_param(1, dtc_output, dtc_opcode, dtc_packet_type);
+
+					// pass address
+					DCS_pass_addr_data(dtc_addr, 0, 0);
+
+					// pass data
+					DCS_pass_addr_data(dtc_data, 0, 1);
+
+					// send out simulated packet
+					DCS_sim_packet_send();
+
+					// clear simulation parameters
+					DCS_pass_sim_param(0, 0, 0, 0);
+
+					// read back all relevant parameters
+					outBuffer[bufcount++] = DCSWRITE;
+					bufWrite(outBuffer, &bufcount, 4, 2);
+					bufWrite(outBuffer, &bufcount,  dtc_addr, 2);
+					bufWrite(outBuffer, &bufcount,  dtc_data, 2);
+					outBufSend(g_uart, outBuffer, bufcount);
+
+#ifdef DTCDDRTEST
+				}else if (commandID == DCSMODREAD){
+					uint8_t  dtc_module = (uint8_t)  buffer[4];
+					uint16_t dtc_addr   = readU16fromBytes(&buffer[5]);
+
+					// set Simulation Enable, DTC Simulator as output,
+					// Packet Type to DCSRequest and OP_CODE to Module Read
+					uint8_t dtc_sim_en = 1;
+					uint8_t dtc_output = 0;
+					uint8_t dtc_opcode = 6;
+					uint8_t dtc_packet_type = 0;
+
+					// pass simulation parameters
+					DCS_pass_sim_param(dtc_sim_en, dtc_output, dtc_opcode, dtc_packet_type);
+
+					// pass address
+					uint32_t dtc_sim_address = DCS_pass_addr_data(dtc_addr, (uint16_t)dtc_module, 0);
+
+					// send out simulated packet
+					DCS_sim_packet_send();
+
+					delay_ms(10); // wait a bit longer to make sure DCS reply packets makes it back
+					uint32_t dtcsim_read_data = *(registers_0_addr + REG_ROC_DTC_SIM_DATA_READ);
+
+					// clear simulation parameters
+					//DCS_pass_sim_param(0, 0, 0, 0);
+					DCS_pass_sim_param(0, dtc_output, dtc_opcode, dtc_packet_type);
+
+					// read back all relevant parameters
+					outBuffer[bufcount++] = DCSMODREAD;
+					bufWrite(outBuffer, &bufcount, 5, 2);
+					bufWrite(outBuffer, &bufcount, (dtc_sim_address>>16)&0xFF,   1);
+					bufWrite(outBuffer, &bufcount, (dtc_sim_address)    &0xFFFF, 2);
+					bufWrite(outBuffer, &bufcount, (dtcsim_read_data)   & 0xFFFF,2);
+					outBufSend(g_uart, outBuffer, bufcount);
+
+
+				}else if (commandID == DCSMODWRITE){
+					uint8_t  dtc_module = (uint8_t)  buffer[4];
+					uint16_t dtc_addr   = readU16fromBytes(&buffer[5]);
+					uint16_t dtc_data  = readU16fromBytes(&buffer[7]);
+
+
+					// set Simulation Enable, DTC Simulator as output,
+					// Packet Type to DCSRequest and OP_CODE to Module write
+					uint8_t dtc_sim_en = 1;
+					uint8_t dtc_output = 0;
+					uint8_t dtc_opcode = 7;
+					uint8_t dtc_packet_type = 0;
+
+					// pass simulation parameters
+					//DCS_pass_sim_param(dtc_sim_en, dtc_output, dtc_opcode, dtc_packet_type);
+					DCS_pass_sim_param(1, dtc_output, dtc_opcode, dtc_packet_type);
+
+					// pass address
+					uint32_t dtc_sim_address = DCS_pass_addr_data(dtc_addr, (uint16_t)dtc_module, 0);
+
+					// pass data
+					DCS_pass_addr_data(dtc_data, 0, 1);
+
+					// send out simulated packet
+					DCS_sim_packet_send();
+
+					// clear simulation parameters
+					//DCS_pass_sim_param(0, 0, 0, 0);
+					DCS_pass_sim_param(0, dtc_output, dtc_opcode, dtc_packet_type);
+
+					// read back all relevant parameters
+					outBuffer[bufcount++] = DCSMODWRITE;
+					bufWrite(outBuffer, &bufcount, 5, 2);
+					bufWrite(outBuffer, &bufcount, (dtc_sim_address>>16)&0xFF,   1);
+					bufWrite(outBuffer, &bufcount, (dtc_sim_address)    &0xFFFF, 2);
+					bufWrite(outBuffer, &bufcount,  dtc_data,                	 2);
+					outBufSend(g_uart, outBuffer, bufcount);
+
+				}else if (commandID == DCSBLKREAD){
+					uint8_t  blk_type = (uint8_t)  buffer[4];
+					uint16_t blk_word  = readU16fromBytes(&buffer[5]);
+					uint16_t blk_addr  = readU16fromBytes(&buffer[7]);
+
+					// set Simulation Enable, DTC Simulator as output,
+					// Packet Type to DCSRequest and OP_CODE to appropriate Block Read
+					uint8_t dtc_sim_en = 1;
+					uint8_t dtc_output = 0;
+					uint8_t dtc_opcode;
+					if      (blk_type==0)  dtc_opcode = 2;
+					else if (blk_type==1)  dtc_opcode = 4;
+					uint8_t dtc_packet_type = 0;
+
+					// pass simulation parameters
+					//DCS_pass_sim_param(dtc_sim_en, dtc_output, dtc_opcode, dtc_packet_type);
+					DCS_pass_sim_param(1, dtc_output, dtc_opcode, dtc_packet_type);
+
+					// pass starting address
+					DCS_pass_addr_data(blk_addr, 0, 0);
+
+					// pass block word count
+					DCS_pass_addr_data(0, blk_word, 1);
+
+					// send out simulated packet
+					DCS_sim_packet_send();
+
+					// clear simulation parameters
+					//DCS_pass_sim_param(0, 0, 0, 0);
+					DCS_pass_sim_param(0, dtc_output, dtc_opcode, dtc_packet_type);
+
+					// read back all relevant parameters
+					outBuffer[bufcount++] = DCSBLKREAD;
+					bufWrite(outBuffer, &bufcount, 5, 2);
+					bufWrite(outBuffer, &bufcount, blk_type, 1);
+					bufWrite(outBuffer, &bufcount, blk_word, 2);
+					bufWrite(outBuffer, &bufcount, blk_addr, 2);
+					outBufSend(g_uart, outBuffer, bufcount);
+
+
+				}else if (commandID == DCSBLKWRITE){
+					uint8_t  blk_type = (uint8_t)  buffer[4];
+					uint16_t blk_word  = readU16fromBytes(&buffer[5]);
+					uint16_t blk_addr  = readU16fromBytes(&buffer[7]);
+					//uint8_t  blk_word = (uint8_t)  buffer[5];
+					//uint8_t  blk_addr = (uint8_t)  buffer[6];
+
+					// set Simulation Enable, DTC Simulator as output,
+					// Packet Type to DCSRequest and OP_CODE to appropriate Block Read
+					uint8_t dtc_sim_en = 1;
+					uint8_t dtc_output = 0;
+					uint8_t dtc_opcode;
+					if      (blk_type==0)  dtc_opcode = 3;
+					else if (blk_type==1)  dtc_opcode = 5;
+					uint8_t dtc_packet_type = 0;
+
+					// pass simulation parameters
+					//DCS_pass_sim_param(dtc_sim_en, dtc_output, dtc_opcode, dtc_packet_type);
+					DCS_pass_sim_param(1, dtc_output, dtc_opcode, dtc_packet_type);
+
+					// pass starting address
+					DCS_pass_addr_data(blk_addr, 0, 0);
+
+					// pass block word count
+					DCS_pass_addr_data(0, blk_word, 1);
+
+					// send out simulated packet
+					DCS_sim_packet_send();
+
+					// clear simulation parameters
+					//DCS_pass_sim_param(0, 0, 0, 0);
+					DCS_pass_sim_param(0, dtc_output, dtc_opcode, dtc_packet_type);
+
+					// read back all relevant parameters
+					outBuffer[bufcount++] = DCSBLKWRITE;
+					//bufWrite(outBuffer, &bufcount, 3, 2);
+					//bufWrite(outBuffer, &bufcount, blk_type, 1);
+					//bufWrite(outBuffer, &bufcount, blk_word, 1);
+					//bufWrite(outBuffer, &bufcount, blk_addr, 1);
+					bufWrite(outBuffer, &bufcount, 5, 2);
+					bufWrite(outBuffer, &bufcount, blk_type, 1);
+					bufWrite(outBuffer, &bufcount, blk_word, 2);
+					bufWrite(outBuffer, &bufcount, blk_addr, 2);
+					outBufSend(g_uart, outBuffer, bufcount);
+
+
+				}else if (commandID == DCSMARKER){
+					uint8_t dtc_marker_type = (uint8_t) buffer[4];
+					uint8_t dtc_seq_num = (uint8_t) buffer[5];
+
+					// set Simulation Enable and Marker Simulator as output
+					uint8_t dtc_sim_en = 1;
+					uint8_t dtc_output = 1;
+
+					// pass simulation parameters
+					//uint32_t dtc_sim_param = DCS_pass_sim_param(dtc_sim_en, dtc_output, dtc_seq_num, dtc_marker_type);
+					uint32_t dtc_sim_param = DCS_pass_sim_param(1, dtc_output, dtc_seq_num, dtc_marker_type);
+
+					// pass non-zero address to avoid clearing all other registers
+					DCS_pass_addr_data(0xFFFF, 0, 0);
+
+					// send out simulated marker
+					DCS_sim_packet_send();
+
+					// clear simulation parameters
+					//DCS_pass_sim_param(0, 0, 0, 0);
+					DCS_pass_sim_param(0, dtc_output, dtc_seq_num, dtc_marker_type);
+
+					// read back all relevant parameters
+					outBuffer[bufcount++] = DCSMARKER;
+					bufWrite(outBuffer, &bufcount, 2, 2);
+					bufWrite(outBuffer, &bufcount, (dtc_sim_param>>4) &0x0F, 1);
+					bufWrite(outBuffer, &bufcount, (dtc_sim_param>>8) &0x0F, 1);
+					outBufSend(g_uart, outBuffer, bufcount);
+
+
+				}else if (commandID == DCSHEARTBEAT){
+					uint16_t dtc_evttag  = readU16fromBytes(&buffer[4]);
+					uint8_t dtc_onspill  = (uint8_t) buffer[6];
+					uint8_t dtc_rfmarker = (uint8_t) buffer[7];
+					uint8_t dtc_evtmode  = (uint8_t) buffer[8];
+
+					// set Simulation Enable, DTC Simulator as output and
+					// Packet Type to Heartbeat
+					uint8_t dtc_sim_en = 1;
+					uint8_t dtc_output = 0;
+					uint8_t dtc_packet_type = 1;
+
+					// pass simulation parameters
+					//DCS_pass_sim_param(dtc_sim_en, dtc_output, 0, dtc_packet_type);
+					DCS_pass_sim_param(1, dtc_output, 0, dtc_packet_type);
+
+					// pass non-zero address to avoid clearing all other registers
+					DCS_pass_addr_data(0xFFFF, 0, 0);
+
+					// pass hearbeat packet info
+					uint32_t dtc_sim_spill = (dtc_onspill<<31) | (dtc_rfmarker<<24) | (dtc_evtmode<<16) | dtc_evttag;
+					*(registers_0_addr + REG_ROC_DTC_SIM_SPILL) = dtc_sim_spill;
+
+					// send out simulated packet
+					DCS_sim_packet_send();
+
+					// clear simulation parameters
+					//DCS_pass_sim_param(0, 0, 0, 0);
+					DCS_pass_sim_param(0, dtc_output, 0, dtc_packet_type);
+
+					// read back all relevant parameters
+					outBuffer[bufcount++] = DCSHEARTBEAT;
+					bufWrite(outBuffer, &bufcount, 6, 2);
+					bufWrite(outBuffer, &bufcount, (dtc_sim_spill>>31)&0x01, 1);
+					bufWrite(outBuffer, &bufcount, (dtc_sim_spill>>24)&0x7F, 1);
+					bufWrite(outBuffer, &bufcount, (dtc_sim_spill>>16)&0xFF, 1);
+					bufWrite(outBuffer, &bufcount, (dtc_sim_spill)  &0xFFFF, 2);
+					outBufSend(g_uart, outBuffer, bufcount);
+
+
+				}else if (commandID == DCSDATAREQ){
+					uint16_t dtc_evttag  = readU16fromBytes(&buffer[4]);
+
+					// set Simulation Enable, DTC Simulator as output and
+					// Packet Type to Data Request
+					uint8_t dtc_sim_en = 1;
+					uint8_t dtc_output = 0;
+					uint8_t dtc_packet_type = 2;
+
+					// pass simulation parameters
+					//DCS_pass_sim_param(dtc_sim_en, dtc_output, 0, dtc_packet_type);
+					DCS_pass_sim_param(1, dtc_output, 0, dtc_packet_type);
+
+					// pass non-zero address to avoid clearing all other registers
+					DCS_pass_addr_data(0xFFFF, 0, 0);
+
+					// pass event window
+					uint32_t dtc_sim_spill = dtc_evttag & 0x0000FFFF;
+					*(registers_0_addr + REG_ROC_DTC_SIM_SPILL) = dtc_sim_spill;
+					delay_ms(1);
+
+
+					// send out simulated packet
+					DCS_sim_packet_send();
+
+
+					// clear simulation parameters
+					//DCS_pass_sim_param(0, 0, 0, 0);
+					DCS_pass_sim_param(0, dtc_output, 0, dtc_packet_type);
+
+					// read back all relevant parameters
+					outBuffer[bufcount++] = DCSDATAREQ;
+					bufWrite(outBuffer, &bufcount, 2, 2);
+					bufWrite(outBuffer, &bufcount, dtc_evttag,  2);
+					outBufSend(g_uart, outBuffer, bufcount);
+
+
+				}else if (commandID == DCSREPLY){
+					outBuffer[bufcount++] = DCSREPLY;
+
+					uint32_t dtcsim_read_data = *(registers_0_addr + REG_ROC_DTC_SIM_DATA_READ);
+
+					bufWrite(outBuffer, &bufcount, 4, 2);
+					bufWrite(outBuffer, &bufcount, (dtcsim_read_data>>16) & 0xFFFF, 2);
+					bufWrite(outBuffer, &bufcount, (dtcsim_read_data)     & 0xFFFF, 2);
+					outBufSend(g_uart, outBuffer, bufcount);
+
+				}else if (commandID == DCSRAMWRITE){
+					uint8_t blk_size   = (uint8_t) buffer[4];
+					uint8_t blk_offset = (uint8_t) buffer[5];
+
+					uint8_t blk_address = blk_offset;
+					uint16_t blk_data;
+					// pass 16-bit word to RAM_DATA and enable RAM_WE for increasing RAM_ADDR starting from offset
+					for (uint8_t i=0; i<blk_size; i++) {
+
+						blk_data  = readU16fromBytes(&buffer[6+(i*2)]);
+						*(registers_0_addr + REG_ROC_DTC_SIM_BLK_DATA) = blk_data;
+
+						*(registers_0_addr + REG_ROC_DTC_SIM_BLK_ADDR) = blk_address;
+						if (i<(blk_size-1)) blk_address = blk_address + 1;
+
+						delay_ms(1);
+						*(registers_0_addr + REG_ROC_DTC_SIM_BLK_EN) = 1;
+						delay_ms(1);
+					}
+
+					outBuffer[bufcount++] = DCSRAMWRITE;
+					bufWrite(outBuffer, &bufcount, 4, 2);
+					bufWrite(outBuffer, &bufcount, blk_size,    1);
+					bufWrite(outBuffer, &bufcount, blk_address, 1);
+					bufWrite(outBuffer, &bufcount, blk_data,    2);
+					outBufSend(g_uart, outBuffer, bufcount);
+
+				}else if (commandID == XCVRALIGN){
+					uint8_t align   = (uint8_t) buffer[4];
+					*(registers_0_addr + REG_ROC_DTC_ENABLE_RESET) = align; // enable PRBS data to Core_PCS
+
+					outBuffer[bufcount++] = XCVRALIGN;
+					bufWrite(outBuffer, &bufcount, 1, 2);
+					bufWrite(outBuffer, &bufcount, align, 1);
+					outBufSend(g_uart, outBuffer, bufcount);
+
+				}else if (commandID == PRBSET){
+					uint8_t prbs_en   = (uint8_t) buffer[4];
+					*(registers_0_addr + REG_ROC_PRBS_EN) = prbs_en; // enable PRBS data to Core_PCS
+
+					outBuffer[bufcount++] = PRBSET;
+					bufWrite(outBuffer, &bufcount, 1, 2);
+					bufWrite(outBuffer, &bufcount, prbs_en, 1);
+					outBufSend(g_uart, outBuffer, bufcount);
+
+				}else if (commandID == PRBSSTATUS){
+					outBuffer[bufcount++] = PRBSSTATUS;
+					bufWrite(outBuffer, &bufcount, 14, 2);
+					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_PRBS_LOCK), 1);
+					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_PRBS_VALID), 1);
+					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_PRBS_ERRORCNT), 4);
+					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_PRBS_CDCEMPTY), 1);
+					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_PRBS_CDCFULL), 1);
+					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_PRBS_CDCWRCNT), 4);
+					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_PRBS_PCSDATA), 2);
+					outBufSend(g_uart, outBuffer, bufcount);
+
+				}else if (commandID == PRBSSTART){
+					*(registers_0_addr + REG_ROC_PRBS_EN) = 1; // enable PRBS data to Core_PCS
+					*(registers_0_addr + REG_ROC_PRBS_START) = 1; // start PRBS generator and checker logic
+					outBuffer[bufcount++] = PRBSSTART;
+					bufWrite(outBuffer, &bufcount, 0, 2);
+					outBufSend(g_uart, outBuffer, bufcount);
+
+				}else if (commandID == PRBSSTOP){
+					*(registers_0_addr + REG_ROC_PRBS_START) = 0; // disable PRBS generator and checker logic
+					*(registers_0_addr + REG_ROC_PRBS_EN) = 0; // disable PRBS data to Core_PCS
+					outBuffer[bufcount++] = PRBSSTOP;
+					bufWrite(outBuffer, &bufcount, 0, 2);
+					outBufSend(g_uart, outBuffer, bufcount);
+
+				}else if (commandID == PRBSERRORIN){
+					*(registers_0_addr + REG_ROC_PRBS_ERRORIN) = 1; // enable error as 0xEFFE in PRBS generator
+					outBuffer[bufcount++] = PRBSERRORIN;
+					bufWrite(outBuffer, &bufcount, 0, 2);
+					outBufSend(g_uart, outBuffer, bufcount);
+
+				}else if (commandID == PRBSERRORCLR){
+					*(registers_0_addr + REG_ROC_PRBS_ERRORCLR) = 1; // enable PRBS generator and checker logic
+					outBuffer[bufcount++] = PRBSERRORCLR;
+					bufWrite(outBuffer, &bufcount, 0, 2);
+					outBufSend(g_uart, outBuffer, bufcount);
+
+				}else if (commandID == PRBSERRORDUMP){
+					uint16_t error_cnt = *(registers_0_addr + REG_ROC_PRBS_CDCWRCNT);
+					// read content of CDF FIFO and print number WRCNT before and after
+					*(registers_0_addr + REG_ROC_PRBS_CDCRE) = 1;
+					delayUs(100);
+					volatile uint32_t dataout = *(registers_0_addr + REG_ROC_PRBS_CDCOUT);
+
+					outBuffer[bufcount++] = PRBSERRORDUMP;
+					bufWrite(outBuffer, &bufcount, 9, 2);
+					bufWrite(outBuffer, &bufcount, error_cnt, 2);
+					bufWrite(outBuffer, &bufcount, (dataout>>16) & 0xFFFF, 2);
+					bufWrite(outBuffer, &bufcount, (dataout) & 0xFFFF, 2);
+					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_PRBS_CDCEMPTY), 1);
+					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_PRBS_CDCWRCNT), 2);
+					outBufSend(g_uart, outBuffer, bufcount);
+#endif
 //***********************************begin of control_digi commands*******************************************************************************
 //				}else if (commandID == ADCRWCMDID){
 //					// adc read/write
@@ -1015,6 +1885,8 @@ int main()
 //					bufWrite(outBuffer, &bufcount, data2, 4);
 //
 //					outBufSend(g_uart, outBuffer, bufcount);
+
+#ifndef	DTCDDRTEST  // Monica added for allowing all other DDR test functions
 
 				}else if (commandID == AUTOBITSLIPCMDID){
 					autobitslip();
@@ -1373,6 +2245,7 @@ int main()
 //
 //					bufWrite(outBuffer, &bufcount_place_holder, (bufcount-3), 2);
 //					outBufSend(g_uart, outBuffer, bufcount);
+#endif	  
 
 				}else if (commandID == MEASURETHRESHOLDCMDID){
 					channel_mask[0] = readU32fromBytes(&buffer[4]);
