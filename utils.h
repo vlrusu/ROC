@@ -121,6 +121,8 @@
 #define CFOEMUL			91
 #define READERROR		92
 #define READALIGN		93
+#define SETDIGIRW       94
+
 
 #define ADCRWCMDID 101
 #define BITSLIPCMDID 102
@@ -154,6 +156,7 @@
 #define DG_ADDR_MASK2 0x0E
 
 #define DG_ADDR_RESET 0x10
+#define DG_ADDR_DIGIRW_SEL 0x11
 
 #define DG_ADDR_READCHANNEL 0x15
 #define DG_ADDR_GT0 0x16
@@ -218,40 +221,8 @@
 #define REG_TIMERCOUNTER 0x14
 
 #define	REG_ROC_USE_UART 0xF1
+#define REG_DIGIRW_SEL 0xF2   // WO   select between fiber (0) or serial (1) to drive some DIGI signals
 
-//#define REG_ROC_DDR_NHITS    0x20	//W  set number of blocks to write to memory
-//#define REG_ROC_DDR_OFFSET   0x21	//W  set DDR3 memory start offset (as multiple of DDR burst)
-//#define REG_ROC_DDR_CS       0x22	//W  enable serial setting of DDR configuration
-//#define REG_ROC_DDR_WEN      0x23	//W  enable write of pattern generator to memory - self clearing
-//#define REG_ROC_DDR_REN      0x24	//W  enable read&rest of pattern generator from memory - self clearing
-//#define REG_ROC_DDR_FIFOWEN  0x25	//W  enable write to DDR memory (pattern FIFO or real data) - self clearing
-//#define REG_ROC_DDR_DIAG0    0x26 	//R  32-bit diagnostic bus: used for MEMFIFO_RD_CNT
-//#define REG_ROC_DDR_RAM_ADDR 0x27	//W  RAM address for last DDR read content
-//#define REG_ROC_DDR_DIAG1    0x28 	//R  32-bit diagnostic bus: used for DDR_RD_CNT (cumulative)
-//#define REG_ROC_DDR_PATTERN  0x29 	//W  set pattern: 0 => +1, 1 => -1,  2=> A's & 5's, 3=> PRBG
-//#define REG_ROC_DDR_RAM_DATA 0x2A	//R  RAM address of last DDR read content
-//#define REG_ROC_DDR_RAM_REN  0x2B	//R  read valid for DDR read error FIFOs
-//#define REG_ROC_DDR_ERRLOC   0x2C	//R  32-bit DDR error location (x8 to determine DDR address with error)
-//#define REG_ROC_DDR_PATTERN_EN 	0x2D//W enable pattern writing to memory for tests with DTC
-									//      bit 0/1 => WRTIME E/F;  4/5 RDTIME E/F;  8/9 ERROR E/F
-//#define REG_ROC_DDR_FORCE_RD 	0x2E // W force reading back DDR
-//
-//#define REG_ROC_DDR_SEL 0x30 	//R  toggle between DTC commands (if 0) or simulated commands (if 1)
-//#define REG_ROC_DDR_FULL 0x31  	//R  high while ROC_DDR_PAGENO pages are read from DDR memory
-//#define REG_ROC_DDR_FIFO_RE 0x32//W  send simulated read of DDR page into MEMFIFO  (need ROC_DDR_SEL = 1)
-//#define REG_ROC_DDR_SET 0x33	//W  enable DDR simulation to TOP_SERDES
-//#define REG_ROC_DDR_PAGENO 0x34	//W  set number of pages to write from DIGIFIFO to DDR memory
-//#define REG_ROC_DDR_PAGEWR 0x35	//R  number of pages written to DDR
-//#define REG_ROC_DDR_PAGERD 0x36	//R  number of pages read from DDR
-//#define REG_ROC_DDR_MEMFIFO_DATA0 0x37	//R  lsb 32 bits read from MEMFIFO DATA
-//#define REG_ROC_DDR_MEMFIFO_DATA1 0x38	//R  msb 32 bits read from MEMFIFO DATA
-//#define REG_ROC_DDR_MEMFIFO_FULL 0x39	//R  MEMFIFO FULL status
-//#define REG_ROC_DDR_MEMFIFO_EMPTY 0x3A	//R  MEMFIFO EMPTY status
-//#define REG_ROC_DDR_MEMFIFO_RE 0x3B		//W  send simulated read enables to MEMFIFO (need ROC_DDR_SEL = 1)
-//#define REG_ROC_DDR_TEMPFIFO_FULL 0x3C	//R  TEMPFIFO FULL status
-//#define REG_ROC_DDR_TEMPFIFO_EMPTY 0x3D	//R  TEMPFIFO EMPTY status
-//#define REG_ROC_DDR_CONV_DATA 0x3E 	//R  CONVFIFO data (if DDR_PATTERN_EN=1)
-//#define REG_ROC_DDR_CONV_RDCNT 0x3F	//R  CONVFIFO rdcnt (if DDR_PATTERN_EN=1)
 
 #define REG_ROC_DDR_PATTERN_EN 	0x20  // W enable pattern to DDR
 #define REG_ROC_DDR_ERROR_READ	0x21  // R error seen:[0] event_error, [1] header1_error, [2] header2_error, [3] data_error

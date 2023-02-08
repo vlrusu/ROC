@@ -634,8 +634,6 @@ int main()
 					bufWrite(outBuffer, &bufcount, 0, 2);
 				 	outBufSend(g_uart, outBuffer, bufcount);
 
-
-
 				}else if (commandID == DUMPSETTINGS){
 					uint16_t channel = (uint16_t) buffer[4];
 					outBuffer[bufcount++] = DUMPSETTINGS;
@@ -1923,36 +1921,6 @@ int main()
 					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_OFFSET_TAG), 4);
 					outBufSend(g_uart, outBuffer, bufcount);
 
-//				}else if (commandID == CFOEMUL){
-//					uint8_t  cfo_en = (uint8_t) buffer[4];
-//					uint8_t  pre_en = (uint8_t) buffer[5];
-//					uint32_t cfo_number = readU32fromBytes(&buffer[6]); // max is (2**20-1)=1,048,575
-//					uint32_t cfo_deltaT = readU32fromBytes(&buffer[10]); // in units of 6.7ns
-//					uint32_t cfo_offset = readU32fromBytes(&buffer[14]);
-//					uint8_t  set_serial_offset = (uint8_t) buffer[15];
-//
-//					// PATTERN_EN must be set BEFORE page_no to prevent write to DDR3 from standard digififo
-//					*(registers_0_addr + REG_ROC_DDR_CFO_EN)  = cfo_en;
-//					*(registers_0_addr + REG_ROC_DDR_PREF_EN) = pre_en;
-//					*(registers_0_addr + REG_ROC_DDR_CFO_NUMBER) = cfo_number;
-//					*(registers_0_addr + REG_ROC_DDR_CFO_DELTAT) = cfo_deltaT;
-//					*(registers_0_addr + REG_ROC_DDR_CFO_OFFSET) = cfo_offset;
-//					*(registers_0_addr + REG_ROC_DDR_SERIAL_SET) = set_serial_offset; // enable DTCInterface signals to Core_PCS
-//
-//					// start CFO emulation
-//					delay_ms(1);
-//					if (cfo_en) *(registers_0_addr + REG_ROC_DDR_CFO_START) = 1;
-//
-//					outBuffer[bufcount++] = CFOEMUL;
-//					bufWrite(outBuffer, &bufcount, 15, 2);
-//					bufWrite(outBuffer, &bufcount, cfo_en, 1);
-//					bufWrite(outBuffer, &bufcount, pre_en, 1);
-//					bufWrite(outBuffer, &bufcount, cfo_number, 4);
-//					bufWrite(outBuffer, &bufcount, cfo_deltaT, 4);
-//					bufWrite(outBuffer, &bufcount, cfo_offset, 4);
-//					bufWrite(outBuffer, &bufcount, set_serial_offset, 1);
-//					outBufSend(g_uart, outBuffer, bufcount);
-
 				}else if (commandID == READERROR){
 					uint8_t  count_addr = (uint8_t) buffer[4];
 
@@ -1972,6 +1940,16 @@ int main()
 					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_READ_ALIGNED), 1);
 					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_READ_ALIGNMENT), 2);
 					outBufSend(g_uart, outBuffer, bufcount);
+
+                }else if (commandID == SETDIGIRW){
+                    // set if fiber (0) or serial (1) drives signals to DIGIs
+                    uint8_t digirw_sel = (uint8_t) buffer[4];
+                    *(registers_0_addr + REG_DIGIRW_SEL) = digirw_sel;
+
+                    outBuffer[bufcount++] = SETDIGIRW;
+                    bufWrite(outBuffer, &bufcount, 1, 2);
+                    bufWrite(outBuffer, &bufcount, digirw_sel, 1);
+                    outBufSend(g_uart, outBuffer, bufcount);
 
 #endif
 
