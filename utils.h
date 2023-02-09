@@ -122,7 +122,7 @@
 #define READERROR		92
 #define READALIGN		93
 #define SETDIGIRW       94
-
+//
 
 #define ADCRWCMDID 101
 #define BITSLIPCMDID 102
