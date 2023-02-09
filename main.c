@@ -54,6 +54,9 @@ int main()
 	//register address for bit banging
 	registers_0_addr = (volatile uint32_t *) REGISTERBASEADDR;
 
+    // give DIGI registers controls to serial
+	*(registers_0_addr + REG_DIGIRW_SEL) = 1;
+
 	//enabling hw counter
 	//granularity is clock period=25ns -- period is (gr+1)*1000=50us
 	//PWM_PERIOD = PWM_GRANULARITY * (period + 1) = 25 *1000 = 25us
@@ -433,6 +436,9 @@ int main()
 
 	GPIO_set_output( &g_gpio, GPIO_0, 0);
 	GPIO_set_output( &g_gpio, GPIO_1, 0);
+
+	// give DIGI registers controls to fiber
+    *(registers_0_addr + REG_DIGIRW_SEL) = 0;
 
 	while(1)
 	{
