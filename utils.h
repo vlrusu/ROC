@@ -135,9 +135,25 @@
 
 #define PACKAGETESTCMDID 151
 
+// any command below is coming from DCS write to that address
+// address space is 0x100-0x200
+#define TESTDCSNGL  256 // 0x100 - example of Single WR to value V and Single RD back of value V
+#define TESTDCSBLK  257 // 0x101 - example of Single WR of value N and Block RD back of N values (from 0 to N-1)
+#define READSPI     258 // 0x102 - partial read of MON_ADC: execute with Single WR of any value (ignored) and Block RD of 48 ADCs values
+#define READBACKBLK 259 // 0x103 - example of Block WR of N values from 1 to N and Block RD back of the same values
+#define DIAGDATA    260 // 0x104 - Block RD of assorted diagnostics, started by a single WR of any value
+
 //******************************************************************************
 //                             Registers & Addresses
 //******************************************************************************
+
+// MT DTC
+//*********************** CR_DTC* are the address offsets for DTC commands
+#define CRDCS_CMD_STATUS    0x0
+#define CRDCS_CMD_READY     0x1
+#define CRDCS_READ_RX       0x2
+#define CRDCS_WRITE_TX      0x3
+#define CRDCS_DIAG_DATA     0x4
 
 //***********************DG_ADDR_* are the DIGI addresses
 #define DG_ADDR_SAMPLE 0x03
@@ -388,6 +404,13 @@
 #define EMPTY                       0xfffc//begin of data buffer, but it is empty
 #define ENDOFDATA                   0xfffb//end of data stream
 
+// MT added for DTS commands
+#define CMDHEADER           0xAABB  // start of DTC command to/from processor
+#define CMDTRAILER          0xFFEE  // end of DTC command to/from processor
+#define CMDERROR            0xDEAD  // DTC command error
+#define MAX_CMD_LENGTH      0x1FFB  // max. DTC Write command length in units of 16-bit payload
+
+
 //******************************************************************************
 //                          Struct & Global Variables
 //******************************************************************************
@@ -421,6 +444,8 @@ extern uint8_t buffer[256]; // buffer for reading from serial port
 extern uint32_t writePtr;
 
 volatile uint32_t * registers_0_addr;
+// MT added for DCS commands
+volatile uint32_t * registers_1_addr;
 
 extern int readout_maxDelay;
 extern int readout_mode;

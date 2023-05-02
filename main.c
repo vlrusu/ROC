@@ -53,6 +53,9 @@ int main()
 
 	//register address for bit banging
 	registers_0_addr = (volatile uint32_t *) REGISTERBASEADDR;
+    // MT added  register address for DTC commands
+    registers_1_addr = (volatile uint32_t *) DTC_BASE_ADDR;
+
 
     // give DIGI registers controls to serial
 	*(registers_0_addr + REG_DIGIRW_SEL) = 1;
@@ -459,6 +462,230 @@ int main()
 		}
 		delayUs(1);
 		loopCount++;
+
+
+        // this is an example of a DCS WR/RD of addr 64 for a "static" register
+        // via DTCInterface/DRACRegister
+        /*
+        volatile uint16_t example_prev_rd = 0;
+        volatile uint16_t example_rd = *(registers_1_addr + CRDCS_EXAMPLE_RD);
+        if (example_rd != example_prev_rd) {
+            *(registers_1_addr + CRDCS_EXAMPLE_WR) = example_rd;
+        }
+        example_prev_rd = example_rd;
+         */
+
+        //
+        // decoding of DCS write command in address space 0x100-200 from DCX_RX_BUFFER:
+        // - starts on DTC_CMD_READY (driven by SlowControls/DCSRegisters) seen high
+        // - ends on cmd_fail[15] (sent to DTCInterface/DRACRegisters) seen high
+		volatile uint16_t dtc_cmd_ready = *(registers_1_addr + CRDCS_CMD_READY);
+
+		volatile uint16_t  get_cmd_rx = 0;
+        uint8_t cmd_rx_cnt = 0;
+        uint16_t cmd_rx_size = 0;
+        uint16_t  proc_commandID = 0;
+        uint16_t  data_to_write = 0;
+        uint16_t  data_zero = 0;
+        uint16_t cmd_fail = 0;
+        uint8_t  dtcPtr = 0;
+        uint16_t dtcbuffer[256]; // buffer for reading from DTC command
+
+        while (dtc_cmd_ready == 1) {
+
+            // clear status register
+            if (cmd_rx_cnt==0) *(registers_1_addr + CRDCS_CMD_STATUS) = 0;
+
+            // starts reading DCS_RX_BUFFER contents
+            get_cmd_rx = *(registers_1_addr + CRDCS_READ_RX);
+
+            // why nothing reported on CMD_RX_CNT = 0???
+            if(cmd_rx_cnt==0) {
+                data_zero = get_cmd_rx;
+            }
+            // fill mask error word CMD_FAIL
+            if(cmd_rx_cnt==1) {
+                cmd_fail = 0;
+                if (get_cmd_rx != CMDHEADER) cmd_fail = cmd_fail + 1;
+            }
+            else if(cmd_rx_cnt==2) {
+                cmd_rx_size = get_cmd_rx;
+                if (cmd_rx_size == 0) cmd_fail = cmd_fail + 2;
+            }
+            else if(cmd_rx_cnt==3) {
+                proc_commandID = get_cmd_rx & 0x0FFF;
+                if( (get_cmd_rx & 0xF000)!= 0xC000) cmd_fail = cmd_fail + 4;
+            }
+            else if(cmd_rx_cnt== (4+cmd_rx_size)) {
+                dtc_cmd_ready = 0;
+                if(get_cmd_rx == CMDTRAILER) {
+                    *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
+                } else {
+                    cmd_fail = cmd_fail + 16;
+                    *(registers_1_addr + CRDCS_CMD_STATUS) = cmd_fail;
+                }
+            }
+            // must be payload. Start filling a payload buffer here...
+            else {
+                // bad length detected...check for CMDERROR word
+                if (cmd_rx_size > MAX_CMD_LENGTH) {
+                    cmd_fail = cmd_fail + 32;
+                    if (get_cmd_rx != CMDERROR) cmd_fail = cmd_fail + 64;
+                    cmd_rx_size = 1;
+//              }
+//              // single DCS Write... skip buffer
+//              else if (cmd_rx_size==1) {
+//              if (cmd_rx_size==1) {
+//                  data_to_write = get_cmd_rx;
+                }
+                else {
+                    dtcbuffer[dtcPtr]= get_cmd_rx;
+                    dtcPtr++;
+                }
+                // why nothing reported on dtcPtr = 0??
+                data_to_write = dtcbuffer[1];
+            }
+            cmd_rx_cnt++;
+        }
+        // pass cmd_fail to DTCInterface/DRACRegister and
+        // access via DCS read of address 128
+        // bit(15) means command has been seen
+        // bit(4)  bad command trailer word
+        // bit(2)  bad payload word
+        // bit(1)  bad command length
+        // bit(0)  bad command header word
+        delayUs(1);
+
+
+        switch(proc_commandID) {
+
+            // example of single data output to DCS_TX_BUFFER
+            case TESTDCSNGL:
+                // writing only LBS 16-bit of 32 bits APB bus
+                *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
+                *(registers_1_addr + CRDCS_WRITE_TX) = 1;
+                *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
+                *(registers_1_addr + CRDCS_WRITE_TX) = data_to_write;
+                *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
+                break;
+
+            // example of block data output to DCS_TX_BUFFER
+            case TESTDCSBLK:
+                // writing only LBS 16-bit of 32 bits APB bus
+                *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
+                *(registers_1_addr + CRDCS_WRITE_TX) = data_to_write;
+                *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
+                // fill up payload
+                for (uint16_t i = 0 ; i <data_to_write; i++) {
+                    *(registers_1_addr + CRDCS_WRITE_TX) = i;
+                }
+                *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
+                break;
+
+            // READSPI data to DCS_TX_BUFFER
+            case READSPI:
+                // writing only LBS 16-bit of 32 bits APB bus
+                *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
+                // not until we can deal with DIGI_WRITE while fiber is in control of DIGI registers
+               // *(registers_1_addr + CRDCS_WRITE_TX) = 36;
+                //*(registers_1_addr + CRDCS_WRITE_TX) = 27;
+                *(registers_1_addr + CRDCS_WRITE_TX) = 19;
+                *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
+
+                // fill up payload with 16-bit words
+                uint32_t spi32;
+                uint8_t imax;
+                for (uint8_t i = 0 ; i < 2; i++) {
+                    for (uint8_t j = 0 ; j < 12; j++) {
+                        SPI_set_slave_select( &g_spi[i] , ((j>=8)?SPI_SLAVE_2:(j<4?SPI_SLAVE_0:SPI_SLAVE_1)));
+
+                        uint16_t addr = (j%4 <<11 );
+                        SPI_transfer_frame( &g_spi[i], addr);
+                        SPI_transfer_frame( &g_spi[i], addr);
+                        spi32 = SPI_transfer_frame( &g_spi[i], addr);
+
+                        SPI_clear_slave_select( &g_spi[i] , ((j>=8)?SPI_SLAVE_2:(j<4?SPI_SLAVE_0:SPI_SLAVE_1)));
+
+                        *(registers_1_addr + CRDCS_WRITE_TX) = (0x0000FFFF & spi32);
+
+//                        imax++;
+//                        if (imax==2) break;
+                     }
+                }
+
+
+                uint16_t tvs_val[4] = {0};
+                //for (uint8_t i =0; i<4; i++){
+                for (uint8_t i =0; i<3; i++){
+                    *(registers_0_addr+REG_ROC_TVS_ADDR) = i;
+                    delayUs(1);
+                    tvs_val[i] = *(registers_0_addr + REG_ROC_TVS_VAL);
+
+                    *(registers_1_addr + CRDCS_WRITE_TX) = tvs_val[i];
+                    delayUs(1);
+                }
+
+                // give DIGI registers controls to serial
+                *(registers_0_addr + REG_DIGIRW_SEL) = 1;
+
+                for (uint8_t ihvcal=1; ihvcal<3; ihvcal++){
+                    for (uint8_t i =0; i<4; i++){
+                        // toggle DIGI registers controls to serial and back to fiber before calling DIGI_WRITE
+                        *(registers_0_addr + REG_DIGIRW_SEL) = 1;
+                        digi_write(DG_ADDR_TVS_ADDR, i, ihvcal);
+                        delayUs(1);
+                        tvs_val[i] = digi_read(DG_ADDR_TVS_VAL, ihvcal);
+                        *(registers_0_addr + REG_DIGIRW_SEL) = 0;
+
+                        *(registers_1_addr + CRDCS_WRITE_TX) = tvs_val[i];
+                        delayUs(1);
+                    }
+                }
+                // give DIGI registers controls to fiber
+                *(registers_0_addr + REG_DIGIRW_SEL) = 0;
+
+                *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
+                break;
+
+            // read back payload from DCS BLOCK WR
+            case READBACKBLK:
+                // writing only LBS 16-bit of 32 bits APB bus
+                *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
+                *(registers_1_addr + CRDCS_WRITE_TX) = cmd_rx_size;
+                *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
+                // fill up payload
+                for (uint16_t i = 0 ; i <cmd_rx_size; i++) {
+                    *(registers_1_addr + CRDCS_WRITE_TX) = dtcbuffer[i+1];
+                }
+                *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
+                break;
+
+
+            // read assorted diagnostic registers
+            case DIAGDATA:
+                // header
+                *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
+                // payload word
+                *(registers_1_addr + CRDCS_WRITE_TX) = 8;
+                // CMD ID
+                *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
+                // payload of diagnostic data
+                *(registers_1_addr + CRDCS_WRITE_TX) = data_zero;
+                *(registers_1_addr + CRDCS_WRITE_TX) = cmd_rx_size;
+                *(registers_1_addr + CRDCS_WRITE_TX) = cmd_fail;
+                *(registers_1_addr + CRDCS_WRITE_TX) = cmd_rx_cnt;
+                *(registers_1_addr + CRDCS_WRITE_TX) = data_to_write; // ie dtcbuffer[1]
+                *(registers_1_addr + CRDCS_WRITE_TX) = dtcbuffer[2];
+                *(registers_1_addr + CRDCS_WRITE_TX) = dtcbuffer[3];
+                *(registers_1_addr + CRDCS_WRITE_TX) = get_cmd_rx;
+                //trailer
+                *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
+                break;
+
+            default:
+                break;
+        }
+        delayUs(1);
 
 
 
@@ -1161,23 +1388,23 @@ int main()
 					}
 
 
-				}else if (commandID == DDRSTATUS){
-					outBuffer[bufcount++] = DDRSTATUS;
-					bufWrite(outBuffer, &bufcount, 37, 2);
-					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_CTRLREADY), 1);
-					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_CONV_DATA), 4);
-					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_FULL), 1);
-					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_PAGEWR), 4);
-					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_PAGERD), 4);
-					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_MEMFIFO_EMPTY), 1);
-					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_MEMFIFO_FULL), 1);
-					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_TEMPFIFO_EMPTY), 1);
-					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_TEMPFIFO_FULL), 1);
-					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_MEMFIFO_DATA0), 4);
-					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_MEMFIFO_DATA1), 4);
-					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_DIAG0), 4);
-					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_DIAG1), 4);
-					outBufSend(g_uart, outBuffer, bufcount);
+//				}else if (commandID == DDRSTATUS){
+//					outBuffer[bufcount++] = DDRSTATUS;
+//					bufWrite(outBuffer, &bufcount, 37, 2);
+//					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_CTRLREADY), 1);
+//					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_CONV_DATA), 4);
+//					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_FULL), 1);
+//					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_PAGEWR), 4);
+//					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_PAGERD), 4);
+//					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_MEMFIFO_EMPTY), 1);
+//					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_MEMFIFO_FULL), 1);
+//					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_TEMPFIFO_EMPTY), 1);
+//					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_TEMPFIFO_FULL), 1);
+//					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_MEMFIFO_DATA0), 4);
+//					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_MEMFIFO_DATA1), 4);
+//					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_DIAG0), 4);
+//					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_DIAG1), 4);
+//					outBufSend(g_uart, outBuffer, bufcount);
 
 				}else if (commandID == DDRPATTERNREAD){
 // MT --same as DDRRAMREAD but only reads and returns location of error register
@@ -1377,6 +1604,7 @@ int main()
 					UART_send(&g_uart, outBuffer ,bufcount );
 #endif
 //*********************************** begin of DTC SIM commands****************************************************************************************
+#ifdef DTCDDRTEST
 				}else if (commandID == DCSREAD){
 					uint16_t dtc_addr  = readU16fromBytes(&buffer[4]);
 
@@ -1579,8 +1807,93 @@ int main()
 					bufWrite(outBuffer, &bufcount, align, 1);
 					outBufSend(g_uart, outBuffer, bufcount);
 
+                }else if (commandID == DCSBLKREAD){
+                    uint8_t  blk_type = (uint8_t)  buffer[4];
+                    uint16_t blk_word  = readU16fromBytes(&buffer[5]);
+                    uint16_t blk_addr  = readU16fromBytes(&buffer[7]);
 
-#ifdef DTCDDRTEST
+                    // set Simulation Enable, DTC Simulator as output,
+                    // Packet Type to DCSRequest and OP_CODE to appropriate Block Read
+                    uint8_t dtc_output = 0;
+                    uint8_t dtc_opcode;
+                    if      (blk_type==0)  dtc_opcode = 2;
+                    else if (blk_type==1)  dtc_opcode = 4;
+                    uint8_t dtc_packet_type = 0;
+
+                    // after adding CFO simulator, need to disable it BEFORE any DCS simulation function!
+                    *(registers_0_addr + REG_ROC_DDR_CFO_EN)  = 0;
+
+                    // pass simulation parameters
+                    DCS_pass_sim_param(1, dtc_output, dtc_opcode, dtc_packet_type);
+
+                    // pass starting address
+                    DCS_pass_addr_data(blk_addr, 0, 0);
+
+                    // pass block word count
+                    DCS_pass_addr_data(0, blk_word, 1);
+
+                    // send out simulated packet
+                    DCS_sim_packet_send();
+
+                    // clear simulation parameters
+                    //DCS_pass_sim_param(0, 0, 0, 0);
+                    DCS_pass_sim_param(0, dtc_output, dtc_opcode, dtc_packet_type);
+
+                    // read back all relevant parameters
+                    outBuffer[bufcount++] = DCSBLKREAD;
+                    bufWrite(outBuffer, &bufcount, 5, 2);
+                    bufWrite(outBuffer, &bufcount, blk_type, 1);
+                    bufWrite(outBuffer, &bufcount, blk_word, 2);
+                    bufWrite(outBuffer, &bufcount, blk_addr, 2);
+                    outBufSend(g_uart, outBuffer, bufcount);
+
+                }else if (commandID == DCSBLKWRITE){
+
+                    uint8_t  blk_type = (uint8_t)  buffer[4];
+                    uint16_t blk_word  = readU16fromBytes(&buffer[5]);
+                    uint16_t blk_addr  = readU16fromBytes(&buffer[7]);
+                    //uint8_t  blk_word = (uint8_t)  buffer[5];
+                    //uint8_t  blk_addr = (uint8_t)  buffer[6];
+
+                    // set Simulation Enable, DTC Simulator as output,
+                    // Packet Type to DCSRequest and OP_CODE to appropriate Block Read
+                    uint8_t dtc_output = 0;
+                    uint8_t dtc_opcode;
+                    if      (blk_type==0)  dtc_opcode = 3;
+                    else if (blk_type==1)  dtc_opcode = 5;
+                    uint8_t dtc_packet_type = 0;
+
+                    // after adding CFO simulator, need to disable it BEFORE any DCS simulation function!
+                    *(registers_0_addr + REG_ROC_DDR_CFO_EN)  = 0;
+
+                    // pass simulation parameters
+                    DCS_pass_sim_param(1, dtc_output, dtc_opcode, dtc_packet_type);
+
+                    // pass starting address
+                    DCS_pass_addr_data(blk_addr, 0, 0);
+
+                    // pass block word count
+                    DCS_pass_addr_data(0, blk_word, 1);
+
+                    // send out simulated packet
+                    DCS_sim_packet_send();
+
+                    // clear simulation parameters
+                    //DCS_pass_sim_param(0, 0, 0, 0);
+                    DCS_pass_sim_param(0, dtc_output, dtc_opcode, dtc_packet_type);
+
+                    // read back all relevant parameters
+                    outBuffer[bufcount++] = DCSBLKWRITE;
+                    //bufWrite(outBuffer, &bufcount, 3, 2);
+                    //bufWrite(outBuffer, &bufcount, blk_type, 1);
+                    //bufWrite(outBuffer, &bufcount, blk_word, 1);
+                    //bufWrite(outBuffer, &bufcount, blk_addr, 1);
+                    bufWrite(outBuffer, &bufcount, 5, 2);
+                    bufWrite(outBuffer, &bufcount, blk_type, 1);
+                    bufWrite(outBuffer, &bufcount, blk_word, 2);
+                    bufWrite(outBuffer, &bufcount, blk_addr, 2);
+                    outBufSend(g_uart, outBuffer, bufcount);
+
 				}else if (commandID == DCSMODREAD){
 					uint8_t  dtc_module = (uint8_t)  buffer[4];
 					uint16_t dtc_addr   = readU16fromBytes(&buffer[5]);
@@ -1657,94 +1970,6 @@ int main()
 					bufWrite(outBuffer, &bufcount, (dtc_sim_address)    &0xFFFF, 2);
 					bufWrite(outBuffer, &bufcount,  dtc_data,                	 2);
 					outBufSend(g_uart, outBuffer, bufcount);
-
-				}else if (commandID == DCSBLKREAD){
-					uint8_t  blk_type = (uint8_t)  buffer[4];
-					uint16_t blk_word  = readU16fromBytes(&buffer[5]);
-					uint16_t blk_addr  = readU16fromBytes(&buffer[7]);
-
-					// set Simulation Enable, DTC Simulator as output,
-					// Packet Type to DCSRequest and OP_CODE to appropriate Block Read
-					uint8_t dtc_output = 0;
-					uint8_t dtc_opcode;
-					if      (blk_type==0)  dtc_opcode = 2;
-					else if (blk_type==1)  dtc_opcode = 4;
-					uint8_t dtc_packet_type = 0;
-
-					// after adding CFO simulator, need to disable it BEFORE any DCS simulation function!
-					*(registers_0_addr + REG_ROC_DDR_CFO_EN)  = 0;
-
-					// pass simulation parameters
-					DCS_pass_sim_param(1, dtc_output, dtc_opcode, dtc_packet_type);
-
-					// pass starting address
-					DCS_pass_addr_data(blk_addr, 0, 0);
-
-					// pass block word count
-					DCS_pass_addr_data(0, blk_word, 1);
-
-					// send out simulated packet
-					DCS_sim_packet_send();
-
-					// clear simulation parameters
-					//DCS_pass_sim_param(0, 0, 0, 0);
-					DCS_pass_sim_param(0, dtc_output, dtc_opcode, dtc_packet_type);
-
-					// read back all relevant parameters
-					outBuffer[bufcount++] = DCSBLKREAD;
-					bufWrite(outBuffer, &bufcount, 5, 2);
-					bufWrite(outBuffer, &bufcount, blk_type, 1);
-					bufWrite(outBuffer, &bufcount, blk_word, 2);
-					bufWrite(outBuffer, &bufcount, blk_addr, 2);
-					outBufSend(g_uart, outBuffer, bufcount);
-
-
-				}else if (commandID == DCSBLKWRITE){
-					uint8_t  blk_type = (uint8_t)  buffer[4];
-					uint16_t blk_word  = readU16fromBytes(&buffer[5]);
-					uint16_t blk_addr  = readU16fromBytes(&buffer[7]);
-					//uint8_t  blk_word = (uint8_t)  buffer[5];
-					//uint8_t  blk_addr = (uint8_t)  buffer[6];
-
-					// set Simulation Enable, DTC Simulator as output,
-					// Packet Type to DCSRequest and OP_CODE to appropriate Block Read
-					uint8_t dtc_output = 0;
-					uint8_t dtc_opcode;
-					if      (blk_type==0)  dtc_opcode = 3;
-					else if (blk_type==1)  dtc_opcode = 5;
-					uint8_t dtc_packet_type = 0;
-
-					// after adding CFO simulator, need to disable it BEFORE any DCS simulation function!
-					*(registers_0_addr + REG_ROC_DDR_CFO_EN)  = 0;
-
-					// pass simulation parameters
-					DCS_pass_sim_param(1, dtc_output, dtc_opcode, dtc_packet_type);
-
-					// pass starting address
-					DCS_pass_addr_data(blk_addr, 0, 0);
-
-					// pass block word count
-					DCS_pass_addr_data(0, blk_word, 1);
-
-					// send out simulated packet
-					DCS_sim_packet_send();
-
-					// clear simulation parameters
-					//DCS_pass_sim_param(0, 0, 0, 0);
-					DCS_pass_sim_param(0, dtc_output, dtc_opcode, dtc_packet_type);
-
-					// read back all relevant parameters
-					outBuffer[bufcount++] = DCSBLKWRITE;
-					//bufWrite(outBuffer, &bufcount, 3, 2);
-					//bufWrite(outBuffer, &bufcount, blk_type, 1);
-					//bufWrite(outBuffer, &bufcount, blk_word, 1);
-					//bufWrite(outBuffer, &bufcount, blk_addr, 1);
-					bufWrite(outBuffer, &bufcount, 5, 2);
-					bufWrite(outBuffer, &bufcount, blk_type, 1);
-					bufWrite(outBuffer, &bufcount, blk_word, 2);
-					bufWrite(outBuffer, &bufcount, blk_addr, 2);
-					outBufSend(g_uart, outBuffer, bufcount);
-
 
 				}else if (commandID == DCSRAMWRITE){
 					uint8_t blk_size   = (uint8_t) buffer[4];
