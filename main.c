@@ -10,8 +10,12 @@
 // ALWAYS COMMENT this define in SoftConsole_variablesize
 //#define DTCDDRTEST  // if uncommented, skips all code inside    #ifndef	DTCDDRTEST ... #endif
                       // if commented, skips all code inside      #ifdef  DTCDDRTEST ... #endif
+
 // Comment this in SoftConsole_variablesize if code does not fit in uSVM
-#define FIXEDSIZETEST  // if commented, skips all code inside    #ifdef	FIXEDSIZETEST ... #endif
+//#define FIXEDSIZETEST  // if commented, skips all code inside    #ifdef	FIXEDSIZETEST ... #endif
+
+// Used for code need in DRAC Standalone Tests
+#define DRACTEST
 
 #include "setup.h"
 //#include "Commands.h"
@@ -1185,6 +1189,74 @@ int main()
 					outBufSend(g_uart, outBuffer, bufcount);
 #endif
 
+//***********************************begin of DRAC Test commands****************************************************************************************
+#ifdef  DRACTEST
+
+                }else if (commandID == PRBSSTATUS){
+                    outBuffer[bufcount++] = PRBSSTATUS;
+                    bufWrite(outBuffer, &bufcount, 5, 2);
+                    bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_PRBS_LOCK), 1);
+                    bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_PRBS_ERRORCNT), 4);
+                    outBufSend(g_uart, outBuffer, bufcount);
+
+                }else if (commandID == PRBSSTART){
+                    *(registers_0_addr + REG_ROC_PRBS_EN) = 1; // enable PRBS data to Core_PCS
+                    outBuffer[bufcount++] = PRBSSTART;
+                    bufWrite(outBuffer, &bufcount, 0, 2);
+                    outBufSend(g_uart, outBuffer, bufcount);
+
+                }else if (commandID == PRBSSTOP){
+                    *(registers_0_addr + REG_ROC_PRBS_EN) = 0; // disable PRBS data to Core_PCS
+                    outBuffer[bufcount++] = PRBSSTOP;
+                    bufWrite(outBuffer, &bufcount, 0, 2);
+                    outBufSend(g_uart, outBuffer, bufcount);
+
+                }else if (commandID == PRBSERRORIN){
+                    *(registers_0_addr + REG_ROC_PRBS_ERRORIN) = 1; // enable error as 0xEFFE in PRBS generator
+                    outBuffer[bufcount++] = PRBSERRORIN;
+                    bufWrite(outBuffer, &bufcount, 0, 2);
+                    outBufSend(g_uart, outBuffer, bufcount);
+
+                }else if (commandID == PRBSERRORCLR){
+                    *(registers_0_addr + REG_ROC_PRBS_ERRORCLR) = 1; // enable PRBS generator and checker logic
+                    outBuffer[bufcount++] = PRBSERRORCLR;
+                    bufWrite(outBuffer, &bufcount, 0, 2);
+                    outBufSend(g_uart, outBuffer, bufcount);
+
+                }else if (commandID == DDRTESTSETUP){
+                    uint32_t ddr_blockno = readU32fromBytes(&buffer[4]); //maximum is 256
+
+                    // PATTERN_EN must be set BEFORE page_no to prevent write to DDR3 from standard digififo
+                    *(registers_0_addr + REG_ROC_DDR_BLKNO) = ddr_blockno;
+
+                    outBuffer[bufcount++] = DDRTESTSETUP;
+                    bufWrite(outBuffer, &bufcount, 4, 2);
+                    bufWrite(outBuffer, &bufcount, ddr_blockno, 4);
+                    outBufSend(g_uart, outBuffer, bufcount);
+
+                }else if (commandID == DDRTESTWRITE){
+
+                    *(registers_0_addr + REG_ROC_DDR_WREN) = 1;
+
+                    outBuffer[bufcount++] = DDRTESTWRITE;
+                    bufWrite(outBuffer, &bufcount, 0, 2);
+                    outBufSend(g_uart, outBuffer, bufcount);
+
+                }else if (commandID == DDRTESTREAD){
+
+                    *(registers_0_addr + REG_ROC_DDR_RDEN) = 1;
+
+                    outBuffer[bufcount++] = DDRTESTREAD;
+                    bufWrite(outBuffer, &bufcount, 0, 2);
+                    outBufSend(g_uart, outBuffer, bufcount);
+
+                }else if (commandID == DDRTESTSTATUS){
+                    outBuffer[bufcount++] = DDRTESTSTATUS;
+                    bufWrite(outBuffer, &bufcount, 1, 2);
+                    bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_STATUS), 1);
+                    outBufSend(g_uart, outBuffer, bufcount);
+
+#endif
 //***********************************begin of DDR commands****************************************************************************************
 #ifdef	DTCDDRTEST
 
@@ -1497,28 +1569,28 @@ int main()
 					bufWrite(outBuffer, &bufcount, ser_en, 1);
 					outBufSend(g_uart, outBuffer, bufcount);
 
+                }else if (commandID == DDRSETUP){
+                    uint32_t ddr_pageno = readU32fromBytes(&buffer[4]); //maximum is 256
+                    uint8_t ddr_select = (uint8_t) buffer[8];   // unused since v12.6. Set when needed in DDRFILL/DDRREAD
+                    uint8_t ddr_set    = (uint8_t) buffer[9];   // unused since v12.4
+                    uint8_t ddr_pattern = (uint8_t) buffer[10];
+                    uint8_t ddr_pattern_en = (uint8_t) buffer[11];
 
-				}else if (commandID == DDRSETUP){
-					uint32_t ddr_pageno = readU32fromBytes(&buffer[4]); //maximum is 256
-					uint8_t ddr_select = (uint8_t) buffer[8]; 	// unused since v12.6. Set when needed in DDRFILL/DDRREAD
-					uint8_t ddr_set    = (uint8_t) buffer[9]; 	// unused since v12.4
-					uint8_t ddr_pattern = (uint8_t) buffer[10];
-					uint8_t ddr_pattern_en = (uint8_t) buffer[11];
+                    // PATTERN_EN must be set BEFORE page_no to prevent write to DDR3 from standard digififo
+                    *(registers_0_addr + REG_ROC_DDR_PATTERN_EN)= ddr_pattern_en;
+                    *(registers_0_addr + REG_ROC_DDR_PAGENO)    = ddr_pageno;
+                    *(registers_0_addr + REG_ROC_DDR_PATTERN)   = ddr_pattern;
 
-					// PATTERN_EN must be set BEFORE page_no to prevent write to DDR3 from standard digififo
-					*(registers_0_addr + REG_ROC_DDR_PATTERN_EN)= ddr_pattern_en;
-					*(registers_0_addr + REG_ROC_DDR_PAGENO) 	= ddr_pageno;
-					*(registers_0_addr + REG_ROC_DDR_PATTERN) 	= ddr_pattern;
+                    // latched configuration via SIM_EN (via DDR_CS)
+                    delayUs(100);
 
-					// latched configuration via SIM_EN (via DDR_CS)
-					delayUs(100);
+                    outBuffer[bufcount++] = DDRSETUP;
+                    bufWrite(outBuffer, &bufcount, 6, 2);
+                    bufWrite(outBuffer, &bufcount, ddr_pageno, 4);
+                    bufWrite(outBuffer, &bufcount, ddr_pattern, 1);
+                    bufWrite(outBuffer, &bufcount, ddr_pattern_en, 1);
+                    outBufSend(g_uart, outBuffer, bufcount);
 
-					outBuffer[bufcount++] = DDRSETUP;
-					bufWrite(outBuffer, &bufcount, 6, 2);
-					bufWrite(outBuffer, &bufcount, ddr_pageno, 4);
-					bufWrite(outBuffer, &bufcount, ddr_pattern, 1);
-					bufWrite(outBuffer, &bufcount, ddr_pattern_en, 1);
-					outBufSend(g_uart, outBuffer, bufcount);
 
 				}else if (commandID == DDRFILL){
 					volatile uint32_t pages_read = *(registers_0_addr + REG_ROC_DDR_PAGERD);
@@ -2015,43 +2087,6 @@ int main()
 					bufWrite(outBuffer, &bufcount, prbs_en, 1);
 					outBufSend(g_uart, outBuffer, bufcount);
 
-				}else if (commandID == PRBSSTATUS){
-					outBuffer[bufcount++] = PRBSSTATUS;
-					bufWrite(outBuffer, &bufcount, 14, 2);
-					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_PRBS_LOCK), 1);
-					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_PRBS_VALID), 1);
-					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_PRBS_ERRORCNT), 4);
-					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_PRBS_CDCEMPTY), 1);
-					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_PRBS_CDCFULL), 1);
-					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_PRBS_CDCWRCNT), 4);
-					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_PRBS_PCSDATA), 2);
-					outBufSend(g_uart, outBuffer, bufcount);
-
-				}else if (commandID == PRBSSTART){
-					*(registers_0_addr + REG_ROC_PRBS_EN) = 1; // enable PRBS data to Core_PCS
-					*(registers_0_addr + REG_ROC_PRBS_START) = 1; // start PRBS generator and checker logic
-					outBuffer[bufcount++] = PRBSSTART;
-					bufWrite(outBuffer, &bufcount, 0, 2);
-					outBufSend(g_uart, outBuffer, bufcount);
-
-				}else if (commandID == PRBSSTOP){
-					*(registers_0_addr + REG_ROC_PRBS_START) = 0; // disable PRBS generator and checker logic
-					*(registers_0_addr + REG_ROC_PRBS_EN) = 0; // disable PRBS data to Core_PCS
-					outBuffer[bufcount++] = PRBSSTOP;
-					bufWrite(outBuffer, &bufcount, 0, 2);
-					outBufSend(g_uart, outBuffer, bufcount);
-
-				}else if (commandID == PRBSERRORIN){
-					*(registers_0_addr + REG_ROC_PRBS_ERRORIN) = 1; // enable error as 0xEFFE in PRBS generator
-					outBuffer[bufcount++] = PRBSERRORIN;
-					bufWrite(outBuffer, &bufcount, 0, 2);
-					outBufSend(g_uart, outBuffer, bufcount);
-
-				}else if (commandID == PRBSERRORCLR){
-					*(registers_0_addr + REG_ROC_PRBS_ERRORCLR) = 1; // enable PRBS generator and checker logic
-					outBuffer[bufcount++] = PRBSERRORCLR;
-					bufWrite(outBuffer, &bufcount, 0, 2);
-					outBufSend(g_uart, outBuffer, bufcount);
 
 				}else if (commandID == PRBSERRORDUMP){
 					uint16_t error_cnt = *(registers_0_addr + REG_ROC_PRBS_CDCWRCNT);
@@ -2171,6 +2206,7 @@ int main()
 					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_READ_ALIGNED), 1);
 					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_READ_ALIGNMENT), 2);
 					outBufSend(g_uart, outBuffer, bufcount);
+#endif
 
                 }else if (commandID == SETDIGIRW){
                     // set if fiber (0) or serial (1) drives signals to DIGIs
@@ -2182,11 +2218,11 @@ int main()
                     bufWrite(outBuffer, &bufcount, digirw_sel, 1);
                     outBufSend(g_uart, outBuffer, bufcount);
 
-#endif
+
 
 
 //***********************************begin of control_digi commands*******************************************************************************
-//				}else if (commandID == ADCRWCMDID){
+//				}else  (commandID == ADCRWCMDID){
 //					// adc read/write
 //					uint8_t adc_num = (uint8_t) buffer[4];
 //					uint8_t rw = (uint8_t) buffer[5];
