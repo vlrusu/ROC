@@ -340,7 +340,7 @@
 //#define REG_ROC_DDR_WRBCNT 	0xCE	//R  returns number of WR-data burst to DDR
 //#define REG_ROC_DDR_RDBCNT 	0xCF	//R  returns number of RD-data burst to DDR
 
-#define REG_ROC_PRBS_EN			0xD0 //W: enable PRBS to CORE_PCS (in loopback)
+#define REG_ROC_PRBS_EN		    0xD0 //W: enable PRBS to CORE_PCS (in loopback)
 #define REG_ROC_PRBS_START		0xD1 //W: PRBS sequence enable (level: high between START and STOP)
 #define REG_ROC_PRBS_ERRORIN	0xD2 //W: Inject PRBS sequence error (0xEFFE)  (self clearing)
 #define REG_ROC_PRBS_ERRORCLR	0xD3 //W: Reset error count and CDF FIFO (self clearing)
@@ -350,17 +350,19 @@
 #define REG_ROC_PRBS_CDCEMPTY	0xD7 //R: CDC FIFO Empty
 #define REG_ROC_PRBS_CDCWRCNT	0xD8 //R: CDC FIFO WR word counter
 #define REG_ROC_PRBS_ERRORCNT	0xD9 //R: PRBS sequence error counter
-#define REG_ROC_PRBS_VALID		0xDA //R: XCVR RX Valid on
-#define REG_ROC_PRBS_LOCK		0xDB //R: PRBS sequence ON
+#define REG_ROC_PRBS_ON		    0xDA //R: PRBS sequence ON
+#define REG_ROC_PRBS_LOCK		0xDB //R: PRBS fiber is locked
 #define REG_ROC_PRBS_PCSDATA	0xDC //R: PCS Diagnostics: [1:0]=TX invalid K; [3]=TX aligned [5:4]=RX error; [9:8]=RX bad disparity; [13:12]=RX bad 8to10
 
 #define REG_ERROR_ADDRESS   0xE0
 #define REG_ERROR_COUNTER   0xE1
 
-#define REG_ROC_DDR_WREN     0xE2
-#define REG_ROC_DDR_RDEN     0xE3
-#define REG_ROC_DDR_BLKNO    0xE4
-#define REG_ROC_DDR_STATUS   0xE5
+#define REG_ROC_DDRTEST_WREN     0xE2
+#define REG_ROC_DDRTEST_RDEN     0xE3
+#define REG_ROC_DDRTEST_BLKNO    0xE4
+#define REG_ROC_DDRTEST_STATUS   0xE5
+#define REG_ROC_DDRTEST_ERRCNT   0xE6
+#define REG_ROC_DDRTEST_ERRLOC   0xE7
 
 #define REG_ROC_USE_UART    0xF1
 #define REG_DIGIRW_SEL      0xF2   // WO   select between fiber (0) or serial (1) to drive some DIGI signals

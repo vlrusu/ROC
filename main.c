@@ -1191,11 +1191,20 @@ int main()
 
 //***********************************begin of DRAC Test commands****************************************************************************************
 #ifdef  DRACTEST
+                }else if (commandID == PRBSET){
+                    uint8_t prbs_en   = (uint8_t) buffer[4];
+                    *(registers_0_addr + REG_ROC_DTC_ENABLE_RESET) = prbs_en; // enable PRBS data to Core_PCS
+
+                    outBuffer[bufcount++] = PRBSET;
+                    bufWrite(outBuffer, &bufcount, 1, 2);
+                    bufWrite(outBuffer, &bufcount, prbs_en, 1);
+                    outBufSend(g_uart, outBuffer, bufcount);
 
                 }else if (commandID == PRBSSTATUS){
                     outBuffer[bufcount++] = PRBSSTATUS;
-                    bufWrite(outBuffer, &bufcount, 5, 2);
+                    bufWrite(outBuffer, &bufcount, 6, 2);
                     bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_PRBS_LOCK), 1);
+                    bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_PRBS_ON), 1);
                     bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_PRBS_ERRORCNT), 4);
                     outBufSend(g_uart, outBuffer, bufcount);
 
@@ -1227,7 +1236,7 @@ int main()
                     uint32_t ddr_blockno = readU32fromBytes(&buffer[4]); //maximum is 256
 
                     // PATTERN_EN must be set BEFORE page_no to prevent write to DDR3 from standard digififo
-                    *(registers_0_addr + REG_ROC_DDR_BLKNO) = ddr_blockno;
+                    *(registers_0_addr + REG_ROC_DDRTEST_BLKNO) = ddr_blockno;
 
                     outBuffer[bufcount++] = DDRTESTSETUP;
                     bufWrite(outBuffer, &bufcount, 4, 2);
@@ -1236,7 +1245,7 @@ int main()
 
                 }else if (commandID == DDRTESTWRITE){
 
-                    *(registers_0_addr + REG_ROC_DDR_WREN) = 1;
+                    *(registers_0_addr + REG_ROC_DDRTEST_WREN) = 1;
 
                     outBuffer[bufcount++] = DDRTESTWRITE;
                     bufWrite(outBuffer, &bufcount, 0, 2);
@@ -1244,7 +1253,7 @@ int main()
 
                 }else if (commandID == DDRTESTREAD){
 
-                    *(registers_0_addr + REG_ROC_DDR_RDEN) = 1;
+                    *(registers_0_addr + REG_ROC_DDRTEST_RDEN) = 1;
 
                     outBuffer[bufcount++] = DDRTESTREAD;
                     bufWrite(outBuffer, &bufcount, 0, 2);
@@ -1252,9 +1261,12 @@ int main()
 
                 }else if (commandID == DDRTESTSTATUS){
                     outBuffer[bufcount++] = DDRTESTSTATUS;
-                    bufWrite(outBuffer, &bufcount, 1, 2);
-                    bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_STATUS), 1);
-                    outBufSend(g_uart, outBuffer, bufcount);
+                    bufWrite(outBuffer, &bufcount, 10, 2);
+                    bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_CTRLREADY), 1);
+                    bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDRTEST_STATUS), 1);
+                    bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDRTEST_ERRCNT), 4);
+                    bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDRTEST_ERRLOC), 4);
+                         outBufSend(g_uart, outBuffer, bufcount);
 
 #endif
 //***********************************begin of DDR commands****************************************************************************************
@@ -1870,15 +1882,6 @@ int main()
 					outBufSend(g_uart, outBuffer, bufcount);
 
 
-				}else if (commandID == XCVRALIGN){
-					uint8_t align   = (uint8_t) buffer[4];
-					*(registers_0_addr + REG_ROC_DTC_ENABLE_RESET) = align; // enable PRBS data to Core_PCS
-
-					outBuffer[bufcount++] = XCVRALIGN;
-					bufWrite(outBuffer, &bufcount, 1, 2);
-					bufWrite(outBuffer, &bufcount, align, 1);
-					outBufSend(g_uart, outBuffer, bufcount);
-
                 }else if (commandID == DCSBLKREAD){
                     uint8_t  blk_type = (uint8_t)  buffer[4];
                     uint16_t blk_word  = readU16fromBytes(&buffer[5]);
@@ -2078,15 +2081,14 @@ int main()
 					bufWrite(outBuffer, &bufcount, 0, 2);
 				 	outBufSend(g_uart, outBuffer, bufcount);
 
-				}else if (commandID == PRBSET){
-					uint8_t prbs_en   = (uint8_t) buffer[4];
-					*(registers_0_addr + REG_ROC_PRBS_EN) = prbs_en; // enable PRBS data to Core_PCS
+                }else if (commandID == XCVRALIGN){
+                    uint8_t align   = (uint8_t) buffer[4];
+                    *(registers_0_addr + REG_ROC_DTC_ENABLE_RESET) = align; // enable PRBS data to Core_PCS
 
-					outBuffer[bufcount++] = PRBSET;
-					bufWrite(outBuffer, &bufcount, 1, 2);
-					bufWrite(outBuffer, &bufcount, prbs_en, 1);
-					outBufSend(g_uart, outBuffer, bufcount);
-
+                    outBuffer[bufcount++] = XCVRALIGN;
+                    bufWrite(outBuffer, &bufcount, 1, 2);
+                    bufWrite(outBuffer, &bufcount, align, 1);
+                    outBufSend(g_uart, outBuffer, bufcount);
 
 				}else if (commandID == PRBSERRORDUMP){
 					uint16_t error_cnt = *(registers_0_addr + REG_ROC_PRBS_CDCWRCNT);
