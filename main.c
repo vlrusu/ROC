@@ -1194,10 +1194,8 @@ int main()
                 }else if (commandID == PRBSET){
                     uint8_t prbs_en   = (uint8_t) buffer[4];
                     *(registers_0_addr + REG_ROC_DTC_ENABLE_RESET) = prbs_en; // enable PRBS data to Core_PCS
-
                     outBuffer[bufcount++] = PRBSET;
-                    bufWrite(outBuffer, &bufcount, 1, 2);
-                    bufWrite(outBuffer, &bufcount, prbs_en, 1);
+                    bufWrite(outBuffer, &bufcount, 0, 2);
                     outBufSend(g_uart, outBuffer, bufcount);
 
                 }else if (commandID == PRBSSTATUS){
@@ -1246,9 +1244,11 @@ int main()
                 }else if (commandID == DDRTESTWRITE){
 
                     *(registers_0_addr + REG_ROC_DDRTEST_WREN) = 1;
+                    uint32_t ddr_blockno = *(registers_0_addr + REG_ROC_DDRTEST_BLKNO);
 
                     outBuffer[bufcount++] = DDRTESTWRITE;
-                    bufWrite(outBuffer, &bufcount, 0, 2);
+                    bufWrite(outBuffer, &bufcount, 4, 2);
+                    bufWrite(outBuffer, &bufcount, ddr_blockno, 4);
                     outBufSend(g_uart, outBuffer, bufcount);
 
                 }else if (commandID == DDRTESTREAD){
@@ -1256,7 +1256,8 @@ int main()
                     *(registers_0_addr + REG_ROC_DDRTEST_RDEN) = 1;
 
                     outBuffer[bufcount++] = DDRTESTREAD;
-                    bufWrite(outBuffer, &bufcount, 0, 2);
+                    bufWrite(outBuffer, &bufcount, 4, 2);
+                    bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDRTEST_BLKNO), 4);
                     outBufSend(g_uart, outBuffer, bufcount);
 
                 }else if (commandID == DDRTESTSTATUS){
@@ -1266,7 +1267,7 @@ int main()
                     bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDRTEST_STATUS), 1);
                     bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDRTEST_ERRCNT), 4);
                     bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDRTEST_ERRLOC), 4);
-                         outBufSend(g_uart, outBuffer, bufcount);
+                    outBufSend(g_uart, outBuffer, bufcount);
 
 #endif
 //***********************************begin of DDR commands****************************************************************************************
