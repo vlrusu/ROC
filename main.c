@@ -587,14 +587,11 @@ int main()
                 // writing only LBS 16-bit of 32 bits APB bus
                 *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
                 // not until we can deal with DIGI_WRITE while fiber is in control of DIGI registers
-               // *(registers_1_addr + CRDCS_WRITE_TX) = 36;
-                //*(registers_1_addr + CRDCS_WRITE_TX) = 27;
-                *(registers_1_addr + CRDCS_WRITE_TX) = 19;
+                *(registers_1_addr + CRDCS_WRITE_TX) = 36;
                 *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
 
                 // fill up payload with 16-bit words
                 uint32_t spi32;
-                uint8_t imax;
                 for (uint8_t i = 0 ; i < 2; i++) {
                     for (uint8_t j = 0 ; j < 12; j++) {
                         SPI_set_slave_select( &g_spi[i] , ((j>=8)?SPI_SLAVE_2:(j<4?SPI_SLAVE_0:SPI_SLAVE_1)));
@@ -607,16 +604,12 @@ int main()
                         SPI_clear_slave_select( &g_spi[i] , ((j>=8)?SPI_SLAVE_2:(j<4?SPI_SLAVE_0:SPI_SLAVE_1)));
 
                         *(registers_1_addr + CRDCS_WRITE_TX) = (0x0000FFFF & spi32);
-
-//                        imax++;
-//                        if (imax==2) break;
                      }
                 }
 
 
                 uint16_t tvs_val[4] = {0};
-                //for (uint8_t i =0; i<4; i++){
-                for (uint8_t i =0; i<3; i++){
+                for (uint8_t i =0; i<4; i++){
                     *(registers_0_addr+REG_ROC_TVS_ADDR) = i;
                     delayUs(1);
                     tvs_val[i] = *(registers_0_addr + REG_ROC_TVS_VAL);
