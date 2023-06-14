@@ -309,31 +309,29 @@ uint16_t digi_read(uint8_t address, uint8_t hvcal)//hvcal can only be 1 or 2
 
 void read_histogram(uint8_t channel, uint8_t hv_or_cal, uint16_t *output){
 	// select channel
-	digi_write(DG_ADDR_HISTO_CHANNEL,((channel << 1) | (hv_or_cal & 0x1)),1);
+    uint8_t real_channel = 0;
+    for (size_t i=0;i<96;i++){
+        if (channel_map[i] == channel){
+            real_channel = i;
+            break;
+        }
+    }
+    uint8_t fpga = 1;
+    if (real_channel >= 48){
+        fpga = 2;
+        real_channel -= 48;
+    }
+	digi_write(DG_ADDR_HISTO_CHANNEL,((real_channel << 1) | (hv_or_cal & 0x1)),fpga);
 	// tell digi to write histogram to sram
-	digi_write(DG_ADDR_HISTO_RESET,0x1,1);
-	digi_write(DG_ADDR_HISTO_RESET,0x0,1);
-	delay_ms(1);
-	// read from sram
+	digi_write(DG_ADDR_HISTO_RESET,0x1,fpga);
+	delayUs(1);
 	for (int i=0;i<256;i++){
-		digi_write(DG_ADDR_HISTO_BIN,i,1);
-		output[i] = digi_read(DG_ADDR_HISTO_VAL,1);
+	    output[i] = digi_read(DG_ADDR_HISTO_VAL,fpga);
+	    digi_write(DG_ADDR_HISTO_RESET,0x3,fpga);
+	    digi_write(DG_ADDR_HISTO_RESET,0x1,fpga);
+	    delayUs(1);
 	}
-	/*
-	if (hv_or_cal == 1){
-	volatile uint32_t * ewm = registers_0_addr + REG_ROC_EWM_SINGLE;
-	*ewm = 1;
-	*ewm = 0;
-	}else{
-	delay_ms(100);
-	uint16_t ewm_counter = digi_read(DG_ADDR_EWMCNTER,1);
-	output[0] = ewm_counter;
-	delay_ms(100);
-	ewm_counter = digi_read(DG_ADDR_EWMCNTER,1);
-	output[1] = ewm_counter;
-	}
-	*/
-
+    digi_write(DG_ADDR_HISTO_RESET,0x0,fpga);
 }
 
 uint16_t init_adc(uint16_t adc_mask, uint8_t pattern, uint8_t phase)
