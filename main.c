@@ -481,89 +481,96 @@ int main()
         // - ends on cmd_fail[15] (sent to DTCInterface/DRACRegisters) seen high
 		volatile uint16_t dtc_cmd_ready = *(registers_1_addr + CRDCS_CMD_READY);
 
-		volatile uint16_t  get_cmd_rx = 0;
-        uint8_t cmd_rx_cnt = 0;
+        volatile uint16_t  get_cmd_rx = 0;
+        uint16_t cmd_rx_cnt = 0;
         uint16_t cmd_rx_size = 0;
         uint16_t  proc_commandID = 0;
         uint16_t  data_to_write = 0;
         uint16_t  data_zero = 0;
         uint16_t cmd_fail = 0;
-        uint8_t  dtcPtr = 0;
-        uint16_t dtcbuffer[256]; // buffer for reading from DTC command
+        uint16_t  dtcPtr = 0;
+        uint16_t dtcbuffer[1024]; // size of DCS_RX(TX)_FIFO in firmware
 
         while (dtc_cmd_ready == 1) {
-
-            // clear status register
-            if (cmd_rx_cnt==0) *(registers_1_addr + CRDCS_CMD_STATUS) = 0;
 
             // starts reading DCS_RX_BUFFER contents
             get_cmd_rx = *(registers_1_addr + CRDCS_READ_RX);
 
-            // why nothing reported on CMD_RX_CNT = 0???
+
             if(cmd_rx_cnt==0) {
-                data_zero = get_cmd_rx;
-            }
-            // fill mask error word CMD_FAIL
-            if(cmd_rx_cnt==1) {
+                // upon starting WHILE loop for procesor with CMD_READY seen,
+                // clear status register logic
+                *(registers_1_addr + CRDCS_CMD_STATUS) = 0;
                 cmd_fail = 0;
+                data_zero = get_cmd_rx;
+
+
+            } else if(cmd_rx_cnt==1) {  // must be buffer HEADER word
+
                 if (get_cmd_rx != CMDHEADER) cmd_fail = cmd_fail + 1;
-            }
-            else if(cmd_rx_cnt==2) {
+
+            } else if(cmd_rx_cnt==2) {  // must be buffer LENGTH word
                 cmd_rx_size = get_cmd_rx;
-                if (cmd_rx_size == 0) cmd_fail = cmd_fail + 2;
-            }
-            else if(cmd_rx_cnt==3) {
+                if (get_cmd_rx == 0) {
+                    cmd_fail = cmd_fail + 2;
+                } else if (get_cmd_rx >= MAX_BUFFER_SIZE) {
+                    // limit DCX_TX_BUFFER size to FIFO size in firmware
+                    cmd_fail = cmd_fail + 4;
+                    cmd_rx_size = MAX_BUFFER_SIZE - 4;
+                }
+            } else if(cmd_rx_cnt==3) {  // must be COMMAND ID word
                 proc_commandID = get_cmd_rx & 0x0FFF;
-                if( (get_cmd_rx & 0xF000)!= 0xC000) cmd_fail = cmd_fail + 4;
-            }
-            else if(cmd_rx_cnt== (4+cmd_rx_size)) {
+                if( (get_cmd_rx & 0xF000)!= 0xC000) cmd_fail = cmd_fail + 8;
+
+            } else if(cmd_rx_cnt== (4+cmd_rx_size)) { // must be at the end of buffer with TRAILER word
                 dtc_cmd_ready = 0;
+                // pass number of payload words to DTCInterface/DRACRegister register 255
+                // and CMD_FAIL to DTCInterface/DRACRegister register 128
+                // CMD_FAIL cintent:
+                // bit(15) means end of packet has been seen
+                // bit(5)  bad payload: overflowing MAX TX BUFFER SIZE
+                // bit(4)  bad command trailer word
+                // bit(3)  bad command ID word
+                // bit(2)  bad length word: FIFO overflow
+                // bit(1)  bad length word: zero length
+                // bit(0)  bad command header word
+                *(registers_1_addr + CRDCS_DIAG_DATA) = dtcPtr;
                 if(get_cmd_rx == CMDTRAILER) {
                     *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
                 } else {
                     cmd_fail = cmd_fail + 16;
                     *(registers_1_addr + CRDCS_CMD_STATUS) = cmd_fail;
                 }
-            }
-            // must be payload. Start filling a payload buffer here...
-            else {
-                // bad length detected...check for CMDERROR word
-                if (cmd_rx_size > MAX_CMD_LENGTH) {
+
+            } else {  // must be payload => start filling DTCBUFFER
+
+                // stop filling dtcbuffer when DCS_TX_BUFFER is overflowing
+                if (cmd_rx_cnt > (MAX_BUFFER_SIZE-1)) {
                     cmd_fail = cmd_fail + 32;
-                    if (get_cmd_rx != CMDERROR) cmd_fail = cmd_fail + 64;
-                    cmd_rx_size = 1;
-//              }
-//              // single DCS Write... skip buffer
-//              else if (cmd_rx_size==1) {
-//              if (cmd_rx_size==1) {
-//                  data_to_write = get_cmd_rx;
-                }
-                else {
+                } else {
                     dtcbuffer[dtcPtr]= get_cmd_rx;
-                    dtcPtr++;
                 }
-                // why nothing reported on dtcPtr = 0??
-                data_to_write = dtcbuffer[1];
+
+                dtcPtr++;
+
+                data_to_write = dtcbuffer[0];
             }
+
             cmd_rx_cnt++;
         }
-        // pass cmd_fail to DTCInterface/DRACRegister and
-        // access via DCS read of address 128
-        // bit(15) means command has been seen
-        // bit(4)  bad command trailer word
-        // bit(2)  bad payload word
-        // bit(1)  bad command length
-        // bit(0)  bad command header word
         delayUs(1);
 
-
+        uint8_t  rw = -1;
+        uint8_t  adc_num = -1;
+        uint16_t address = -1;
+        uint16_t data = -1;
         switch(proc_commandID) {
 
             // example of single data output to DCS_TX_BUFFER
             case TESTDCSNGL:
                 // writing only LBS 16-bit of 32 bits APB bus
                 *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
-                *(registers_1_addr + CRDCS_WRITE_TX) = 1;
+                *(registers_1_addr + CRDCS_WRITE_TX) = cmd_rx_size;
                 *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
                 *(registers_1_addr + CRDCS_WRITE_TX) = data_to_write;
                 *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
@@ -573,16 +580,16 @@ int main()
             case TESTDCSBLK:
                 // writing only LBS 16-bit of 32 bits APB bus
                 *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
-                *(registers_1_addr + CRDCS_WRITE_TX) = data_to_write;
+                *(registers_1_addr + CRDCS_WRITE_TX) = data_to_write+4;
                 *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
                 // fill up payload
                 for (uint16_t i = 0 ; i <data_to_write; i++) {
-                    *(registers_1_addr + CRDCS_WRITE_TX) = i;
+                    *(registers_1_addr + CRDCS_WRITE_TX) = i+1;
                 }
                 *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
                 break;
 
-            // READSPI data to DCS_TX_BUFFER
+            // write to DCS_TX Buffer data as in READMONADCS
             case READSPI:
                 // writing only LBS 16-bit of 32 bits APB bus
                 *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
@@ -607,7 +614,6 @@ int main()
                      }
                 }
 
-
                 uint16_t tvs_val[4] = {0};
                 for (uint8_t i =0; i<4; i++){
                     *(registers_0_addr+REG_ROC_TVS_ADDR) = i;
@@ -619,7 +625,7 @@ int main()
                 }
 
                 // give DIGI registers controls to serial
-                *(registers_0_addr + REG_DIGIRW_SEL) = 1;
+                //*(registers_0_addr + REG_DIGIRW_SEL) = 1;
 
                 for (uint8_t ihvcal=1; ihvcal<3; ihvcal++){
                     for (uint8_t i =0; i<4; i++){
@@ -635,47 +641,152 @@ int main()
                     }
                 }
                 // give DIGI registers controls to fiber
-                *(registers_0_addr + REG_DIGIRW_SEL) = 0;
+                //*(registers_0_addr + REG_DIGIRW_SEL) = 0;
 
                 *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
                 break;
 
-            // read back payload from DCS BLOCK WR
-            case READBACKBLK:
+           // read back payload from DCS BLOCK WR
+           case READBACKBLK:
                 // writing only LBS 16-bit of 32 bits APB bus
                 *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
                 *(registers_1_addr + CRDCS_WRITE_TX) = cmd_rx_size;
                 *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
                 // fill up payload
                 for (uint16_t i = 0 ; i <cmd_rx_size; i++) {
-                    *(registers_1_addr + CRDCS_WRITE_TX) = dtcbuffer[i+1];
+                     *(registers_1_addr + CRDCS_WRITE_TX) = dtcbuffer[i];
                 }
                 *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
                 break;
 
 
-            // read assorted diagnostic registers
-            case DIAGDATA:
+           // write to DCS_TX Buffer data as in GETDEVICEID
+           case READDEVICE:
+               // writing only LBS 16-bit of 32 bits APB bus
+               *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
+               // not until we can deal with DIGI_WRITE while fiber is in control of DIGI registers
+               *(registers_1_addr + CRDCS_WRITE_TX) = 52;
+               *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
+
+               // fill payload with 16-bit words
+               uint8_t data_buffer[16];
+               uint8_t dinfo_buffer[36];
+               uint8_t status;
+               status = SYS_get_serial_number(data_buffer, 0);
+               status = SYS_get_design_info(dinfo_buffer,0);
+
+               for (uint16_t i = 0 ; i <16; i++) {
+                   *(registers_1_addr + CRDCS_WRITE_TX) = (0x00FF & data_buffer[i]);
+               }
+               for (uint16_t i = 0 ; i <36; i++) {
+                   *(registers_1_addr + CRDCS_WRITE_TX) = (0x00FF & dinfo_buffer[i]);
+               }
+
+               *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
+               break;
+
+
+          // write to DCS_TX Buffer data as in READBMES
+          case READSENSOR:
+              // writing only LBS 16-bit of 32 bits APB bus
+              *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
+              // not until we can deal with DIGI_WRITE while fiber is in control of DIGI registers
+              *(registers_1_addr + CRDCS_WRITE_TX) = BME280_TEMP_PRESS_CALIB_DATA_LEN+BME280_HUMIDITY_CALIB_DATA_LEN+BME280_P_T_H_DATA_LEN+4+4+2;
+              *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
+
+              //read with BME 280
+              uint8_t calib_data_tp[BME280_TEMP_PRESS_CALIB_DATA_LEN];
+              uint8_t calib_data_h[BME280_HUMIDITY_CALIB_DATA_LEN];
+              uint8_t raw_bme_data[BME280_P_T_H_DATA_LEN];
+
+              bme280_get_calib(&spi_sensor, calib_data_tp, calib_data_h);
+              bme280_get_htp(&spi_sensor, raw_bme_data);
+
+              for (uint16_t i =0; i<BME280_TEMP_PRESS_CALIB_DATA_LEN; i++)
+                  *(registers_1_addr + CRDCS_WRITE_TX) = (0x00FF & calib_data_tp[i]);
+              for (uint16_t i =0; i<BME280_HUMIDITY_CALIB_DATA_LEN; i++)
+                  *(registers_1_addr + CRDCS_WRITE_TX) = (0x00FF & calib_data_h[i]);
+              for (uint16_t i =0; i<BME280_P_T_H_DATA_LEN; i++)
+                  *(registers_1_addr + CRDCS_WRITE_TX) = (0x00FF & raw_bme_data[i]);
+
+              //Also take measurements from HDC 2080 chips
+              uint16_t this_temp = 0;
+              uint16_t this_humidity = 0;
+
+              rslt = hdc2080_reset(&pthdc);
+              delay_ms(10);
+
+              rslt = hdc2080_trigger_measurement(&pthdc);
+              rslt = hdc2080_read_temp(&pthdc, &this_temp);
+              rslt = hdc2080_read_humidity(&pthdc, &this_humidity);
+              *(registers_1_addr + CRDCS_WRITE_TX) = this_temp;
+              *(registers_1_addr + CRDCS_WRITE_TX) = this_humidity;
+
+              //readout amb_temp
+              uint16_t amb_temp_cal = ADC124S051_daisy_read(&spi_ambtemp_cal, 1);
+              uint16_t amb_temp_hv = ADC124S051_daisy_read(&spi_ambtemp_hv, 0);
+              *(registers_1_addr + CRDCS_WRITE_TX) = amb_temp_cal;
+              *(registers_1_addr + CRDCS_WRITE_TX) = amb_temp_hv;
+
+              //read out A0 for new pressure sensor
+              SPI_set_slave_select( &g_spi[0] , SPI_SLAVE_2);
+              uint16_t addr = (8%4 <<11 );
+              SPI_transfer_frame( &g_spi[0], addr);
+              uint32_t sensor_spi = SPI_transfer_frame( &g_spi[0], addr);
+              SPI_clear_slave_select( &g_spi[0] , SPI_SLAVE_2);
+              *(registers_1_addr + CRDCS_WRITE_TX) = sensor_spi;
+
+              *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
+              break;
+
+          case TALKTOADC:
+                rw     = (uint8_t) dtcbuffer[0];
+                adc_num= (uint8_t) dtcbuffer[1];
+                address= dtcbuffer[2];
+                data   = dtcbuffer[3];
+
+                if (rw == 1) { // for READ, report result from spi ADC_READ
+                    *(registers_0_addr + REG_DIGIRW_SEL) = 1;
+                    uint8_t result = adc_read(address, adc_num);
+                    *(registers_0_addr + REG_DIGIRW_SEL) = 0;
+
+                    //delay_ms(10); // wait for response from ADC
+
+                    // fill DCS_RX_BUFFER
+                    *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
+                    *(registers_1_addr + CRDCS_WRITE_TX) = 1;
+                    *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
+                    *(registers_1_addr + CRDCS_WRITE_TX) = result;
+                    *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
+                } else {  // for WRITE, pass
+                    adc_write(address, (uint8_t)data, (0x1<<adc_num));
+                }
+                break;
+
+
+          // read assorted diagnostic registers
+          case DIAGDATA:
                 // header
                 *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
                 // payload word
-                *(registers_1_addr + CRDCS_WRITE_TX) = 8;
+                *(registers_1_addr + CRDCS_WRITE_TX) = 9;
                 // CMD ID
                 *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
                 // payload of diagnostic data
                 *(registers_1_addr + CRDCS_WRITE_TX) = data_zero;
-                *(registers_1_addr + CRDCS_WRITE_TX) = cmd_rx_size;
-                *(registers_1_addr + CRDCS_WRITE_TX) = cmd_fail;
-                *(registers_1_addr + CRDCS_WRITE_TX) = cmd_rx_cnt;
-                *(registers_1_addr + CRDCS_WRITE_TX) = data_to_write; // ie dtcbuffer[1]
+                *(registers_1_addr + CRDCS_WRITE_TX) = cmd_rx_size; // buffer length
+                *(registers_1_addr + CRDCS_WRITE_TX) = cmd_fail;    // diagnostic word
+                *(registers_1_addr + CRDCS_WRITE_TX) = cmd_rx_cnt;  // number of word written to TX_BUFFER
+                *(registers_1_addr + CRDCS_WRITE_TX) = data_to_write; // ie dtcbuffer[0]
+                *(registers_1_addr + CRDCS_WRITE_TX) = dtcbuffer[1];
                 *(registers_1_addr + CRDCS_WRITE_TX) = dtcbuffer[2];
-                *(registers_1_addr + CRDCS_WRITE_TX) = dtcbuffer[3];
-                *(registers_1_addr + CRDCS_WRITE_TX) = get_cmd_rx;
+                *(registers_1_addr + CRDCS_WRITE_TX) = dtcPtr;      // number of words in payload
+                *(registers_1_addr + CRDCS_WRITE_TX) = get_cmd_rx;  // last read word
                 //trailer
                 *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
                 break;
 
-            default:
+          default:
                 break;
         }
         delayUs(1);
@@ -951,19 +1062,19 @@ int main()
 					//
 					//					UART_send(&g_uart, outBuffer ,bufcount );
 
-
-				}else if (commandID == READHISTO){
-					 uint8_t channel = (uint8_t) buffer[4];
-					 uint8_t hv_or_cal = (uint8_t) buffer[5];
-					 uint16_t output[256];
-					 read_histogram(channel,hv_or_cal,output);
-
-					outBuffer[bufcount++] = READHISTO;
-					bufWrite(outBuffer, &bufcount, 512, 2);
-					for (int i=0;i<256;i++){
-						bufWrite(outBuffer, &bufcount, output[i], 2);
-					}
-					outBufSend(g_uart, outBuffer, bufcount);
+// Monica commented to try to fit
+//				}else if (commandID == READHISTO){
+//					 uint8_t channel = (uint8_t) buffer[4];
+//					 uint8_t hv_or_cal = (uint8_t) buffer[5];
+//					 uint16_t output[256];
+//					 read_histogram(channel,hv_or_cal,output);
+//
+//					outBuffer[bufcount++] = READHISTO;
+//					bufWrite(outBuffer, &bufcount, 512, 2);
+//					for (int i=0;i<256;i++){
+//						bufWrite(outBuffer, &bufcount, output[i], 2);
+//					}
+//					outBufSend(g_uart, outBuffer, bufcount);
 
 
 				}else if (commandID == READBMES){
@@ -1081,28 +1192,43 @@ int main()
 
 
 				}else if (commandID == DIGIRW){
-					uint8_t rw = (uint8_t) buffer[4];
-					uint8_t thishvcal = (uint8_t) buffer[5];
-					uint8_t address = (uint8_t) buffer[6];
-					uint32_t data = readU32fromBytes(&buffer[7]);
+                    uint8_t rw = (uint8_t) buffer[4];
+                    uint8_t thishvcal = (uint8_t) buffer[5];
+                    uint8_t address = (uint8_t) buffer[6];
+                    uint16_t adcaddress = address;
+                    if (rw & 0x2){
+                        adcaddress |= 0x100;
+                        rw &= 0x1;
+                    }
+                    uint32_t data = readU32fromBytes(&buffer[7]);
 
-					outBuffer[bufcount++] = DIGIRW;
-					bufWrite(outBuffer, &bufcount, 7, 2);
+                    outBuffer[bufcount++] = DIGIRW;
+                    bufWrite(outBuffer, &bufcount, 7, 2);
 
-					if (thishvcal < 3){
-					if ( rw == 0 ){//read
-						data = digi_read(address, thishvcal);
-					}
-					else{
-						digi_write(address, data, thishvcal);
-					}
-					}else{
-						if ( rw == 0 ){//read
-							data = *(registers_0_addr + address);
-						}
-						else{
-							*(registers_0_addr + address) = data;
-						}
+                    if (thishvcal < 3){
+                      if ( rw == 0 ){//read
+                        data = digi_read(address, thishvcal);
+
+                      }else{
+                        digi_write(address, data, thishvcal);
+                      }
+                    }else{
+                        if (thishvcal == 3){
+                          if ( rw == 0 ){//read
+                            data = *(registers_0_addr + address);
+
+                          }else{
+                            *(registers_0_addr + address) = data;
+                          }
+                        }else{
+                          uint8_t adc_num = thishvcal - 4;
+                          if ( rw == 0){
+                              data = adc_read(adcaddress,adc_num);
+                          }else{
+                              uint16_t adc_mask = (0x1<<adc_num);
+                              adc_write(adcaddress,data,adc_mask);
+                          }
+                        }
 					}
 					bufWrite(outBuffer, &bufcount, rw, 1);
 					bufWrite(outBuffer, &bufcount, thishvcal, 1);
@@ -1127,59 +1253,60 @@ int main()
 				 		outBuffer[bufcount++] = dinfo_buffer[i];
 				 	outBufSend(g_uart, outBuffer, bufcount);
 
-				}else if (commandID == SETFUSEON){
-					uint8_t preamp_number = (uint8_t) buffer[4];
-					uint8_t time = (uint8_t) buffer[5];
-
-					for (uint8_t i = 0; i < 48; i++){
-						MCP_pinWrite(&preampMCP[MCPFC0+i/16],i%16+1,0);
-					}
-
-					MCP_pinWrite(&preampMCP[MCPFC0+preamp_number/16],preamp_number%16+1,1);
-
-					if (time > 0){
-						delay_ms(time*1000);
-						MCP_pinWrite(&preampMCP[MCPFC0+preamp_number/16],preamp_number%16+1,0);
-					}
-
-					outBuffer[bufcount++] = SETFUSEON;
-					bufWrite(outBuffer, &bufcount, 2, 2);
-					bufWrite(outBuffer, &bufcount, preamp_number, 1);
-					bufWrite(outBuffer, &bufcount, time, 1);
-					outBufSend(g_uart, outBuffer, bufcount);
-
-				}else if (commandID == SETFUSEOFF){
-
-					for (uint8_t i = 0; i < 48; i++){
-						MCP_pinWrite(&preampMCP[MCPFC0+i/16],i%16+1,0);
-					}
-
-					outBuffer[bufcount++] = SETFUSEOFF;
-					bufWrite(outBuffer, &bufcount, 0, 2);
-					outBufSend(g_uart, outBuffer, bufcount);
-
-				}else if (commandID == READKEY){
-					outBuffer[bufcount++] = READKEY;
-					bufWrite(outBuffer, &bufcount, 6, 2);
-
-					uint16_t key_temp = ADC124S051_read(&g_spi[4], 0, 1);
-					uint16_t v2p5 = ADC124S051_read(&g_spi[4], 0, 3);
-					uint16_t v5p1 = ADC124S051_read(&g_spi[4], 0, 0);
-
-					bufWrite(outBuffer, &bufcount, key_temp, 2);
-					bufWrite(outBuffer, &bufcount, v2p5, 2);
-					bufWrite(outBuffer, &bufcount, v5p1, 2);
-					outBufSend(g_uart, outBuffer, bufcount);
-
-				}else if (commandID == DDRSTATUS){
-					outBuffer[bufcount++] = DDRSTATUS;
-					bufWrite(outBuffer, &bufcount, 1, 2);
-					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_CTRLREADY), 1);
-					outBufSend(g_uart, outBuffer, bufcount);
+// Monica commented to try to fit
+//				}else if (commandID == SETFUSEON){
+//					uint8_t preamp_number = (uint8_t) buffer[4];
+//					uint8_t time = (uint8_t) buffer[5];
+//
+//					for (uint8_t i = 0; i < 48; i++){
+//						MCP_pinWrite(&preampMCP[MCPFC0+i/16],i%16+1,0);
+//					}
+//
+//					MCP_pinWrite(&preampMCP[MCPFC0+preamp_number/16],preamp_number%16+1,1);
+//
+//					if (time > 0){
+//						delay_ms(time*1000);
+//						MCP_pinWrite(&preampMCP[MCPFC0+preamp_number/16],preamp_number%16+1,0);
+//					}
+//
+//					outBuffer[bufcount++] = SETFUSEON;
+//					bufWrite(outBuffer, &bufcount, 2, 2);
+//					bufWrite(outBuffer, &bufcount, preamp_number, 1);
+//					bufWrite(outBuffer, &bufcount, time, 1);
+//					outBufSend(g_uart, outBuffer, bufcount);
+//
+//				}else if (commandID == SETFUSEOFF){
+//
+//					for (uint8_t i = 0; i < 48; i++){
+//						MCP_pinWrite(&preampMCP[MCPFC0+i/16],i%16+1,0);
+//					}
+//
+//					outBuffer[bufcount++] = SETFUSEOFF;
+//					bufWrite(outBuffer, &bufcount, 0, 2);
+//					outBufSend(g_uart, outBuffer, bufcount);
+//
+//				}else if (commandID == READKEY){
+//					outBuffer[bufcount++] = READKEY;
+//					bufWrite(outBuffer, &bufcount, 6, 2);
+//
+//					uint16_t key_temp = ADC124S051_read(&g_spi[4], 0, 1);
+//					uint16_t v2p5 = ADC124S051_read(&g_spi[4], 0, 3);
+//					uint16_t v5p1 = ADC124S051_read(&g_spi[4], 0, 0);
+//
+//					bufWrite(outBuffer, &bufcount, key_temp, 2);
+//					bufWrite(outBuffer, &bufcount, v2p5, 2);
+//					bufWrite(outBuffer, &bufcount, v5p1, 2);
+//					outBufSend(g_uart, outBuffer, bufcount);
 #endif
 
 //***********************************begin of DDR commands****************************************************************************************
 #ifdef	DTCDDRTEST
+
+                }else if (commandID == DDRSTATUS){
+                    outBuffer[bufcount++] = DDRSTATUS;
+                    bufWrite(outBuffer, &bufcount, 1, 2);
+                    bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_CTRLREADY), 1);
+                    outBufSend(g_uart, outBuffer, bufcount);
 
 				}else if (commandID == DDRRAMREAD){
 // MT 02/28/2021   simplified to pass a fixed size of RAM content to file, as specified by "ddr_addr2read"
@@ -2061,89 +2188,98 @@ int main()
 					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_PRBS_CDCEMPTY), 1);
 					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_PRBS_CDCWRCNT), 2);
 					outBufSend(g_uart, outBuffer, bufcount);
+
+                }else if (commandID == VARSETUP){
+                    uint8_t var_pattern_en = (uint8_t) buffer[4];
+                    uint8_t use_lane = (uint8_t) buffer[5];
+                    uint8_t use_uart = (uint8_t) buffer[6];
+
+                    // enable variable pattern to DDR
+                    *(registers_0_addr + REG_ROC_DDR_PATTERN_EN) = var_pattern_en;
+
+                    // set which lanes are sending data
+                    *(registers_0_addr + REG_ROC_USE_LANE) = use_lane;
+
+                    // set data to serial FIFO
+                    *(registers_0_addr + REG_ROC_USE_UART) = use_uart;
+
+                    outBuffer[bufcount++] = VARSETUP;
+                    bufWrite(outBuffer, &bufcount, 3, 2);
+                    bufWrite(outBuffer, &bufcount, var_pattern_en, 1);
+                    bufWrite(outBuffer, &bufcount, use_lane, 1);
+                    bufWrite(outBuffer, &bufcount, use_uart, 1);
+                    outBufSend(g_uart, outBuffer, bufcount);
+
+                }else if (commandID == VARERRORBACK){
+                    // report which error was found: bit[0]=1 => event error, bit[1]=1 => header1 error
+                    //                              bit[2]=1 => header2 error, bit[3]=1 => data error
+                    outBuffer[bufcount++] = VARERRORBACK;
+                    bufWrite(outBuffer, &bufcount, 1, 2);
+                    bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_ERROR_READ), 1);
+                    outBufSend(g_uart, outBuffer, bufcount);
+
+                }else if (commandID == VARERRORSET){
+                    // set which error to be read
+                    uint8_t var_req_error = (uint8_t) buffer[4];
+                    *(registers_0_addr + REG_ROC_DDR_ERROR_REQ) = var_req_error;
+
+                    outBuffer[bufcount++] = VARERRORSET;
+                    bufWrite(outBuffer, &bufcount, 1, 2);
+                    bufWrite(outBuffer, &bufcount, var_req_error, 1);
+                    outBufSend(g_uart, outBuffer, bufcount);
+
+                }else if (commandID == VARERRORREAD){
+                    // read first instance of observed and expected data for requested error
+                    outBuffer[bufcount++] = VARERRORREAD;
+                    bufWrite(outBuffer, &bufcount, 16, 2);
+                    bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_ERROR_SEENM), 4);
+                    bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_ERROR_SEENL), 4);
+                    bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_ERROR_EXPCM), 4);
+                    bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_ERROR_EXPCL), 4);
+                    outBufSend(g_uart, outBuffer, bufcount);
+
+                }else if (commandID == VARSIZEREAD){
+                    outBuffer[bufcount++] = VARSIZEREAD;
+                    bufWrite(outBuffer, &bufcount, 8, 2);
+                    bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_SIZE_WR), 4);
+                    bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_SIZE_RD), 4);
+                    outBufSend(g_uart, outBuffer, bufcount);
+
+                }else if (commandID == VARCNTREAD){
+                    outBuffer[bufcount++] = VARCNTREAD;
+                    bufWrite(outBuffer, &bufcount, 32, 2);
+                    bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_NULLHB_CNT), 4);
+                    bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_HB_CNT), 4);
+                    bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_ONHOLD_CNT), 4);
+                    bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_PREF_CNT), 4);
+                    bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_DREQ_CNT), 4);
+                    bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_DREQRD_CNT), 4);
+                    bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_DREQSENT), 4);
+                    bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_DREQNULL), 4);
+                    outBufSend(g_uart, outBuffer, bufcount);
+
+                }else if (commandID == VARTAGREAD){
+                    outBuffer[bufcount++] = VARTAGREAD;
+                    bufWrite(outBuffer, &bufcount, 24, 2);
+                    bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_SPILL_TAG), 4);
+                    bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_HB_TAG), 4);
+                    bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_PRE_TAG), 4);
+                    bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_FETCH_TAG), 4);
+                    bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_DREQ_TAG), 4);
+                    bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_OFFSET_TAG), 4);
+                    outBufSend(g_uart, outBuffer, bufcount);
+
+                }else if (commandID == READALIGN){
+                    outBuffer[bufcount++] = READALIGN;
+                    bufWrite(outBuffer, &bufcount, 3, 2);
+                    bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_READ_ALIGNED), 1);
+                    bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_READ_ALIGNMENT), 2);
+                    outBufSend(g_uart, outBuffer, bufcount);
+
 #endif
 
 #ifdef	FIXEDSIZETEST
 
-				}else if (commandID == VARSETUP){
-					uint8_t var_pattern_en = (uint8_t) buffer[4];
-					uint8_t use_lane = (uint8_t) buffer[5];
-					uint8_t use_uart = (uint8_t) buffer[6];
-
-					// enable variable pattern to DDR
-					*(registers_0_addr + REG_ROC_DDR_PATTERN_EN) = var_pattern_en;
-
-					// set which lanes are sending data
-					*(registers_0_addr + REG_ROC_USE_LANE) = use_lane;
-
-					// set data to serial FIFO
-					*(registers_0_addr + REG_ROC_USE_UART) = use_uart;
-
-					outBuffer[bufcount++] = VARSETUP;
-					bufWrite(outBuffer, &bufcount, 3, 2);
-					bufWrite(outBuffer, &bufcount, var_pattern_en, 1);
-					bufWrite(outBuffer, &bufcount, use_lane, 1);
-					bufWrite(outBuffer, &bufcount, use_uart, 1);
-					outBufSend(g_uart, outBuffer, bufcount);
-
-				}else if (commandID == VARERRORBACK){
-					// report which error was found: bit[0]=1 => event error, bit[1]=1 => header1 error
-					//								bit[2]=1 => header2 error, bit[3]=1 => data error
-					outBuffer[bufcount++] = VARERRORBACK;
-					bufWrite(outBuffer, &bufcount, 1, 2);
-					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_ERROR_READ), 1);
-					outBufSend(g_uart, outBuffer, bufcount);
-
-				}else if (commandID == VARERRORSET){
-					// set which error to be read
-					uint8_t var_req_error = (uint8_t) buffer[4];
-					*(registers_0_addr + REG_ROC_DDR_ERROR_REQ) = var_req_error;
-
-					outBuffer[bufcount++] = VARERRORSET;
-					bufWrite(outBuffer, &bufcount, 1, 2);
-					bufWrite(outBuffer, &bufcount, var_req_error, 1);
-					outBufSend(g_uart, outBuffer, bufcount);
-
-				}else if (commandID == VARERRORREAD){
-					// read first instance of observed and expected data for requested error
-					outBuffer[bufcount++] = VARERRORREAD;
-					bufWrite(outBuffer, &bufcount, 16, 2);
-					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_ERROR_SEENM), 4);
-					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_ERROR_SEENL), 4);
-					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_ERROR_EXPCM), 4);
-					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_ERROR_EXPCL), 4);
-					outBufSend(g_uart, outBuffer, bufcount);
-
-				}else if (commandID == VARSIZEREAD){
-					outBuffer[bufcount++] = VARSIZEREAD;
-					bufWrite(outBuffer, &bufcount, 8, 2);
-					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_SIZE_WR), 4);
-					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_SIZE_RD), 4);
-					outBufSend(g_uart, outBuffer, bufcount);
-
-				}else if (commandID == VARCNTREAD){
-					outBuffer[bufcount++] = VARCNTREAD;
-					bufWrite(outBuffer, &bufcount, 32, 2);
-					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_NULLHB_CNT), 4);
-					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_HB_CNT), 4);
-					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_ONHOLD_CNT), 4);
-					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_PREF_CNT), 4);
-					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_DREQ_CNT), 4);
-					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_DREQRD_CNT), 4);
-					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_DREQSENT), 4);
-					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_DREQNULL), 4);
-					outBufSend(g_uart, outBuffer, bufcount);
-
-				}else if (commandID == VARTAGREAD){
-					outBuffer[bufcount++] = VARTAGREAD;
-					bufWrite(outBuffer, &bufcount, 24, 2);
-					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_SPILL_TAG), 4);
-					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_HB_TAG), 4);
-					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_PRE_TAG), 4);
-					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_FETCH_TAG), 4);
-					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_DREQ_TAG), 4);
-					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_OFFSET_TAG), 4);
-					outBufSend(g_uart, outBuffer, bufcount);
 
 				}else if (commandID == READERROR){
 					uint8_t  count_addr = (uint8_t) buffer[4];
@@ -2156,13 +2292,6 @@ int main()
 					bufWrite(outBuffer, &bufcount, 3, 2);
 					bufWrite(outBuffer, &bufcount, count_addr, 1);
 					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ERROR_COUNTER), 2);
-					outBufSend(g_uart, outBuffer, bufcount);
-
-				}else if (commandID == READALIGN){
-					outBuffer[bufcount++] = READALIGN;
-					bufWrite(outBuffer, &bufcount, 3, 2);
-					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_READ_ALIGNED), 1);
-					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_READ_ALIGNMENT), 2);
 					outBufSend(g_uart, outBuffer, bufcount);
 
                 }else if (commandID == SETDIGIRW){
@@ -2179,38 +2308,38 @@ int main()
 
 
 //***********************************begin of control_digi commands*******************************************************************************
-//				}else if (commandID == ADCRWCMDID){
-//					// adc read/write
-//					uint8_t adc_num = (uint8_t) buffer[4];
-//					uint8_t rw = (uint8_t) buffer[5];
-//					uint16_t address = readU16fromBytes(&buffer[6]);
-//					uint16_t data = readU16fromBytes(&buffer[8]);
-//
-//					outBuffer[bufcount++] = ADCRWCMDID;
-//					bufWrite(outBuffer, &bufcount, 6, 2);
-//
-//					if (rw == 1){
-//						uint8_t result = adc_read(address,adc_num);
-//						//						sprintf(outBuffer,"Read adc %d address %02x: %02x\n",adc_num,address,result);
-//						//						UART_polled_tx_string( &g_uart, outBuffer );
-//
-//						outBuffer[bufcount++] = rw;
-//						outBuffer[bufcount++] = adc_num;
-//						bufWrite(outBuffer, &bufcount, address, 2);
-//						outBuffer[bufcount++] = result;
-//						outBuffer[bufcount++] = 0;
-//						outBufSend(g_uart, outBuffer, bufcount);
-//					}else{
-//						adc_write(address,(uint8_t) data,(0x1<<adc_num));
-//						//						sprintf(outBuffer,"Wrote adc %d address %02x: %02x\n",adc_num,address,data);
-//						//						UART_polled_tx_string( &g_uart, outBuffer );
-//
-//						outBuffer[bufcount++] = rw;
-//						outBuffer[bufcount++] = adc_num;
-//						bufWrite(outBuffer, &bufcount, address, 2);
-//						bufWrite(outBuffer, &bufcount, data, 2);
-//						outBufSend(g_uart, outBuffer, bufcount);
-//					}
+                }else if (commandID == ADCRWCMDID){
+                    // adc read/write
+                    uint8_t adc_num = (uint8_t) buffer[4];
+                    uint8_t rw = (uint8_t) buffer[5];
+                    uint16_t address = readU16fromBytes(&buffer[6]);
+                    uint16_t data = readU16fromBytes(&buffer[8]);
+
+                    outBuffer[bufcount++] = ADCRWCMDID;
+                    bufWrite(outBuffer, &bufcount, 6, 2);
+
+                    if (rw == 1){
+                        uint8_t result = adc_read(address,adc_num);
+                        //                      sprintf(outBuffer,"Read adc %d address %02x: %02x\n",adc_num,address,result);
+                        //                      UART_polled_tx_string( &g_uart, outBuffer );
+
+                        outBuffer[bufcount++] = rw;
+                        outBuffer[bufcount++] = adc_num;
+                        bufWrite(outBuffer, &bufcount, address, 2);
+                        outBuffer[bufcount++] = result;
+                        outBuffer[bufcount++] = 0;
+                        outBufSend(g_uart, outBuffer, bufcount);
+                    }else{
+                        adc_write(address,(uint8_t) data,(0x1<<adc_num));
+                        //                      sprintf(outBuffer,"Wrote adc %d address %02x: %02x\n",adc_num,address,data);
+                        //                      UART_polled_tx_string( &g_uart, outBuffer );
+
+                        outBuffer[bufcount++] = rw;
+                        outBuffer[bufcount++] = adc_num;
+                        bufWrite(outBuffer, &bufcount, address, 2);
+                        bufWrite(outBuffer, &bufcount, data, 2);
+                        outBufSend(g_uart, outBuffer, bufcount);
+                    }
 
 //				}else if (commandID == BITSLIPCMDID){
 //

@@ -138,10 +138,13 @@
 // any command below is coming from DCS write to that address
 // address space is 0x100-0x200
 #define TESTDCSNGL  256 // 0x100 - example of Single WR to value V and Single RD back of value V
-#define TESTDCSBLK  257 // 0x101 - example of Single WR of value N and Block RD back of N values (from 0 to N-1)
-#define READSPI     258 // 0x102 - partial read of MON_ADC: execute with Single WR of any value (ignored) and Block RD of 48 ADCs values
-#define READBACKBLK 259 // 0x103 - example of Block WR of N values from 1 to N and Block RD back of the same values
-#define DIAGDATA    260 // 0x104 - Block RD of assorted diagnostics, started by a single WR of any value
+#define TESTDCSBLK  257 // 0x101 - example of BLOCK read of N values specified by a DCS WRITE
+#define READSPI     258 // 0x102 - fiber version of READMONADCS: execute with Single DCS_WRITE of any value (ignored) followed by DCS_BLOCK_READ of 36 ADCs values
+#define READBACKBLK 259 // 0x103 - write and read back BLOCK_WRITE of N values via "rocUtil block_write -a 259 -c N"
+#define READDEVICE  260 // 0x104 - fiber version of GETDEVICEID: execute with Single DCS_WRITE of any value (ignored) followed by DCS_BLOCK_READ of 52 ID values
+#define READSENSOR  261 // 0x105 - fiber version of READBMES: execute with Single DCS_WRITE of any value (ignored) followed by DCS_BLOCK_READ of 52 ID values
+#define TALKTOADC   262 // 0x106 - fiber version of DIGI_WRITE with parameters passed via BLOCK_WRITE
+#define DIAGDATA    263 // 0x107 - Block RD of assorted diagnostics, started by a single WR of any value
 
 //******************************************************************************
 //                             Registers & Addresses
@@ -409,6 +412,7 @@
 #define CMDTRAILER          0xFFEE  // end of DTC command to/from processor
 #define CMDERROR            0xDEAD  // DTC command error
 #define MAX_CMD_LENGTH      0x1FFB  // max. DTC Write command length in units of 16-bit payload
+#define MAX_BUFFER_SIZE     0x400   // max. DTC Write command length in units of 16-bit payload
 
 
 //******************************************************************************
