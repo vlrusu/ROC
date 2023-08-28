@@ -308,7 +308,7 @@ uint16_t digi_read(uint8_t address, uint8_t hvcal)//hvcal can only be 1 or 2
 }
 
 void read_histogram(uint8_t channel, uint8_t hv_or_cal, uint16_t *output){
-<<<<<<< HEAD
+
     // select channel
     uint8_t real_channel = 0;
     for (size_t i=0;i<96;i++){
@@ -332,31 +332,7 @@ void read_histogram(uint8_t channel, uint8_t hv_or_cal, uint16_t *output){
         digi_write(DG_ADDR_HISTO_RESET,0x1,fpga);
         delayUs(1);
     }
-=======
-	// select channel
-    uint8_t real_channel = 0;
-    for (size_t i=0;i<96;i++){
-        if (channel_map[i] == channel){
-            real_channel = i;
-            break;
-        }
-    }
-    uint8_t fpga = 1;
-    if (real_channel >= 48){
-        fpga = 2;
-        real_channel -= 48;
-    }
-	digi_write(DG_ADDR_HISTO_CHANNEL,((real_channel << 1) | (hv_or_cal & 0x1)),fpga);
-	// tell digi to write histogram to sram
-	digi_write(DG_ADDR_HISTO_RESET,0x1,fpga);
-	delayUs(1);
-	for (int i=0;i<256;i++){
-	    output[i] = digi_read(DG_ADDR_HISTO_VAL,fpga);
-	    digi_write(DG_ADDR_HISTO_RESET,0x3,fpga);
-	    digi_write(DG_ADDR_HISTO_RESET,0x1,fpga);
-	    delayUs(1);
-	}
->>>>>>> branch 'master' of https://github.com/vlrusu/ROC.git
+
     digi_write(DG_ADDR_HISTO_RESET,0x0,fpga);
 }
 
