@@ -100,6 +100,10 @@ int main()
 
 	//adc_write(ADC_ADDR_PWR,0x01,0x8FF);
 
+	adc_write(0x100,0x71,0xFFF); // set to 10 bit, 40 MSPS
+	adc_write(0xFF,0x01,0xFFF); // latch the above change
+	adc_write(0x14,0x00,0xFFF); // set to offset binary
+
 
 
 	/*Initialize the CoreSysService_PF driver*/
@@ -1095,26 +1099,39 @@ int main()
 					uint8_t rw = (uint8_t) buffer[4];
 					uint8_t thishvcal = (uint8_t) buffer[5];
 					uint8_t address = (uint8_t) buffer[6];
-					uint32_t data = readU32fromBytes(&buffer[7]);
+					uint16_t adcaddress = address;
+                    if (rw & 0x2){
+                        adcaddress |= 0x100;
+                        rw &= 0x1;
+                    }
+                    uint32_t data = readU32fromBytes(&buffer[7]);
 
-					outBuffer[bufcount++] = DIGIRW;
-					bufWrite(outBuffer, &bufcount, 7, 2);
+                    outBuffer[bufcount++] = DIGIRW;
+                    bufWrite(outBuffer, &bufcount, 7, 2);
 
-					if (thishvcal < 3){
-					if ( rw == 0 ){//read
-						data = digi_read(address, thishvcal);
-					}
-					else{
-						digi_write(address, data, thishvcal);
-					}
-					}else{
-						if ( rw == 0 ){//read
-							data = *(registers_0_addr + address);
-						}
-						else{
-							*(registers_0_addr + address) = data;
-						}
-					}
+                    if (thishvcal < 3){
+                      if ( rw == 0 ){//read
+                        data = digi_read(address, thishvcal);
+                      }else{
+                        digi_write(address, data, thishvcal);
+                      }
+                    }else{
+                        if (thishvcal == 3){
+                          if ( rw == 0 ){//read
+                            data = *(registers_0_addr + address);
+                          }else{
+                            *(registers_0_addr + address) = data;
+                          }
+                        }else{
+                          uint8_t adc_num = thishvcal - 4;
+                          if ( rw == 0){
+                              data = adc_read(adcaddress,adc_num);
+                          }else{
+                              uint16_t adc_mask = (0x1<<adc_num);
+                              adc_write(adcaddress,data,adc_mask);
+                          }
+                        }
+                    }
 					bufWrite(outBuffer, &bufcount, rw, 1);
 					bufWrite(outBuffer, &bufcount, thishvcal, 1);
 					bufWrite(outBuffer, &bufcount, address, 1);
@@ -2736,4 +2753,3 @@ int main()
 
 	return 0;
 }
-
