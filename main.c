@@ -625,23 +625,23 @@ int main()
                 }
 
                 // give DIGI registers controls to serial
-                *(registers_0_addr + REG_DIGIRW_SEL) = 1;
+                //*(registers_0_addr + REG_DIGIRW_SEL) = 1;
 
                 for (uint8_t ihvcal=1; ihvcal<3; ihvcal++){
                     for (uint8_t i =0; i<4; i++){
                         // toggle DIGI registers controls to serial and back to fiber before calling DIGI_WRITE
-                        //*(registers_0_addr + REG_DIGIRW_SEL) = 1;
+                        *(registers_0_addr + REG_DIGIRW_SEL) = 1;
                         digi_write(DG_ADDR_TVS_ADDR, i, ihvcal);
                         delayUs(1);
                         tvs_val[i] = digi_read(DG_ADDR_TVS_VAL, ihvcal);
-                        //*(registers_0_addr + REG_DIGIRW_SEL) = 0;
+                        *(registers_0_addr + REG_DIGIRW_SEL) = 0;
 
                         *(registers_1_addr + CRDCS_WRITE_TX) = tvs_val[i];
                         delayUs(1);
                     }
                 }
                 // give DIGI registers controls to fiber
-                *(registers_0_addr + REG_DIGIRW_SEL) = 0;
+                //*(registers_0_addr + REG_DIGIRW_SEL) = 0;
 
                 *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
                 break;
@@ -699,12 +699,8 @@ int main()
               uint8_t calib_data_h[BME280_HUMIDITY_CALIB_DATA_LEN];
               uint8_t raw_bme_data[BME280_P_T_H_DATA_LEN];
 
-              // give DIGI registers controls to serial
-              //*(registers_0_addr + REG_DIGIRW_SEL) = 1;
-
               bme280_get_calib(&spi_sensor, calib_data_tp, calib_data_h);
               bme280_get_htp(&spi_sensor, raw_bme_data);
-
 
               for (uint16_t i =0; i<BME280_TEMP_PRESS_CALIB_DATA_LEN; i++)
                   *(registers_1_addr + CRDCS_WRITE_TX) = (0x00FF & calib_data_tp[i]);
@@ -740,9 +736,6 @@ int main()
               SPI_clear_slave_select( &g_spi[0] , SPI_SLAVE_2);
               *(registers_1_addr + CRDCS_WRITE_TX) = sensor_spi;
 
-              // give DIGI registers controls to fiber
-              //*(registers_0_addr + REG_DIGIRW_SEL) = 0;
-
               *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
               break;
 
@@ -766,9 +759,7 @@ int main()
                     *(registers_1_addr + CRDCS_WRITE_TX) = result;
                     *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
                 } else {  // for WRITE, pass
-                    *(registers_0_addr + REG_DIGIRW_SEL) = 1;
                     adc_write(address, (uint8_t)data, (0x1<<adc_num));
-                    *(registers_0_addr + REG_DIGIRW_SEL) = 0;
                 }
                 break;
 
