@@ -1210,9 +1210,11 @@ int main()
 #ifdef  DRACTEST
                 }else if (commandID == PRBSET){
                     uint8_t prbs_en   = (uint8_t) buffer[4];
-                    *(registers_0_addr + REG_ROC_DTC_ENABLE_RESET) = prbs_en; // enable PRBS data to Core_PCS
+                    *(registers_0_addr + REG_ROC_PRBS_EN) = prbs_en; // enable PRBS data to Core_PCS
+
                     outBuffer[bufcount++] = PRBSET;
-                    bufWrite(outBuffer, &bufcount, 0, 2);
+                    bufWrite(outBuffer, &bufcount, 1, 2);
+                    bufWrite(outBuffer, &bufcount, prbs_en, 1);
                     outBufSend(g_uart, outBuffer, bufcount);
 
                 }else if (commandID == PRBSSTATUS){
@@ -2753,3 +2755,4 @@ int main()
 
 	return 0;
 }
+
