@@ -93,6 +93,9 @@
 #define SPI2_BASE_ADDR       0x70009000UL
 #define DTC_BASE_ADDR        0x7000A000UL
 
+#define SPI_CAL_PROG_BASE_ADDR       0x7000B000UL
+#define SPI_HV_PROG_BASE_ADDR       0x7000C000UL
+
 /***************************************************************************//**
  * Peripheral Interrupts are mapped to the corresponding Cortex-M1 interrupt
  * from the Libero design.

@@ -140,6 +140,8 @@
 
 #define PACKAGETESTCMDID 151
 
+#define PROGRAMDIGIS 152
+
 // any command below is coming from DCS write to that address
 // address space is 0x100-0x200
 #define TESTDCSNGL  256 // 0x100 - example of Single WR to value V and Single RD back of value V
@@ -471,6 +473,11 @@ extern UART_instance_t g_uart;
 extern spi_instance_t g_spi[5];
 extern gpio_instance_t g_gpio;
 extern pwm_instance_t g_pwm;
+
+
+extern spi_instance_t g_cal_pro_spi;
+extern spi_instance_t g_hv_pro_spi;
+extern spi_instance_t g_pro_spi;
 
 //******************************************************************************
 //                             Functions

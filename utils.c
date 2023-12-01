@@ -67,6 +67,11 @@ spi_instance_t g_spi[5];
 pwm_instance_t g_pwm;
 gpio_instance_t g_gpio;
 
+spi_instance_t g_cal_pro_spi;
+spi_instance_t g_hv_pro_spi;
+spi_instance_t g_pro_spi;
+
+
 //void reset_fabric(){
 //	/* RESET the fabric */
 //	//SYSREG->SOFT_RST_CR |= SYSREG_FPGA_SOFTRESET_MASK;
