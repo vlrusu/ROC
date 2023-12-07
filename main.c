@@ -14,9 +14,16 @@
 // Comment this in SoftConsole_variablesize if code does not fit in uSVM
 //#define FIXEDSIZETEST  // if commented, skips all code inside    #ifdef	FIXEDSIZETEST ... #endif
 
-// Used for code need in DRAC Standalone Tests
-#define DRACTEST
+// Used to reduce size after adding DIGI programming
+//#define DIGITEST
 
+// Used for commands to uProc from DTC
+//#define DTCPROGRAM
+
+// Used for code need in DRAC Standalone Tests
+//#define DRACTEST
+
+// Used for DIGI programming
 #define PROGRAMMING
 
 #include "dpuser.h"
@@ -64,9 +71,10 @@ int main()
 
 	//register address for bit banging
 	registers_0_addr = (volatile uint32_t *) REGISTERBASEADDR;
+#ifdef DTCPROGRAMM
     // MT added  register address for DTC commands
     registers_1_addr = (volatile uint32_t *) DTC_BASE_ADDR;
-
+#endif
 
     // give DIGI registers controls to serial
 	*(registers_0_addr + REG_DIGIRW_SEL) = 1;
@@ -495,6 +503,7 @@ int main()
         example_prev_rd = example_rd;
          */
 
+#ifdef DTCPROGRAMM
         //
         // decoding of DCS write command in address space 0x100-200 from DCX_RX_BUFFER:
         // - starts on DTC_CMD_READY (driven by SlowControls/DCSRegisters) seen high
@@ -707,7 +716,7 @@ int main()
         }
         delayUs(1);
 
-
+#endif
 
 		size_t rx_size =UART_get_rx(&g_uart, rx_buff, sizeof(rx_buff));
 		for (uint16_t j=0;j<rx_size;j++){
@@ -733,7 +742,17 @@ int main()
 				//	    if (commandID < MAXCOM_MON)
 				//	      UART_polled_tx_string( &g_uart, "monitoring\n" );
 
-				if (commandID == SETPREAMPGAIN){
+                if (commandID == RESETROC){
+                    digi_write(DG_ADDR_RESET,0,0);
+                    digi_write(DG_ADDR_RESET,1,0);
+                    // Monica added 09/26/2019
+                    *(registers_0_addr + REG_ROC_RESET) = 0;
+                    outBuffer[bufcount++] = RESETROC;
+                    bufWrite(outBuffer, &bufcount, 0, 2);
+                    outBufSend(g_uart, outBuffer, bufcount);
+
+#ifdef DIGITEST
+                } else if (commandID == SETPREAMPGAIN){
 					uint16_t channel = readU16fromBytes(&buffer[4]);
 					uint16_t value = readU16fromBytes(&buffer[6]);
 
@@ -866,15 +885,16 @@ int main()
 //					bufWrite(outBuffer, &bufcount, retv, 4);
 //					outBufSend(g_uart, outBuffer, bufcount);
 
-				}else if (commandID == RESETROC){
+#endif
+//                }else if (commandID == RESETROC){
 
-					digi_write(DG_ADDR_RESET,0,0);
-					digi_write(DG_ADDR_RESET,1,0);
-					// Monica added 09/26/2019
-					*(registers_0_addr + REG_ROC_RESET) = 0;
-					outBuffer[bufcount++] = RESETROC;
-					bufWrite(outBuffer, &bufcount, 0, 2);
-				 	outBufSend(g_uart, outBuffer, bufcount);
+//					digi_write(DG_ADDR_RESET,0,0);
+//					digi_write(DG_ADDR_RESET,1,0);
+//					// Monica added 09/26/2019
+//					*(registers_0_addr + REG_ROC_RESET) = 0;
+//					outBuffer[bufcount++] = RESETROC;
+//					bufWrite(outBuffer, &bufcount, 0, 2);
+//				 	outBufSend(g_uart, outBuffer, bufcount);
 				
 
 				}else if (commandID == RESETDEVICE){
@@ -2365,7 +2385,7 @@ int main()
 //
 //					outBufSend(g_uart, outBuffer, bufcount);
 
-#ifndef	DTCDDRTEST  // Monica added for allowing all other DDR test functions
+#ifdef DIGITEST
 
 				}else if (commandID == AUTOBITSLIPCMDID){
 					autobitslip();
@@ -2777,8 +2797,9 @@ int main()
 
 					bufWrite(outBuffer, &bufcount_place_holder, (bufcount-3), 2);
 					outBufSend(g_uart, outBuffer, bufcount);
-				}
+	 
 #endif
+				} // end of commands if
 
 				// If we didn't use the whole buffer, the rest must be the next command
 				//memmove(&buffer[0],&buffer[numBytes],writePtr-numBytes);
