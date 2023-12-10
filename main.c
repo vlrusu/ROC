@@ -15,13 +15,13 @@
 //#define FIXEDSIZETEST  // if commented, skips all code inside    #ifdef	FIXEDSIZETEST ... #endif
 
 // Used to reduce size after adding DIGI programming
-//#define DIGITEST
+#define DIGITEST
 
 // Used for commands to uProc from DTC
 //#define DTCPROGRAM
 
 // Used for code need in DRAC Standalone Tests
-//#define DRACTEST
+#define DRACTEST
 
 // Used for DIGI programming
 #define PROGRAMMING
