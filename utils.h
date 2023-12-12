@@ -141,6 +141,7 @@
 #define PACKAGETESTCMDID 151
 
 #define PROGRAMDIGIS 152
+#define IAPROC 153
 
 // any command below is coming from DCS write to that address
 // address space is 0x100-0x200

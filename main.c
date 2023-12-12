@@ -5,11 +5,12 @@
 #include "drivers/CoreSPI/core_spi.h"
 #include "drivers/CoreSysServices_PF/core_sysservices_pf.h"
 
+
 #include "riscv_hal.h"
 
 // ALWAYS COMMENT this define in SoftConsole_variablesize
 //#define DTCDDRTEST  // if uncommented, skips all code inside    #ifndef	DTCDDRTEST ... #endif
-                      // if commented, skips all code inside      #ifdef  DTCDDRTEST ... #endif
+// if commented, skips all code inside      #ifdef  DTCDDRTEST ... #endif
 
 // Comment this in SoftConsole_variablesize if code does not fit in uSVM
 //#define FIXEDSIZETEST  // if commented, skips all code inside    #ifdef	FIXEDSIZETEST ... #endif
@@ -26,6 +27,8 @@
 // Used for DIGI programming
 #define PROGRAMMING
 
+#define IAP
+
 #include "dpuser.h"
 #include "dputil.h"
 #include "dpDUTspi.h"
@@ -38,469 +41,482 @@
 #include "autobitslip.h"
 #include "version.h"
 
+#include "iaputils.h"
+
+
 #define BAUD_VALUE                  115200
 
-const uint16_t default_caldac[8] = {1000,1000,1000,1000,1000,1000,1000,1000};
+const uint16_t default_caldac[8] = { 1000, 1000, 1000, 1000, 1000, 1000, 1000,
+        1000 };
 
-const uint8_t calpulse_chanmap[8]={1,9,2,10,3,11,4,12};
+const uint8_t calpulse_chanmap[8] = { 1, 9, 2, 10, 3, 11, 4, 12 };
 
 const uint8_t default_delay = 200;
 
-const uint8_t MCPCALIBCHAN[8] = {1,2,3,4,9,10,11,12};
+const uint8_t MCPCALIBCHAN[8] = { 1, 2, 3, 4, 9, 10, 11, 12 };
 
-int main()
-{
+int main() {
 
-	UART_init( &g_uart, UART_BASE_ADDRESS, (SYS_CLK_FREQ/(16 * BAUD_VALUE))-1, (DATA_8_BITS | NO_PARITY));
+    UART_init(&g_uart, UART_BASE_ADDRESS,
+            (SYS_CLK_FREQ / (16 * BAUD_VALUE)) - 1, (DATA_8_BITS | NO_PARITY));
 
-	const uint8_t greeting[] = "\n\r\"Welcome to the ROC\"\n"
-			"\t - Sean Connery\n";
+    const uint8_t greeting[] = "\n\r\"Welcome to the ROC\"\n"
+            "\t - Sean Connery\n";
 
-	/* Send greeting message over the UART_0 */
-	UART_polled_tx_string( &g_uart, greeting );
-	//		sprintf(outBuffer,"Last git revision: %s\n",LAST_GIT_REV);
-	//			UART_polled_tx_string( &g_uart, outBuffer );
+    /* Send greeting message over the UART_0 */
+    UART_polled_tx_string(&g_uart, greeting);
+    //		sprintf(outBuffer,"Last git revision: %s\n",LAST_GIT_REV);
+    //			UART_polled_tx_string( &g_uart, outBuffer );
 
-	GPIO_init( &g_gpio,    COREGPIO_BASE_ADDR, GPIO_APB_32_BITS_BUS );
-	//	GPIO_config( &g_gpio, GPIO_0, GPIO_OUTPUT_MODE);
-	GPIO_set_output( &g_gpio, GPIO_0, 0);
+    GPIO_init(&g_gpio, COREGPIO_BASE_ADDR, GPIO_APB_32_BITS_BUS);
+    //	GPIO_config( &g_gpio, GPIO_0, GPIO_OUTPUT_MODE);
+    GPIO_set_output(&g_gpio, GPIO_0, 0);
 
-	uint8_t readout_enabled = 0;
-	uint8_t calibration_enabled = 0;
-	int readout_totalTriggers = 0;
+    uint8_t readout_enabled = 0;
+    uint8_t calibration_enabled = 0;
+    int readout_totalTriggers = 0;
 
-	//register address for bit banging
-	registers_0_addr = (volatile uint32_t *) REGISTERBASEADDR;
+    //register address for bit banging
+    registers_0_addr = (volatile uint32_t*) REGISTERBASEADDR;
 #ifdef DTCPROGRAMM
     // MT added  register address for DTC commands
     registers_1_addr = (volatile uint32_t *) DTC_BASE_ADDR;
 #endif
 
     // give DIGI registers controls to serial
-	*(registers_0_addr + REG_DIGIRW_SEL) = 1;
+    *(registers_0_addr + REG_DIGIRW_SEL) = 1;
 
-	//enabling hw counter
-	//granularity is clock period=25ns -- period is (gr+1)*1000=50us
-	//PWM_PERIOD = PWM_GRANULARITY * (period + 1) = 25 *1000 = 25us
-	*(registers_0_addr + REG_TIMERENABLE) = 1;
-	*(registers_0_addr + REG_TIMERRESET) = 0;
+    //enabling hw counter
+    //granularity is clock period=25ns -- period is (gr+1)*1000=50us
+    //PWM_PERIOD = PWM_GRANULARITY * (period + 1) = 25 *1000 = 25us
+    *(registers_0_addr + REG_TIMERENABLE) = 1;
+    *(registers_0_addr + REG_TIMERRESET) = 0;
 
+    // make sure DIGIs are powered up
+    for (int i = 0; i < 1000; i++) {
+        digi_write(DG_ADDR_EWS, 0xDEAD, 1);
+        uint32_t read_value = digi_read(DG_ADDR_EWS, 1);
+        if (read_value != 0xDEAD) {
+            delayUs(1000);
+        } else {
+            UART_polled_tx_string(&g_uart, "CAL OK\n");
+            break;
+        }
+    }
+    for (int i = 0; i < 1000; i++) {
+        digi_write(DG_ADDR_EWS, 0xDEAD, 2);
+        uint32_t read_value = digi_read(DG_ADDR_EWS, 2);
+        if (read_value != 0xDEAD) {
+            delayUs(1000);
+        } else {
+            UART_polled_tx_string(&g_uart, "HV OK\n");
+            break;
+        }
+    }
 
-	// make sure DIGIs are powered up
-	for (int i=0;i<1000;i++){
-		digi_write(DG_ADDR_EWS,0xDEAD,1);
-		uint32_t read_value = digi_read(DG_ADDR_EWS,1);
-		if (read_value != 0xDEAD){
-			delayUs(1000);
-		}else{
-			UART_polled_tx_string( &g_uart, "CAL OK\n" );
-			break;
-		}
-	}
-	for (int i=0;i<1000;i++){
-		digi_write(DG_ADDR_EWS,0xDEAD,2);
-		uint32_t read_value = digi_read(DG_ADDR_EWS,2);
-		if (read_value != 0xDEAD){
-			delayUs(1000);
-		}else{
-			UART_polled_tx_string( &g_uart, "HV OK\n" );
-			break;
-		}
-	}
+    adc_write(ADC_ADDR_PWR, 0x01, 0xFFF);
+    adc_write(ADC_ADDR_PWR, 0x00, ENABLED_ADCS);
 
-	adc_write(ADC_ADDR_PWR,0x01,0xFFF);
-	adc_write(ADC_ADDR_PWR,0x00,ENABLED_ADCS);
+    uint8_t errors = init_adc(ENABLED_ADCS, 0x02, 0x03);
 
-	uint8_t errors = init_adc(ENABLED_ADCS,0x02,0x03);
+    //adc_write(ADC_ADDR_PWR,0x01,0x8FF);
 
-	//adc_write(ADC_ADDR_PWR,0x01,0x8FF);
+    adc_write(0x100, 0x71, 0xFFF); // set to 10 bit, 40 MSPS
+    adc_write(0xFF, 0x01, 0xFFF); // latch the above change
+    adc_write(0x14, 0x00, 0xFFF); // set to offset binary
 
-	adc_write(0x100,0x71,0xFFF); // set to 10 bit, 40 MSPS
-	adc_write(0xFF,0x01,0xFFF); // latch the above change
-	adc_write(0x14,0x00,0xFFF); // set to offset binary
+    /*Initialize the CoreSysService_PF driver*/
+    SYS_init(CSS_PF_BASE_ADDRESS);
 
+    uint16_t loopCount = 0;
+    uint8_t ledPattern = 0x1;
+    _Bool togglecal = 1;
 
+    //sPI initialization -- make sure the memory map in the smart design is contiguous and the mapping works
 
-	/*Initialize the CoreSysService_PF driver*/
-	SYS_init(CSS_PF_BASE_ADDRESS);
+    //	for (int ispi = 0; ispi<4; ispi++){
+    //		unsigned int addr = ispi * 0x00001000UL;
+    //		SPI_init( &g_spi[ispi], SPI0_BASE_ADDR + addr, 8 );
+    //		SPI_configure_master_mode( &g_spi[ispi] );
+    //	}
 
-	uint16_t loopCount = 0;
-	uint8_t ledPattern = 0x1;
-	_Bool togglecal = 1;
+    SPI_init(&g_spi[0], SPI0_BASE_ADDR, 8);
+    SPI_configure_master_mode(&g_spi[0]);
+    SPI_init(&g_spi[1], SPI1_BASE_ADDR, 8);
+    SPI_configure_master_mode(&g_spi[1]);
+    SPI_init(&g_spi[2], HVSPI_BASE_ADDR, 8);
+    SPI_configure_master_mode(&g_spi[2]);
+    SPI_init(&g_spi[3], CALSPI_BASE_ADDR, 8);
+    SPI_configure_master_mode(&g_spi[3]);
+    SPI_init(&g_spi[4], SPI2_BASE_ADDR, 8);
+    SPI_configure_master_mode(&g_spi[4]);
 
-	//sPI initialization -- make sure the memory map in the smart design is contiguous and the mapping works
+    SPI_init(&g_cal_pro_spi, SPI_CAL_PROG_BASE_ADDR, 8);
+    SPI_configure_master_mode(&g_cal_pro_spi);
+    SPI_init(&g_hv_pro_spi, SPI_HV_PROG_BASE_ADDR, 8);
+    SPI_configure_master_mode(&g_hv_pro_spi);
 
-	//	for (int ispi = 0; ispi<4; ispi++){
-	//		unsigned int addr = ispi * 0x00001000UL;
-	//		SPI_init( &g_spi[ispi], SPI0_BASE_ADDR + addr, 8 );
-	//		SPI_configure_master_mode( &g_spi[ispi] );
-	//	}
+    //setup MCPs
+    for (int imcp = MCPCAL0; imcp <= MCPFC2; imcp++) {
+        if (imcp < MCPHV0)
+            MCP_setup(&preampMCP[imcp], g_spi[3], 0, 0x20 + imcp, 0);
+        else if (imcp < MCPFC0)
+            MCP_setup(&preampMCP[imcp], g_spi[2], 0, 0x20 + imcp - MCPHV0, 0);
+        else
+            MCP_setup(&preampMCP[imcp], g_spi[2], 1, 0x20 + imcp - MCPFC0, 0);
+    }
+    MCP_setup(&sensorMCP, g_spi[2], 2, 0x20, 1);
 
-	SPI_init( &g_spi[0], SPI0_BASE_ADDR, 8 );
-	SPI_configure_master_mode( &g_spi[0] );
-	SPI_init( &g_spi[1], SPI1_BASE_ADDR, 8 );
-	SPI_configure_master_mode( &g_spi[1] );
-	SPI_init( &g_spi[2], HVSPI_BASE_ADDR, 8 );
-	SPI_configure_master_mode( &g_spi[2] );
-	SPI_init( &g_spi[3], CALSPI_BASE_ADDR, 8 );
-	SPI_configure_master_mode( &g_spi[3] );
-	SPI_init( &g_spi[4], SPI2_BASE_ADDR, 8 );
-	SPI_configure_master_mode( &g_spi[4] );
+    // outputs for calpulse enable
 
-	SPI_init( &g_cal_pro_spi, SPI_CAL_PROG_BASE_ADDR, 8 );
-	    SPI_configure_master_mode( &g_cal_pro_spi );
-	    SPI_init( &g_hv_pro_spi, SPI_HV_PROG_BASE_ADDR, 8 );
-	    SPI_configure_master_mode( &g_hv_pro_spi );
+    for (uint8_t imcp = 0; imcp < 8; imcp++) {
+        MCP_pinMode(&preampMCP[MCPCALIB], MCPCALIBCHAN[imcp], MCP_OUTPUT);
+    }
 
-	//setup MCPs
-	for (int imcp = MCPCAL0; imcp<=MCPFC2; imcp++){
-		if (imcp < MCPHV0)
-			MCP_setup(&preampMCP[imcp], g_spi[3], 0 , 0x20 + imcp, 0);
-		else if (imcp < MCPFC0)
-			MCP_setup(&preampMCP[imcp], g_spi[2], 0 , 0x20 + imcp - MCPHV0, 0);
-		else
-			MCP_setup(&preampMCP[imcp], g_spi[2], 1 , 0x20 + imcp - MCPFC0, 0);
-	}
-	MCP_setup(&sensorMCP, g_spi[2], 2 , 0x20, 1);
+    // outputs for fuse control enable, initial all to 0
 
+    for (uint8_t i = 0; i < 48; i++) {
+        MCP_pinMode(&preampMCP[MCPFC0 + i / 16], i % 16 + 1, MCP_OUTPUT);
+    }
 
-	// outputs for calpulse enable
+    for (uint8_t i = 0; i < 48; i++) {
+        MCP_pinWrite(&preampMCP[MCPFC0 + i / 16], i % 16 + 1, 0);
+    }
 
-	for (uint8_t imcp = 0; imcp < 8; imcp++){
-		MCP_pinMode(&preampMCP[MCPCALIB], MCPCALIBCHAN[imcp], MCP_OUTPUT);
-	}
+    //setup LTC2634, preamp DACs
+    for (uint8_t idac = 0; idac < 96; idac++) {
+        if (idac < 14)
+            LTC2634_setup(&dacs[idac], &preampMCP[MCPCAL0], idac + 3,
+                    &preampMCP[MCPCAL0], 2, &preampMCP[MCPCAL0], 1);
+        else if (idac < 24)
+            LTC2634_setup(&dacs[idac], &preampMCP[MCPCAL1], idac - 13,
+                    &preampMCP[MCPCAL0], 2, &preampMCP[MCPCAL0], 1);
+        else if (idac < 38)
+            LTC2634_setup(&dacs[idac], &preampMCP[MCPCAL2], idac - 21,
+                    &preampMCP[MCPCAL2], 2, &preampMCP[MCPCAL2], 1);
+        else if (idac < 48)
+            LTC2634_setup(&dacs[idac], &preampMCP[MCPCAL3], idac - 37,
+                    &preampMCP[MCPCAL2], 2, &preampMCP[MCPCAL2], 1);
+        else if (idac < 62)
+            LTC2634_setup(&dacs[idac], &preampMCP[MCPHV0], idac - 45,
+                    &preampMCP[MCPHV0], 2, &preampMCP[MCPHV0], 1);
+        else if (idac < 72)
+            LTC2634_setup(&dacs[idac], &preampMCP[MCPHV1], idac - 61,
+                    &preampMCP[MCPHV0], 2, &preampMCP[MCPHV0], 1);
+        else if (idac < 86)
+            LTC2634_setup(&dacs[idac], &preampMCP[MCPHV2], idac - 69,
+                    &preampMCP[MCPHV2], 2, &preampMCP[MCPHV2], 1);
+        else
+            LTC2634_setup(&dacs[idac], &preampMCP[MCPHV3], idac - 85,
+                    &preampMCP[MCPHV2], 2, &preampMCP[MCPHV2], 1);
+    }
 
-	// outputs for fuse control enable, initial all to 0
+    LTC2634_setup(&caldac0, &preampMCP[MCPCAL1], 12, &preampMCP[MCPCAL0], 2,
+            &preampMCP[MCPCAL0], 1);
+    LTC2634_setup(&caldac1, &preampMCP[MCPCAL1], 13, &preampMCP[MCPCAL0], 2,
+            &preampMCP[MCPCAL0], 1);
 
-	for (uint8_t i = 0; i < 48; i++){
-		MCP_pinMode(&preampMCP[MCPFC0+i/16], i%16+1, MCP_OUTPUT);
-	}
+    // Set default thresholds and gains
+    for (uint8_t i = 0; i < 96; i++) {
+        strawsCal[i]._ltc = &dacs[i / 2];
+        strawsHV[i]._ltc = &dacs[48 + i / 2];
+        if (i % 2 == 1) {
+            strawsCal[i]._thresh = 1;
+            strawsCal[i]._gain = 2;
+            strawsHV[i]._thresh = 0;
+            strawsHV[i]._gain = 2;
+        } else {
+            strawsCal[i]._thresh = 0;
+            strawsCal[i]._gain = 3;
+            strawsHV[i]._thresh = 1;
+            strawsHV[i]._gain = 3;
+        }
+        LTC2634_write(strawsCal[i]._ltc, strawsCal[i]._gain,
+                default_gains_cal[i]);
+        LTC2634_write(strawsCal[i]._ltc, strawsCal[i]._thresh,
+                default_threshs_cal[i]);
+        LTC2634_write(strawsHV[i]._ltc, strawsHV[i]._gain, default_gains_hv[i]);
+        LTC2634_write(strawsHV[i]._ltc, strawsHV[i]._thresh,
+                default_threshs_hv[i]);
+    }
 
-	for (uint8_t i = 0; i < 48; i++){
-		MCP_pinWrite(&preampMCP[MCPFC0+i/16],i%16+1,0);
-	}
+    //adc_write(0x08,0x00,0x3F);
 
-	//setup LTC2634, preamp DACs
-	for (uint8_t idac = 0 ; idac < 96; idac++){
-		if (idac<14)
-			LTC2634_setup(&dacs[idac],&preampMCP[MCPCAL0],idac+3,&preampMCP[MCPCAL0],2,&preampMCP[MCPCAL0],1);
-		else if (idac<24)
-			LTC2634_setup(&dacs[idac],&preampMCP[MCPCAL1],idac-13,&preampMCP[MCPCAL0],2,&preampMCP[MCPCAL0],1);
-		else if (idac<38)
-			LTC2634_setup(&dacs[idac],&preampMCP[MCPCAL2],idac-21,&preampMCP[MCPCAL2],2,&preampMCP[MCPCAL2],1);
-		else if (idac<48)
-			LTC2634_setup(&dacs[idac],&preampMCP[MCPCAL3],idac-37,&preampMCP[MCPCAL2],2,&preampMCP[MCPCAL2],1);
-		else if (idac<62)
-			LTC2634_setup(&dacs[idac],&preampMCP[MCPHV0],idac-45,&preampMCP[MCPHV0],2,&preampMCP[MCPHV0],1);
-		else if (idac<72)
-			LTC2634_setup(&dacs[idac],&preampMCP[MCPHV1],idac-61,&preampMCP[MCPHV0],2,&preampMCP[MCPHV0],1);
-		else if (idac<86)
-			LTC2634_setup(&dacs[idac],&preampMCP[MCPHV2],idac-69,&preampMCP[MCPHV2],2,&preampMCP[MCPHV2],1);
-		else
-			LTC2634_setup(&dacs[idac],&preampMCP[MCPHV3],idac-85,&preampMCP[MCPHV2],2,&preampMCP[MCPHV2],1);
-	}
+    //digi_write(DG_ADDR_BITSLIP0,0x0,0);
+    //digi_write(DG_ADDR_BITSLIP1,0x0,0);
+    //digi_write(DG_ADDR_BITSLIP2,0x0,0);
+    //digi_write(DG_ADDR_BITSLIP3,0x0,0);
+    //digi_write(DG_ADDR_BITSLIP4,0x0,0);
+    //digi_write(DG_ADDR_BITSLIP5,0x0,0);
 
-	LTC2634_setup(&caldac0,&preampMCP[MCPCAL1],12,&preampMCP[MCPCAL0],2,&preampMCP[MCPCAL0],1);
-	LTC2634_setup(&caldac1,&preampMCP[MCPCAL1],13,&preampMCP[MCPCAL0],2,&preampMCP[MCPCAL0],1);
+    digi_write(DG_ADDR_RESET, 1, 0);
 
-	// Set default thresholds and gains
-	for (uint8_t i = 0 ; i < 96 ; i++){
-		strawsCal[i]._ltc = &dacs[i/2];
-		strawsHV[i]._ltc = &dacs[48+i/2];
-		if (i%2 == 1){
-			strawsCal[i]._thresh = 1;
-			strawsCal[i]._gain = 2;
-			strawsHV[i]._thresh = 0;
-			strawsHV[i]._gain = 2;
-		}else{
-			strawsCal[i]._thresh = 0;
-			strawsCal[i]._gain = 3;
-			strawsHV[i]._thresh = 1;
-			strawsHV[i]._gain = 3;
-		}
-		LTC2634_write(strawsCal[i]._ltc,strawsCal[i]._gain,default_gains_cal[i]);
-		LTC2634_write(strawsCal[i]._ltc,strawsCal[i]._thresh,default_threshs_cal[i]);
-		LTC2634_write(strawsHV[i]._ltc,strawsHV[i]._gain,default_gains_hv[i]);
-		LTC2634_write(strawsHV[i]._ltc,strawsHV[i]._thresh,default_threshs_hv[i]);
-	}
-
-	//adc_write(0x08,0x00,0x3F);
-
-	//digi_write(DG_ADDR_BITSLIP0,0x0,0);
-	//digi_write(DG_ADDR_BITSLIP1,0x0,0);
-	//digi_write(DG_ADDR_BITSLIP2,0x0,0);
-	//digi_write(DG_ADDR_BITSLIP3,0x0,0);
-	//digi_write(DG_ADDR_BITSLIP4,0x0,0);
-	//digi_write(DG_ADDR_BITSLIP5,0x0,0);
-
-	digi_write(DG_ADDR_RESET,1,0);
-
-	digi_write(DG_ADDR_EWS,0x0000,HVANDCAL);
-	digi_write(DG_ADDR_EWE,0xFFFB,HVANDCAL);
+    digi_write(DG_ADDR_EWS, 0x0000, HVANDCAL);
+    digi_write(DG_ADDR_EWE, 0xFFFB, HVANDCAL);
 //	digi_write(DG_ADDR_EWE,0x4FFB,HVANDCAL);
-	*(registers_0_addr + REG_ROC_EWMSTART_PMT) = 0x0001;
-	*(registers_0_addr + REG_ROC_EWMSTOP_PMT) = 0x0FFF;
-	digi_write(DG_ADDR_DIGINUMBER,0,CALONLY);
-	digi_write(DG_ADDR_DIGINUMBER,1,HVONLY);
+    *(registers_0_addr + REG_ROC_EWMSTART_PMT) = 0x0001;
+    *(registers_0_addr + REG_ROC_EWMSTOP_PMT) = 0x0FFF;
+    digi_write(DG_ADDR_DIGINUMBER, 0, CALONLY);
+    digi_write(DG_ADDR_DIGINUMBER, 1, HVONLY);
 
-	writePtr = 0;
-	
-	//enable serdes resets
-	//digi_write(0xA1,0xF,HVANDCAL);
-	//digi_write(0xA2,0xF,HVANDCAL);
-	//*(registers_0_addr + 0xB2) = 0xF;
-	//*(registers_0_addr + 0xB3) = 0xF;
-	*(registers_0_addr + 0xB4) = 0xF;
+    writePtr = 0;
 
-	// set defaults
-	//!!! I2C configuration for an older version of DRAC !!!
-	//!!! Newer version uses pin 9 and 10                !!!
-	//I2C_setup(&i2c_ptscal[0], &preampMCP[MCPCAL0],1,&preampMCP[MCPCAL0],2);
-	//I2C_setup(&i2c_ptshv[0], &preampMCP[MCPHV0],1,&preampMCP[MCPHV0],2);
+    //enable serdes resets
+    //digi_write(0xA1,0xF,HVANDCAL);
+    //digi_write(0xA2,0xF,HVANDCAL);
+    //*(registers_0_addr + 0xB2) = 0xF;
+    //*(registers_0_addr + 0xB3) = 0xF;
+    *(registers_0_addr + 0xB4) = 0xF;
 
-	//I2C_setup(&i2c_ptscal[1], &preampMCP[MCPCAL0],5,&preampMCP[MCPCAL0],6);
-	//I2C_setup(&i2c_ptshv[1], &preampMCP[MCPHV3],15,&preampMCP[MCPHV3],14);
+    // set defaults
+    //!!! I2C configuration for an older version of DRAC !!!
+    //!!! Newer version uses pin 9 and 10                !!!
+    //I2C_setup(&i2c_ptscal[0], &preampMCP[MCPCAL0],1,&preampMCP[MCPCAL0],2);
+    //I2C_setup(&i2c_ptshv[0], &preampMCP[MCPHV0],1,&preampMCP[MCPHV0],2);
 
-	//I2C bus for BME
-	//I2C_setup(&i2c_sensor[0], &sensorMCP, 2,&sensorMCP, 3);
-	//SPI_daisy bus for BME
-	SPI_daisy_setup(&spi_sensor, &sensorMCP, 3, &sensorMCP, 2, &sensorMCP, 4, &sensorMCP, 1);
-	//unsigned int check2 = MCP_wordRead(&sensorMCP, OLAT09);
-	//unsigned int check3 = MCP_wordRead(&sensorMCP, GPIO09);
-	//I2C bus for HDC
-	I2C_setup(&i2c_sensor[1], &sensorMCP, 6,&sensorMCP, 7);
-	//SPI_daisy bus for AMB temperature, cal side
-	SPI_daisy_setup(&spi_ambtemp_cal, &preampMCP[MCPCAL1], 16, &preampMCP[MCPCAL1], 14, &preampMCP[MCPCAL1], 15, &preampMCP[MCPCAL1], 11);
-	//SPI_daisy bus for AMB temperature, hv side
-	SPI_daisy_setup(&spi_ambtemp_hv, &preampMCP[MCPHV1], 13, &preampMCP[MCPHV1], 15, &preampMCP[MCPHV1], 14, &preampMCP[MCPHV3], 16);
+    //I2C_setup(&i2c_ptscal[1], &preampMCP[MCPCAL0],5,&preampMCP[MCPCAL0],6);
+    //I2C_setup(&i2c_ptshv[1], &preampMCP[MCPHV3],15,&preampMCP[MCPHV3],14);
 
-	int8_t rslt = BME280_OK;
-	//uint8_t settings_sel;
+    //I2C bus for BME
+    //I2C_setup(&i2c_sensor[0], &sensorMCP, 2,&sensorMCP, 3);
+    //SPI_daisy bus for BME
+    SPI_daisy_setup(&spi_sensor, &sensorMCP, 3, &sensorMCP, 2, &sensorMCP, 4,
+            &sensorMCP, 1);
+    //unsigned int check2 = MCP_wordRead(&sensorMCP, OLAT09);
+    //unsigned int check3 = MCP_wordRead(&sensorMCP, GPIO09);
+    //I2C bus for HDC
+    I2C_setup(&i2c_sensor[1], &sensorMCP, 6, &sensorMCP, 7);
+    //SPI_daisy bus for AMB temperature, cal side
+    SPI_daisy_setup(&spi_ambtemp_cal, &preampMCP[MCPCAL1], 16,
+            &preampMCP[MCPCAL1], 14, &preampMCP[MCPCAL1], 15,
+            &preampMCP[MCPCAL1], 11);
+    //SPI_daisy bus for AMB temperature, hv side
+    SPI_daisy_setup(&spi_ambtemp_hv, &preampMCP[MCPHV1], 13, &preampMCP[MCPHV1],
+            15, &preampMCP[MCPHV1], 14, &preampMCP[MCPHV3], 16);
 
-	//Old sensor codes with BME 280
-	/*
-	struct bme280_dev ptscal;
-	ptscal.dev_id = BME280_I2C_ADDR_PRIM;
-	ptscal.intf = BME280_I2C_INTF;
-	ptscal._i2c = &i2c_ptscal[0];
+    int8_t rslt = BME280_OK;
+    //uint8_t settings_sel;
 
-	ptscal.delay_ms = delay_ms;
+    //Old sensor codes with BME 280
+    /*
+     struct bme280_dev ptscal;
+     ptscal.dev_id = BME280_I2C_ADDR_PRIM;
+     ptscal.intf = BME280_I2C_INTF;
+     ptscal._i2c = &i2c_ptscal[0];
 
-	bme280_init(&ptscal);
-	uint8_t ptscalchipid = 0;
-	bme280_get_regs(BME280_CHIP_ID_ADDR,&ptscalchipid,1,&ptscal);
+     ptscal.delay_ms = delay_ms;
 
-	// Recommended mode of operation: Indoor navigation
-	ptscal.settings.osr_h = BME280_OVERSAMPLING_1X;
-	ptscal.settings.osr_p = BME280_OVERSAMPLING_16X;
-	ptscal.settings.osr_t = BME280_OVERSAMPLING_2X;
-	ptscal.settings.filter = BME280_FILTER_COEFF_16;
+     bme280_init(&ptscal);
+     uint8_t ptscalchipid = 0;
+     bme280_get_regs(BME280_CHIP_ID_ADDR,&ptscalchipid,1,&ptscal);
 
-	settings_sel = BME280_OSR_PRESS_SEL | BME280_OSR_TEMP_SEL | BME280_OSR_HUM_SEL | BME280_FILTER_SEL;
+     // Recommended mode of operation: Indoor navigation
+     ptscal.settings.osr_h = BME280_OVERSAMPLING_1X;
+     ptscal.settings.osr_p = BME280_OVERSAMPLING_16X;
+     ptscal.settings.osr_t = BME280_OVERSAMPLING_2X;
+     ptscal.settings.filter = BME280_FILTER_COEFF_16;
 
-	rslt = bme280_set_sensor_settings(settings_sel, &ptscal);
+     settings_sel = BME280_OSR_PRESS_SEL | BME280_OSR_TEMP_SEL | BME280_OSR_HUM_SEL | BME280_FILTER_SEL;
 
-	//set the HV sensor
-	struct bme280_dev ptshv;
-	ptshv.dev_id = BME280_I2C_ADDR_PRIM;
-	ptshv.intf = BME280_I2C_INTF;
-	ptshv._i2c = &i2c_ptshv[0];
+     rslt = bme280_set_sensor_settings(settings_sel, &ptscal);
 
-	ptshv.delay_ms = delay_ms;
+     //set the HV sensor
+     struct bme280_dev ptshv;
+     ptshv.dev_id = BME280_I2C_ADDR_PRIM;
+     ptshv.intf = BME280_I2C_INTF;
+     ptshv._i2c = &i2c_ptshv[0];
 
-	bme280_init(&ptshv);
-	uint8_t ptshvchipid = 0;
-	bme280_get_regs(BME280_CHIP_ID_ADDR,&ptshvchipid,1,&ptshv);
+     ptshv.delay_ms = delay_ms;
 
-	// Recommended mode of operation: Indoor navigation
-	ptshv.settings.osr_h = BME280_OVERSAMPLING_1X;
-	ptshv.settings.osr_p = BME280_OVERSAMPLING_16X;
-	ptshv.settings.osr_t = BME280_OVERSAMPLING_2X;
-	ptshv.settings.filter = BME280_FILTER_COEFF_16;
+     bme280_init(&ptshv);
+     uint8_t ptshvchipid = 0;
+     bme280_get_regs(BME280_CHIP_ID_ADDR,&ptshvchipid,1,&ptshv);
 
-	settings_sel = BME280_OSR_PRESS_SEL | BME280_OSR_TEMP_SEL | BME280_OSR_HUM_SEL | BME280_FILTER_SEL;
+     // Recommended mode of operation: Indoor navigation
+     ptshv.settings.osr_h = BME280_OVERSAMPLING_1X;
+     ptshv.settings.osr_p = BME280_OVERSAMPLING_16X;
+     ptshv.settings.osr_t = BME280_OVERSAMPLING_2X;
+     ptshv.settings.filter = BME280_FILTER_COEFF_16;
 
-	rslt = bme280_set_sensor_settings(settings_sel, &ptshv);
-	*/
+     settings_sel = BME280_OSR_PRESS_SEL | BME280_OSR_TEMP_SEL | BME280_OSR_HUM_SEL | BME280_FILTER_SEL;
 
-	/*
-	//sensor BME
-	struct bme280_dev ptbme;
-	ptbme.dev_id = BME280_I2C_ADDR_PRIM;
-	ptbme.intf = BME280_I2C_INTF;
-	ptbme._i2c = &i2c_sensor[0];
+     rslt = bme280_set_sensor_settings(settings_sel, &ptshv);
+     */
 
-	ptbme.delay_ms = delay_ms;
+    /*
+     //sensor BME
+     struct bme280_dev ptbme;
+     ptbme.dev_id = BME280_I2C_ADDR_PRIM;
+     ptbme.intf = BME280_I2C_INTF;
+     ptbme._i2c = &i2c_sensor[0];
 
-	bme280_init(&ptbme);
-	uint8_t ptbmechipid = 0;
-	bme280_get_regs(BME280_CHIP_ID_ADDR,&ptbmechipid,1,&ptbme);
+     ptbme.delay_ms = delay_ms;
 
-	// Recommended mode of operation: Indoor navigation
-	ptbme.settings.osr_h = BME280_OVERSAMPLING_1X;
-	ptbme.settings.osr_p = BME280_OVERSAMPLING_16X;
-	ptbme.settings.osr_t = BME280_OVERSAMPLING_2X;
-	ptbme.settings.filter = BME280_FILTER_COEFF_16;
+     bme280_init(&ptbme);
+     uint8_t ptbmechipid = 0;
+     bme280_get_regs(BME280_CHIP_ID_ADDR,&ptbmechipid,1,&ptbme);
 
-	settings_sel = BME280_OSR_PRESS_SEL | BME280_OSR_TEMP_SEL | BME280_OSR_HUM_SEL | BME280_FILTER_SEL;
+     // Recommended mode of operation: Indoor navigation
+     ptbme.settings.osr_h = BME280_OVERSAMPLING_1X;
+     ptbme.settings.osr_p = BME280_OVERSAMPLING_16X;
+     ptbme.settings.osr_t = BME280_OVERSAMPLING_2X;
+     ptbme.settings.filter = BME280_FILTER_COEFF_16;
 
-	rslt = bme280_set_sensor_settings(settings_sel, &ptbme);
-	*/
+     settings_sel = BME280_OSR_PRESS_SEL | BME280_OSR_TEMP_SEL | BME280_OSR_HUM_SEL | BME280_FILTER_SEL;
 
-	//Set up BME280 on SPI daisy
-	bme280_init_settings(&spi_sensor);
+     rslt = bme280_set_sensor_settings(settings_sel, &ptbme);
+     */
 
-	//Set up HDC2080 chips
-	/*
-	HDC2080 hdchv;
-	HDC2080 hdccal;
-	hdc2080_setup(&hdchv, HDC2080_I2C_ADDR_PRIM, &i2c_ptshv[1]);
-	hdc2080_setup(&hdccal, HDC2080_I2C_ADDR_PRIM, &i2c_ptscal[1]);
-	*/
-	HDC2080 pthdc;
-	hdc2080_setup(&pthdc, HDC2080_I2C_ADDR_PRIM, &i2c_sensor[1]);
+    //Set up BME280 on SPI daisy
+    bme280_init_settings(&spi_sensor);
 
-	//		sprintf(outBuffer,"Data Sensor HV: %d %d %d\n",comp_data.temperature, comp_data.pressure, comp_data.humidity);
-	//		UART_polled_tx_string( &g_uart, outBuffer );
-	//
+    //Set up HDC2080 chips
+    /*
+     HDC2080 hdchv;
+     HDC2080 hdccal;
+     hdc2080_setup(&hdchv, HDC2080_I2C_ADDR_PRIM, &i2c_ptshv[1]);
+     hdc2080_setup(&hdccal, HDC2080_I2C_ADDR_PRIM, &i2c_ptscal[1]);
+     */
+    HDC2080 pthdc;
+    hdc2080_setup(&pthdc, HDC2080_I2C_ADDR_PRIM, &i2c_sensor[1]);
+
+    //		sprintf(outBuffer,"Data Sensor HV: %d %d %d\n",comp_data.temperature, comp_data.pressure, comp_data.humidity);
+    //		UART_polled_tx_string( &g_uart, outBuffer );
+    //
 //	*(registers_0_addr+12) = 1;
 //	for (uint8_t i=0;i<8;i++)
 //		AD5318_write(g_spi[3],1,i,default_caldac[i]);
 //	*(registers_0_addr+12) = 0;
 
-	for (uint8_t i=0;i<4;i++)		{
-		LTC2634_write(&caldac0,i,default_caldac[i]);
-		LTC2634_write(&caldac1,i,default_caldac[i+4]);
-	}
+    for (uint8_t i = 0; i < 4; i++) {
+        LTC2634_write(&caldac0, i, default_caldac[i]);
+        LTC2634_write(&caldac1, i, default_caldac[i + 4]);
+    }
 
-	init_DIGIs();
+    init_DIGIs();
 
+    uint32_t read_value = digi_read(0xC0, 1);
+    if ((read_value & 0x3FF) != 0x047)
+        UART_polled_tx_string(&g_uart, "ROC->Cal X\n");
+    else
+        UART_polled_tx_string(&g_uart, "ROC->Cal\n");
+    read_value = digi_read(0xC0, 2);
+    if ((read_value & 0x3FF) != 0x047)
+        UART_polled_tx_string(&g_uart, "ROC->HV X\n");
+    else
+        UART_polled_tx_string(&g_uart, "ROC->HV\n");
+    read_value = *(registers_0_addr + 0xC2);
+    if ((read_value & 0xFF) != 0x11)
+        UART_polled_tx_string(&g_uart, "CAL->ROC X\n");
+    else
+        UART_polled_tx_string(&g_uart, "CAL->ROC\n");
+    if ((read_value & 0xFF00) != 0x1100)
+        UART_polled_tx_string(&g_uart, "HV->ROC X\n");
+    else
+        UART_polled_tx_string(&g_uart, "HV->ROC\n");
 
+    *(registers_0_addr + REG_ROC_EWM_T) = 0x13FD;
 
-	uint32_t read_value = digi_read(0xC0,1);
-	if ((read_value & 0x3FF) != 0x047)
-		UART_polled_tx_string( &g_uart, "ROC->Cal X\n" );
-	else
-		UART_polled_tx_string( &g_uart, "ROC->Cal\n" );
-	read_value = digi_read(0xC0,2);
-	if ((read_value & 0x3FF) != 0x047)
-		UART_polled_tx_string( &g_uart, "ROC->HV X\n" );
-	else
-		UART_polled_tx_string( &g_uart, "ROC->HV\n" );
-	read_value = *(registers_0_addr+0xC2);
-	if ((read_value & 0xFF) != 0x11)
-		UART_polled_tx_string( &g_uart, "CAL->ROC X\n" );
-	else
-		UART_polled_tx_string( &g_uart, "CAL->ROC\n" );
-	if ((read_value & 0xFF00) != 0x1100)
-		UART_polled_tx_string( &g_uart, "HV->ROC X\n" );
-	else
-		UART_polled_tx_string( &g_uart, "HV->ROC\n" );
+    /*
+     uint32_t read_value = digi_read(0xA5,1);
+     char hex_string[11];
+     for (int i=0;i<10;i++){
+     if ((0x1<<i) & read_value)
+     hex_string[9-i] = '1';
+     else
+     hex_string[9-i] = '0';
+     }
+     hex_string[10] = '\0';
+     UART_polled_tx_string( &g_uart, hex_string );
+     UART_polled_tx_string( &g_uart, " ROC->Cal " );
+     if (((read_value & 0x3) != 0x3))
+     UART_polled_tx_string( &g_uart, " unaligned " );
+     if (((read_value & 0x3C) != 0x04))
+     UART_polled_tx_string( &g_uart, " .L0. " );
+     if (((read_value & 0x3C0) != 0x040))
+     UART_polled_tx_string( &g_uart, " .L1. " );
 
-	*(registers_0_addr + REG_ROC_EWM_T) = 0x13FD;
+     read_value = digi_read(0xA5,2);
+     for (int i=0;i<10;i++){
+     if ((0x1<<i) & read_value)
+     hex_string[9-i] = '1';
+     else
+     hex_string[9-i] = '0';
+     }
+     hex_string[10] = '\0';
+     UART_polled_tx_string( &g_uart, hex_string );
+     UART_polled_tx_string( &g_uart, " ROC->HV " );
+     if (((read_value & 0x3) != 0x3))
+     UART_polled_tx_string( &g_uart, " unaligned " );
+     if (((read_value & 0x3C) != 0x04))
+     UART_polled_tx_string( &g_uart, " .L0. " );
+     if (((read_value & 0x3C0) != 0x040))
+     UART_polled_tx_string( &g_uart, " .L1. " );
 
-/*
-	uint32_t read_value = digi_read(0xA5,1);
-		char hex_string[11];
-		for (int i=0;i<10;i++){
-			if ((0x1<<i) & read_value)
-				hex_string[9-i] = '1';
-			else
-				hex_string[9-i] = '0';
-		}
-		hex_string[10] = '\0';
-		UART_polled_tx_string( &g_uart, hex_string );
-		UART_polled_tx_string( &g_uart, " ROC->Cal " );
-		if (((read_value & 0x3) != 0x3))
-			UART_polled_tx_string( &g_uart, " unaligned " );
-		if (((read_value & 0x3C) != 0x04))
-			UART_polled_tx_string( &g_uart, " .L0. " );
-		if (((read_value & 0x3C0) != 0x040))
-			UART_polled_tx_string( &g_uart, " .L1. " );
+     read_value = *(registers_0_addr+0xC2);
+     char hex_string2[9];
+     for (int i=0;i<8;i++){
+     if ((0x1<<i) & read_value)
+     hex_string2[7-i] = '1';
+     else
+     hex_string2[7-i] = '0';
+     }
+     hex_string2[8] = '\0';
+     UART_polled_tx_string( &g_uart, hex_string2 );
+     UART_polled_tx_string( &g_uart, " Cal->ROC " );
+     if ((read_value & 0xFF) != 0x11){
+     UART_polled_tx_string( &g_uart, " unaligned " );
+     }
+     for (int i=0;i<8;i++){
+     if ((0x1<<i) & read_value)
+     hex_string2[7-i] = '1';
+     else
+     hex_string2[7-i] = '0';
+     }
+     hex_string2[0] = '\0';
+     UART_polled_tx_string( &g_uart, hex_string2 );
+     UART_polled_tx_string( &g_uart, " HV->ROC " );
+     if ((read_value & 0xFF00) != 0x1100){
+     UART_polled_tx_string( &g_uart, " unaligned " );
+     }
+     */
 
-	read_value = digi_read(0xA5,2);
-	for (int i=0;i<10;i++){
-		if ((0x1<<i) & read_value)
-			hex_string[9-i] = '1';
-		else
-			hex_string[9-i] = '0';
-	}
-	hex_string[10] = '\0';
-	UART_polled_tx_string( &g_uart, hex_string );
-	UART_polled_tx_string( &g_uart, " ROC->HV " );
-	if (((read_value & 0x3) != 0x3))
-		UART_polled_tx_string( &g_uart, " unaligned " );
-	if (((read_value & 0x3C) != 0x04))
-		UART_polled_tx_string( &g_uart, " .L0. " );
-	if (((read_value & 0x3C0) != 0x040))
-		UART_polled_tx_string( &g_uart, " .L1. " );
+    UART_polled_tx_string(&g_uart, "Initialization completed");
 
-	read_value = *(registers_0_addr+0xC2);
-		char hex_string2[9];
-		for (int i=0;i<8;i++){
-			if ((0x1<<i) & read_value)
-				hex_string2[7-i] = '1';
-			else
-				hex_string2[7-i] = '0';
-		}
-		hex_string2[8] = '\0';
-		UART_polled_tx_string( &g_uart, hex_string2 );
-		UART_polled_tx_string( &g_uart, " Cal->ROC " );
-		if ((read_value & 0xFF) != 0x11){
-		UART_polled_tx_string( &g_uart, " unaligned " );
-	}
-		for (int i=0;i<8;i++){
-			if ((0x1<<i) & read_value)
-				hex_string2[7-i] = '1';
-			else
-				hex_string2[7-i] = '0';
-		}
-		hex_string2[0] = '\0';
-		UART_polled_tx_string( &g_uart, hex_string2 );
-		UART_polled_tx_string( &g_uart, " HV->ROC " );
-		if ((read_value & 0xFF00) != 0x1100){
-			UART_polled_tx_string( &g_uart, " unaligned " );
-		}
-		*/
+    GPIO_set_output(&g_gpio, GPIO_0, 0);
+    GPIO_set_output(&g_gpio, GPIO_1, 0);
 
-	UART_polled_tx_string( &g_uart, "Initialization completed" );
-
-	GPIO_set_output( &g_gpio, GPIO_0, 0);
-	GPIO_set_output( &g_gpio, GPIO_1, 0);
-
-	// give DIGI registers controls to fiber
+    // give DIGI registers controls to fiber
     *(registers_0_addr + REG_DIGIRW_SEL) = 0;
 
-	while(1)
-	{
-		if (readout_enabled){
-			int delay_count = 0;
-			int trigger_count = 0;
-			//UART_polled_tx_string( &g_uart, "datastream\n" );
+    while (1) {
+        if (readout_enabled) {
+            int delay_count = 0;
+            int trigger_count = 0;
+            //UART_polled_tx_string( &g_uart, "datastream\n" );
 
-			read_data(&delay_count,&trigger_count);
-			readout_totalTriggers += trigger_count;
-		}
+            read_data(&delay_count, &trigger_count);
+            readout_totalTriggers += trigger_count;
+        }
 
-		if (loopCount == 20000){
-			ledPattern ^= 0x1;
-			GPIO_set_output( &g_gpio, GPIO_0, (uint32_t)ledPattern);
+        if (loopCount == 20000) {
+            ledPattern ^= 0x1;
+            GPIO_set_output(&g_gpio, GPIO_0, (uint32_t) ledPattern);
 
-			loopCount = 0;
-		}
-		delayUs(1);
-		loopCount++;
-
+            loopCount = 0;
+        }
+        delayUs(1);
+        loopCount++;
 
         // this is an example of a DCS WR/RD of addr 64 for a "static" register
         // via DTCInterface/DRACRegister
         /*
-        volatile uint16_t example_prev_rd = 0;
-        volatile uint16_t example_rd = *(registers_1_addr + CRDCS_EXAMPLE_RD);
-        if (example_rd != example_prev_rd) {
-            *(registers_1_addr + CRDCS_EXAMPLE_WR) = example_rd;
-        }
-        example_prev_rd = example_rd;
+         volatile uint16_t example_prev_rd = 0;
+         volatile uint16_t example_rd = *(registers_1_addr + CRDCS_EXAMPLE_RD);
+         if (example_rd != example_prev_rd) {
+         *(registers_1_addr + CRDCS_EXAMPLE_WR) = example_rd;
+         }
+         example_prev_rd = example_rd;
          */
 
 #ifdef DTCPROGRAMM
@@ -718,33 +734,33 @@ int main()
 
 #endif
 
-		size_t rx_size =UART_get_rx(&g_uart, rx_buff, sizeof(rx_buff));
-		for (uint16_t j=0;j<rx_size;j++){
-			buffer[writePtr] = rx_buff[j];
-			writePtr++;
-		}
+        size_t rx_size = UART_get_rx(&g_uart, rx_buff, sizeof(rx_buff));
+        for (uint16_t j = 0; j < rx_size; j++) {
+            buffer[writePtr] = rx_buff[j];
+            writePtr++;
+        }
 
-		if (writePtr <= 3)
-			continue;
-		if (writePtr > 0)
-		{
-			if ((buffer[0] != 0xAA) || buffer[1] != 0xAA){
-				writePtr = 0;
-				UART_polled_tx_string( &g_uart, "Problem synchronizing command\n" );
-				continue;
-			}
+        if (writePtr <= 3)
+            continue;
+        if (writePtr > 0) {
+            if ((buffer[0] != 0xAA) || buffer[1] != 0xAA) {
+                writePtr = 0;
+                UART_polled_tx_string(&g_uart,
+                        "Problem synchronizing command\n");
+                continue;
+            }
 
-			uint8_t numBytes = buffer[2];
-			if (writePtr >= (uint32_t)numBytes){
-				uint8_t commandID = (uint8_t) buffer[3];
-				bufcount = 0;
+            uint8_t numBytes = buffer[2];
+            if (writePtr >= (uint32_t) numBytes) {
+                uint8_t commandID = (uint8_t) buffer[3];
+                bufcount = 0;
 
-				//	    if (commandID < MAXCOM_MON)
-				//	      UART_polled_tx_string( &g_uart, "monitoring\n" );
+                //	    if (commandID < MAXCOM_MON)
+                //	      UART_polled_tx_string( &g_uart, "monitoring\n" );
 
-                if (commandID == RESETROC){
-                    digi_write(DG_ADDR_RESET,0,0);
-                    digi_write(DG_ADDR_RESET,1,0);
+                if (commandID == RESETROC) {
+                    digi_write(DG_ADDR_RESET, 0, 0);
+                    digi_write(DG_ADDR_RESET, 1, 0);
                     // Monica added 09/26/2019
                     *(registers_0_addr + REG_ROC_RESET) = 0;
                     outBuffer[bufcount++] = RESETROC;
@@ -895,244 +911,258 @@ int main()
 //					outBuffer[bufcount++] = RESETROC;
 //					bufWrite(outBuffer, &bufcount, 0, 2);
 //				 	outBufSend(g_uart, outBuffer, bufcount);
-				
 
-				}else if (commandID == RESETDEVICE){
+                } else if (commandID == RESETDEVICE) {
 
-					// Monica added 09/26/2019
-					*(registers_0_addr + REG_ROC_FIFO_RESET) = 0;
-					delay_ms(10);
-					*(registers_0_addr + REG_ROC_FIFO_RESET) = 1;
-					outBuffer[bufcount++] = RESETDEVICE;
-					bufWrite(outBuffer, &bufcount, 0, 2);
-				 	outBufSend(g_uart, outBuffer, bufcount);
+                    // Monica added 09/26/2019
+                    *(registers_0_addr + REG_ROC_FIFO_RESET) = 0;
+                    delay_ms(10);
+                    *(registers_0_addr + REG_ROC_FIFO_RESET) = 1;
+                    outBuffer[bufcount++] = RESETDEVICE;
+                    bufWrite(outBuffer, &bufcount, 0, 2);
+                    outBufSend(g_uart, outBuffer, bufcount);
 
-				}else if (commandID == DUMPSETTINGS){
-					uint16_t channel = (uint16_t) buffer[4];
-					outBuffer[bufcount++] = DUMPSETTINGS;
-					if (channel>=0 && channel<96){
+                } else if (commandID == DUMPSETTINGS) {
+                    uint16_t channel = (uint16_t) buffer[4];
+                    outBuffer[bufcount++] = DUMPSETTINGS;
+                    if (channel >= 0 && channel < 96) {
 
-						bufWrite(outBuffer, &bufcount, 10, 2);
-						bufWrite(outBuffer, &bufcount, channel, 2);
+                        bufWrite(outBuffer, &bufcount, 10, 2);
+                        bufWrite(outBuffer, &bufcount, channel, 2);
 
-						bufWrite(outBuffer, &bufcount, default_gains_hv[channel], 2);
-						bufWrite(outBuffer, &bufcount, default_threshs_hv[channel], 2);
-						bufWrite(outBuffer, &bufcount, default_gains_cal[channel], 2);
-						bufWrite(outBuffer, &bufcount, default_threshs_cal[channel], 2);
-					}
+                        bufWrite(outBuffer, &bufcount,
+                                default_gains_hv[channel], 2);
+                        bufWrite(outBuffer, &bufcount,
+                                default_threshs_hv[channel], 2);
+                        bufWrite(outBuffer, &bufcount,
+                                default_gains_cal[channel], 2);
+                        bufWrite(outBuffer, &bufcount,
+                                default_threshs_cal[channel], 2);
+                    }
 
-					else{
-						bufWrite(outBuffer, &bufcount, 768, 2);
-						for (uint8_t ic = 0; ic < 96; ic++){
-							bufWrite(outBuffer, &bufcount, default_gains_hv[ic], 2);
-							bufWrite(outBuffer, &bufcount, default_threshs_hv[ic], 2);
-							bufWrite(outBuffer, &bufcount, default_gains_cal[ic], 2);
-							bufWrite(outBuffer, &bufcount, default_threshs_cal[ic], 2);
-						}
-					}
-					outBufSend(g_uart, outBuffer, bufcount);
+                    else {
+                        bufWrite(outBuffer, &bufcount, 768, 2);
+                        for (uint8_t ic = 0; ic < 96; ic++) {
+                            bufWrite(outBuffer, &bufcount, default_gains_hv[ic],
+                                    2);
+                            bufWrite(outBuffer, &bufcount,
+                                    default_threshs_hv[ic], 2);
+                            bufWrite(outBuffer, &bufcount,
+                                    default_gains_cal[ic], 2);
+                            bufWrite(outBuffer, &bufcount,
+                                    default_threshs_cal[ic], 2);
+                        }
+                    }
+                    outBufSend(g_uart, outBuffer, bufcount);
 
+                } else if (commandID == READMONADCS) {
 
-				}else if (commandID == READMONADCS){
+                    //read currents
 
-				 	//read currents
+                    uint32_t rx0;
 
-				 	uint32_t rx0;
+                    outBuffer[bufcount++] = READMONADCS;
+                    bufWrite(outBuffer, &bufcount, 72, 2);
+                    for (uint8_t i = 0; i < 2; i++) {
+                        for (uint8_t j = 0; j < 12; j++) {
+                            SPI_set_slave_select(&g_spi[i],
+                                    ((j >= 8) ?
+                                            SPI_SLAVE_2 :
+                                            (j < 4 ? SPI_SLAVE_0 : SPI_SLAVE_1)));
+                            uint16_t addr = (j % 4 << 11);
+                            SPI_transfer_frame(&g_spi[i], addr);
+                            SPI_transfer_frame(&g_spi[i], addr);
+                            rx0 = SPI_transfer_frame(&g_spi[i], addr);
+                            SPI_clear_slave_select(&g_spi[i],
+                                    ((j >= 8) ?
+                                            SPI_SLAVE_2 :
+                                            (j < 4 ? SPI_SLAVE_0 : SPI_SLAVE_1)));
 
-				 	outBuffer[bufcount++] = READMONADCS;
-				 	bufWrite(outBuffer, &bufcount, 72, 2);
-				 	for (uint8_t i = 0 ; i < 2; i++){
-				 		for (uint8_t j = 0 ; j < 12; j++){
-				 			SPI_set_slave_select( &g_spi[i] , ((j>=8)?SPI_SLAVE_2:(j<4?SPI_SLAVE_0:SPI_SLAVE_1)));
-				 			uint16_t addr = (j%4 <<11 );
-				 			SPI_transfer_frame( &g_spi[i], addr);
-				 			SPI_transfer_frame( &g_spi[i], addr);
-				 			rx0 = SPI_transfer_frame( &g_spi[i], addr);
-				 			SPI_clear_slave_select( &g_spi[i] , ((j>=8)?SPI_SLAVE_2:(j<4?SPI_SLAVE_0:SPI_SLAVE_1)));
+                            bufWrite(outBuffer, &bufcount, rx0, 2);
+                        }
+                    }
 
+                    uint16_t tvs_val[4] = { 0 };
 
-				 			bufWrite(outBuffer, &bufcount, rx0, 2);
-				 		}
-				 	}
+                    for (uint8_t i = 0; i < 4; i++) {
+                        *(registers_0_addr + REG_ROC_TVS_ADDR) = i;
+                        delayUs(1);
+                        tvs_val[i] = *(registers_0_addr + REG_ROC_TVS_VAL);
+                        bufWrite(outBuffer, &bufcount, tvs_val[i], 2);
+                        delayUs(1);
+                    }
 
-				 	uint16_t tvs_val[4] = {0};
+                    for (uint8_t ihvcal = 1; ihvcal < 3; ihvcal++) {
+                        for (uint8_t i = 0; i < 4; i++) {
+                            digi_write(DG_ADDR_TVS_ADDR, i, ihvcal);
+                            delayUs(1);
+                            tvs_val[i] = digi_read(DG_ADDR_TVS_VAL, ihvcal);
+                            bufWrite(outBuffer, &bufcount, tvs_val[i], 2);
+                            delayUs(1);
+                        }
+                    }
 
-				 	for (uint8_t i =0; i<4; i++){
-				 		*(registers_0_addr+REG_ROC_TVS_ADDR) = i;
-				 		delayUs(1);
-				 		tvs_val[i] = *(registers_0_addr + REG_ROC_TVS_VAL);
-				 		bufWrite(outBuffer, &bufcount, tvs_val[i], 2);
-				 		delayUs(1);
-				 	}
+                    outBufSend(g_uart, outBuffer, bufcount);
+                    //				}else if (commandID == MCPWRITEPIN){
+                    //
+                    //					uint16_t mcp = readU16fromBytes(&buffer[4]);;
+                    //					uint16_t channel = readU16fromBytes(&buffer[6]);
+                    //					uint8_t retv = 0;
+                    //
+                    //					if (mcp > MCPHV3) retv = 255;
+                    //				    MCP_pinWrite(&preampMCP[mcp], channel, 1);
+                    //				    MCP_pinMode(&preampMCP[mcp], channel, MCP_OUTPUT);
+                    //				    MCP_pinMode(&preampMCP[mcp], channel, MCP_INPUT);
+                    //				    retv = MCP_pinRead(&preampMCP[mcp], channel);
+                    //				    MCP_pinMode(&preampMCP[mcp], channel, MCP_OUTPUT);
+                    //
+                    //					outBuffer[bufcount++] = MCPWRITEPIN;
+                    //					outBuffer[bufcount++] = 4;
+                    //					outBuffer[bufcount++] = mcp;
+                    //					outBuffer[bufcount++] = retv;
+                    //					outBuffer[bufcount++] = channel & 0xff;
+                    //					outBuffer[bufcount++] = channel >> 8;
+                    //
+                    //					UART_send(&g_uart, outBuffer ,bufcount );
 
-				 	for (uint8_t ihvcal=1; ihvcal<3; ihvcal++){
-				 		for (uint8_t i =0; i<4; i++){
-				 			digi_write(DG_ADDR_TVS_ADDR, i, ihvcal);
-				 			delayUs(1);
-				 			tvs_val[i] = digi_read(DG_ADDR_TVS_VAL, ihvcal);
-				 			bufWrite(outBuffer, &bufcount, tvs_val[i], 2);
-				 			delayUs(1);
-				 		}
-				 	}
+                } else if (commandID == READHISTO) {
+                    uint8_t channel = (uint8_t) buffer[4];
+                    uint8_t hv_or_cal = (uint8_t) buffer[5];
+                    uint16_t output[256];
+                    read_histogram(channel, hv_or_cal, output);
 
-				 	outBufSend(g_uart, outBuffer, bufcount);
-					//				}else if (commandID == MCPWRITEPIN){
-					//
-					//					uint16_t mcp = readU16fromBytes(&buffer[4]);;
-					//					uint16_t channel = readU16fromBytes(&buffer[6]);
-					//					uint8_t retv = 0;
-					//
-					//					if (mcp > MCPHV3) retv = 255;
-					//				    MCP_pinWrite(&preampMCP[mcp], channel, 1);
-					//				    MCP_pinMode(&preampMCP[mcp], channel, MCP_OUTPUT);
-					//				    MCP_pinMode(&preampMCP[mcp], channel, MCP_INPUT);
-					//				    retv = MCP_pinRead(&preampMCP[mcp], channel);
-					//				    MCP_pinMode(&preampMCP[mcp], channel, MCP_OUTPUT);
-					//
-					//					outBuffer[bufcount++] = MCPWRITEPIN;
-					//					outBuffer[bufcount++] = 4;
-					//					outBuffer[bufcount++] = mcp;
-					//					outBuffer[bufcount++] = retv;
-					//					outBuffer[bufcount++] = channel & 0xff;
-					//					outBuffer[bufcount++] = channel >> 8;
-					//
-					//					UART_send(&g_uart, outBuffer ,bufcount );
+                    outBuffer[bufcount++] = READHISTO;
+                    bufWrite(outBuffer, &bufcount, 512, 2);
+                    for (int i = 0; i < 256; i++) {
+                        bufWrite(outBuffer, &bufcount, output[i], 2);
+                    }
+                    outBufSend(g_uart, outBuffer, bufcount);
 
+                } else if (commandID == READBMES) {
+                    /*
+                     //Old sensor codes with BME 280
+                     uint8_t reg_data[BME280_P_T_H_DATA_LEN];
+                     uint8_t calib_data[BME280_TEMP_PRESS_CALIB_DATA_LEN];
+                     outBuffer[bufcount++] = READBMES;
+                     bufWrite(outBuffer, &bufcount, 2*(BME280_TEMP_PRESS_CALIB_DATA_LEN+BME280_P_T_H_DATA_LEN)+4, 2);
+                     rslt = bme280_set_sensor_mode(BME280_FORCED_MODE, &ptscal);
+                     ptscal.delay_ms(40);
+                     rslt = bme280_get_regs(BME280_TEMP_PRESS_CALIB_DATA_ADDR, calib_data, BME280_TEMP_PRESS_CALIB_DATA_LEN,&ptscal );
+                     rslt = bme280_get_regs(BME280_DATA_ADDR, &reg_data, BME280_P_T_H_DATA_LEN, &ptscal);
+                     for (uint8_t i =0; i<BME280_P_T_H_DATA_LEN; i++){
+                     bufWrite(outBuffer, &bufcount, reg_data[i], 1);
 
-				}else if (commandID == READHISTO){
-					 uint8_t channel = (uint8_t) buffer[4];
-					 uint8_t hv_or_cal = (uint8_t) buffer[5];
-					 uint16_t output[256];
-					 read_histogram(channel,hv_or_cal,output);
+                     }
+                     //					sprintf(outBuffer,"CAL %d %d %d\n",comp_data.temperature, comp_data.pressure, comp_data.humidity);
+                     //					MSS_UART_polled_tx( &g_mss_uart1, outBuffer, strlen(outBuffer) );
+                     rslt = bme280_set_sensor_mode(BME280_FORCED_MODE, &ptshv);
+                     ptshv.delay_ms(40);
+                     rslt = bme280_get_regs(BME280_TEMP_PRESS_CALIB_DATA_ADDR, calib_data, BME280_TEMP_PRESS_CALIB_DATA_LEN,&ptshv );
+                     rslt = bme280_get_regs(BME280_DATA_ADDR, &reg_data, BME280_P_T_H_DATA_LEN, &ptshv);
+                     for (uint8_t i =0; i<BME280_P_T_H_DATA_LEN; i++){
+                     bufWrite(outBuffer, &bufcount, reg_data[i], 1);
 
-					outBuffer[bufcount++] = READHISTO;
-					bufWrite(outBuffer, &bufcount, 512, 2);
-					for (int i=0;i<256;i++){
-						bufWrite(outBuffer, &bufcount, output[i], 2);
-					}
-					outBufSend(g_uart, outBuffer, bufcount);
+                     }
 
+                     //					sprintf(outBuffer,"HV %d %d %d\n",comp_data.temperature, comp_data.pressure, comp_data.humidity);
+                     //					MSS_UART_polled_tx( &g_mss_uart1, outBuffer, strlen(outBuffer) );
 
-				}else if (commandID == READBMES){
-					/*
-					//Old sensor codes with BME 280
-					uint8_t reg_data[BME280_P_T_H_DATA_LEN];
-					uint8_t calib_data[BME280_TEMP_PRESS_CALIB_DATA_LEN];
-				 	outBuffer[bufcount++] = READBMES;
-				 	bufWrite(outBuffer, &bufcount, 2*(BME280_TEMP_PRESS_CALIB_DATA_LEN+BME280_P_T_H_DATA_LEN)+4, 2);
-				 	rslt = bme280_set_sensor_mode(BME280_FORCED_MODE, &ptscal);
-				 	ptscal.delay_ms(40);
-				 	rslt = bme280_get_regs(BME280_TEMP_PRESS_CALIB_DATA_ADDR, calib_data, BME280_TEMP_PRESS_CALIB_DATA_LEN,&ptscal );
-				 	rslt = bme280_get_regs(BME280_DATA_ADDR, &reg_data, BME280_P_T_H_DATA_LEN, &ptscal);
-				 	for (uint8_t i =0; i<BME280_P_T_H_DATA_LEN; i++){
-				 		bufWrite(outBuffer, &bufcount, reg_data[i], 1);
+                     //Also take measurements from HDC 2080 chips
+                     uint16_t this_temp = 0;
+                     uint16_t this_humidity = 0;
 
-				 	}
-				 	//					sprintf(outBuffer,"CAL %d %d %d\n",comp_data.temperature, comp_data.pressure, comp_data.humidity);
-				 	//					MSS_UART_polled_tx( &g_mss_uart1, outBuffer, strlen(outBuffer) );
-				 	rslt = bme280_set_sensor_mode(BME280_FORCED_MODE, &ptshv);
-				 	ptshv.delay_ms(40);
-				 	rslt = bme280_get_regs(BME280_TEMP_PRESS_CALIB_DATA_ADDR, calib_data, BME280_TEMP_PRESS_CALIB_DATA_LEN,&ptshv );
-				 	rslt = bme280_get_regs(BME280_DATA_ADDR, &reg_data, BME280_P_T_H_DATA_LEN, &ptshv);
-				 	for (uint8_t i =0; i<BME280_P_T_H_DATA_LEN; i++){
-				 		bufWrite(outBuffer, &bufcount, reg_data[i], 1);
+                     rslt = hdc2080_reset(&hdchv);
+                     //rslt = hdc2080_reset(&hdccal);
+                     delay_ms(10);
 
-				 	}
+                     //rslt = hdc2080_trigger_measurement(&hdccal);
+                     //rslt = hdc2080_read_temp(&hdccal, &this_temp);
+                     //rslt = hdc2080_read_humidity(&hdccal, &this_humidity);
+                     //bufWrite(outBuffer, &bufcount, this_temp, 2);
+                     //bufWrite(outBuffer, &bufcount, this_humidity, 2);
 
-				 	//					sprintf(outBuffer,"HV %d %d %d\n",comp_data.temperature, comp_data.pressure, comp_data.humidity);
-				 	//					MSS_UART_polled_tx( &g_mss_uart1, outBuffer, strlen(outBuffer) );
+                     rslt = hdc2080_trigger_measurement(&hdchv);
+                     rslt = hdc2080_read_temp(&hdchv, &this_temp);
+                     rslt = hdc2080_read_humidity(&hdchv, &this_humidity);
+                     bufWrite(outBuffer, &bufcount, this_temp, 2);
+                     bufWrite(outBuffer, &bufcount, this_humidity, 2);
 
-				 	//Also take measurements from HDC 2080 chips
-				 	uint16_t this_temp = 0;
-				 	uint16_t this_humidity = 0;
+                     outBufSend(g_uart, outBuffer, bufcount);
+                     */
 
-				 	rslt = hdc2080_reset(&hdchv);
-				 	//rslt = hdc2080_reset(&hdccal);
-				 	delay_ms(10);
+                    outBuffer[bufcount++] = READBMES;
+                    bufWrite(outBuffer, &bufcount,
+                            BME280_TEMP_PRESS_CALIB_DATA_LEN
+                                    + BME280_HUMIDITY_CALIB_DATA_LEN
+                                    + BME280_P_T_H_DATA_LEN + 4 + 4 + 2, 2);
 
-				 	//rslt = hdc2080_trigger_measurement(&hdccal);
-				 	//rslt = hdc2080_read_temp(&hdccal, &this_temp);
-				 	//rslt = hdc2080_read_humidity(&hdccal, &this_humidity);
-				 	//bufWrite(outBuffer, &bufcount, this_temp, 2);
-				 	//bufWrite(outBuffer, &bufcount, this_humidity, 2);
+                    //read with BME 280
+                    uint8_t calib_data_tp[BME280_TEMP_PRESS_CALIB_DATA_LEN];
+                    uint8_t calib_data_h[BME280_HUMIDITY_CALIB_DATA_LEN];
+                    uint8_t raw_bme_data[BME280_P_T_H_DATA_LEN];
 
-				 	rslt = hdc2080_trigger_measurement(&hdchv);
-				 	rslt = hdc2080_read_temp(&hdchv, &this_temp);
-				 	rslt = hdc2080_read_humidity(&hdchv, &this_humidity);
-				 	bufWrite(outBuffer, &bufcount, this_temp, 2);
-				 	bufWrite(outBuffer, &bufcount, this_humidity, 2);
+                    bme280_get_calib(&spi_sensor, calib_data_tp, calib_data_h);
+                    bme280_get_htp(&spi_sensor, raw_bme_data);
 
-				 	outBufSend(g_uart, outBuffer, bufcount);
-				 	*/
+                    for (uint8_t i = 0; i < BME280_TEMP_PRESS_CALIB_DATA_LEN;
+                            i++)
+                        bufWrite(outBuffer, &bufcount, calib_data_tp[i], 1);
+                    for (uint8_t i = 0; i < BME280_HUMIDITY_CALIB_DATA_LEN; i++)
+                        bufWrite(outBuffer, &bufcount, calib_data_h[i], 1);
+                    for (uint8_t i = 0; i < BME280_P_T_H_DATA_LEN; i++)
+                        bufWrite(outBuffer, &bufcount, raw_bme_data[i], 1);
 
-					outBuffer[bufcount++] = READBMES;
-					bufWrite(outBuffer, &bufcount, BME280_TEMP_PRESS_CALIB_DATA_LEN+BME280_HUMIDITY_CALIB_DATA_LEN+BME280_P_T_H_DATA_LEN+4+4+2, 2);
+                    //Also take measurements from HDC 2080 chips
+                    uint16_t this_temp = 0;
+                    uint16_t this_humidity = 0;
 
-					//read with BME 280
-					uint8_t calib_data_tp[BME280_TEMP_PRESS_CALIB_DATA_LEN];
-					uint8_t calib_data_h[BME280_HUMIDITY_CALIB_DATA_LEN];
-					uint8_t raw_bme_data[BME280_P_T_H_DATA_LEN];
+                    rslt = hdc2080_reset(&pthdc);
+                    //rslt = hdc2080_reset(&hdchv);
+                    //rslt = hdc2080_reset(&hdccal);
+                    delay_ms(10);
 
-					bme280_get_calib(&spi_sensor, calib_data_tp, calib_data_h);
-					bme280_get_htp(&spi_sensor, raw_bme_data);
+                    //rslt = hdc2080_trigger_measurement(&hdccal);
+                    //rslt = hdc2080_read_temp(&hdccal, &this_temp);
+                    //rslt = hdc2080_read_humidity(&hdccal, &this_humidity);
+                    //bufWrite(outBuffer, &bufcount, this_temp, 2);
+                    //bufWrite(outBuffer, &bufcount, this_humidity, 2);
 
-					for (uint8_t i =0; i<BME280_TEMP_PRESS_CALIB_DATA_LEN; i++)
-						bufWrite(outBuffer, &bufcount, calib_data_tp[i], 1);
-					for (uint8_t i =0; i<BME280_HUMIDITY_CALIB_DATA_LEN; i++)
-						bufWrite(outBuffer, &bufcount, calib_data_h[i], 1);
-					for (uint8_t i =0; i<BME280_P_T_H_DATA_LEN; i++)
-						bufWrite(outBuffer, &bufcount, raw_bme_data[i], 1);
+                    //rslt = hdc2080_trigger_measurement(&hdchv);
+                    //rslt = hdc2080_read_temp(&hdchv, &this_temp);
+                    //rslt = hdc2080_read_humidity(&hdchv, &this_humidity);
+                    //bufWrite(outBuffer, &bufcount, this_temp, 2);
+                    //bufWrite(outBuffer, &bufcount, this_humidity, 2);
 
-					//Also take measurements from HDC 2080 chips
-					uint16_t this_temp = 0;
-					uint16_t this_humidity = 0;
+                    rslt = hdc2080_trigger_measurement(&pthdc);
+                    rslt = hdc2080_read_temp(&pthdc, &this_temp);
+                    rslt = hdc2080_read_humidity(&pthdc, &this_humidity);
+                    bufWrite(outBuffer, &bufcount, this_temp, 2);
+                    bufWrite(outBuffer, &bufcount, this_humidity, 2);
 
-					rslt = hdc2080_reset(&pthdc);
-					//rslt = hdc2080_reset(&hdchv);
-					//rslt = hdc2080_reset(&hdccal);
-					delay_ms(10);
+                    //readout amb_temp
+                    uint16_t amb_temp_cal = ADC124S051_daisy_read(
+                            &spi_ambtemp_cal, 1);
+                    uint16_t amb_temp_hv = ADC124S051_daisy_read(
+                            &spi_ambtemp_hv, 0);
+                    bufWrite(outBuffer, &bufcount, amb_temp_cal, 2);
+                    bufWrite(outBuffer, &bufcount, amb_temp_hv, 2);
 
-					//rslt = hdc2080_trigger_measurement(&hdccal);
-					//rslt = hdc2080_read_temp(&hdccal, &this_temp);
-					//rslt = hdc2080_read_humidity(&hdccal, &this_humidity);
-					//bufWrite(outBuffer, &bufcount, this_temp, 2);
-					//bufWrite(outBuffer, &bufcount, this_humidity, 2);
+                    //read out A0 for new pressure sensor
+                    SPI_set_slave_select(&g_spi[0], SPI_SLAVE_2);
+                    uint16_t addr = (8 % 4 << 11);
+                    SPI_transfer_frame(&g_spi[0], addr);
+                    uint32_t rx0 = SPI_transfer_frame(&g_spi[0], addr);
+                    SPI_clear_slave_select(&g_spi[0], SPI_SLAVE_2);
+                    bufWrite(outBuffer, &bufcount, rx0, 2);
 
-					//rslt = hdc2080_trigger_measurement(&hdchv);
-					//rslt = hdc2080_read_temp(&hdchv, &this_temp);
-					//rslt = hdc2080_read_humidity(&hdchv, &this_humidity);
-					//bufWrite(outBuffer, &bufcount, this_temp, 2);
-					//bufWrite(outBuffer, &bufcount, this_humidity, 2);
+                    outBufSend(g_uart, outBuffer, bufcount);
 
-					rslt = hdc2080_trigger_measurement(&pthdc);
-					rslt = hdc2080_read_temp(&pthdc, &this_temp);
-					rslt = hdc2080_read_humidity(&pthdc, &this_humidity);
-					bufWrite(outBuffer, &bufcount, this_temp, 2);
-					bufWrite(outBuffer, &bufcount, this_humidity, 2);
-
-					//readout amb_temp
-					uint16_t amb_temp_cal = ADC124S051_daisy_read(&spi_ambtemp_cal, 1);
-					uint16_t amb_temp_hv = ADC124S051_daisy_read(&spi_ambtemp_hv, 0);
-					bufWrite(outBuffer, &bufcount, amb_temp_cal, 2);
-					bufWrite(outBuffer, &bufcount, amb_temp_hv, 2);
-
-					//read out A0 for new pressure sensor
-					SPI_set_slave_select( &g_spi[0] , SPI_SLAVE_2);
-					uint16_t addr = (8%4 <<11 );
-					SPI_transfer_frame( &g_spi[0], addr);
-					uint32_t rx0 = SPI_transfer_frame( &g_spi[0], addr);
-					SPI_clear_slave_select( &g_spi[0] , SPI_SLAVE_2);
-					bufWrite(outBuffer, &bufcount, rx0, 2);
-
-					outBufSend(g_uart, outBuffer, bufcount);
-
-
-				}else if (commandID == DIGIRW){
-					uint8_t rw = (uint8_t) buffer[4];
-					uint8_t thishvcal = (uint8_t) buffer[5];
-					uint8_t address = (uint8_t) buffer[6];
-					uint16_t adcaddress = address;
-                    if (rw & 0x2){
+                } else if (commandID == DIGIRW) {
+                    uint8_t rw = (uint8_t) buffer[4];
+                    uint8_t thishvcal = (uint8_t) buffer[5];
+                    uint8_t address = (uint8_t) buffer[6];
+                    uint16_t adcaddress = address;
+                    if (rw & 0x2) {
                         adcaddress |= 0x100;
                         rw &= 0x1;
                     }
@@ -1141,101 +1171,106 @@ int main()
                     outBuffer[bufcount++] = DIGIRW;
                     bufWrite(outBuffer, &bufcount, 7, 2);
 
-                    if (thishvcal < 3){
-                      if ( rw == 0 ){//read
-                        data = digi_read(address, thishvcal);
-                      }else{
-                        digi_write(address, data, thishvcal);
-                      }
-                    }else{
-                        if (thishvcal == 3){
-                          if ( rw == 0 ){//read
-                            data = *(registers_0_addr + address);
-                          }else{
-                            *(registers_0_addr + address) = data;
-                          }
-                        }else{
-                          uint8_t adc_num = thishvcal - 4;
-                          if ( rw == 0){
-                              data = adc_read(adcaddress,adc_num);
-                          }else{
-                              uint16_t adc_mask = (0x1<<adc_num);
-                              adc_write(adcaddress,data,adc_mask);
-                          }
+                    if (thishvcal < 3) {
+                        if (rw == 0) {					//read
+                            data = digi_read(address, thishvcal);
+                        } else {
+                            digi_write(address, data, thishvcal);
+                        }
+                    } else {
+                        if (thishvcal == 3) {
+                            if (rw == 0) {					//read
+                                data = *(registers_0_addr + address);
+                            } else {
+                                *(registers_0_addr + address) = data;
+                            }
+                        } else {
+                            uint8_t adc_num = thishvcal - 4;
+                            if (rw == 0) {
+                                data = adc_read(adcaddress, adc_num);
+                            } else {
+                                uint16_t adc_mask = (0x1 << adc_num);
+                                adc_write(adcaddress, data, adc_mask);
+                            }
                         }
                     }
-					bufWrite(outBuffer, &bufcount, rw, 1);
-					bufWrite(outBuffer, &bufcount, thishvcal, 1);
-					bufWrite(outBuffer, &bufcount, address, 1);
-					bufWrite(outBuffer, &bufcount, data, 4);
-					outBufSend(g_uart, outBuffer, bufcount);
+                    bufWrite(outBuffer, &bufcount, rw, 1);
+                    bufWrite(outBuffer, &bufcount, thishvcal, 1);
+                    bufWrite(outBuffer, &bufcount, address, 1);
+                    bufWrite(outBuffer, &bufcount, data, 4);
+                    outBufSend(g_uart, outBuffer, bufcount);
 
 #ifndef	DTCDDRTEST  // Monica added for allowing all other DDR test functions
 
-				}else if (commandID == GETDEVICEID){
+                } else if (commandID == GETDEVICEID) {
 
-				 	uint8_t data_buffer[16];
-				 	uint8_t dinfo_buffer[36];
-				 	uint8_t status;
-				 	status = SYS_get_serial_number(data_buffer, 0);
-				 	status = SYS_get_design_info(dinfo_buffer,0);
-				 	outBuffer[bufcount++] = GETDEVICEID;
-				 	bufWrite(outBuffer, &bufcount, 52, 2);
-				 	for (uint8_t i = 0 ; i < 16; i++)
-				 		outBuffer[bufcount++] = data_buffer[i];
-				 	for (uint8_t i = 0 ; i < 36; i++)
-				 		outBuffer[bufcount++] = dinfo_buffer[i];
-				 	outBufSend(g_uart, outBuffer, bufcount);
+                    uint8_t data_buffer[16];
+                    uint8_t dinfo_buffer[36];
+                    uint8_t status;
+                    status = SYS_get_serial_number(data_buffer, 0);
+                    status = SYS_get_design_info(dinfo_buffer, 0);
+                    outBuffer[bufcount++] = GETDEVICEID;
+                    bufWrite(outBuffer, &bufcount, 52, 2);
+                    for (uint8_t i = 0; i < 16; i++)
+                        outBuffer[bufcount++] = data_buffer[i];
+                    for (uint8_t i = 0; i < 36; i++)
+                        outBuffer[bufcount++] = dinfo_buffer[i];
+                    outBufSend(g_uart, outBuffer, bufcount);
 
-				}else if (commandID == SETFUSEON){
-					uint8_t preamp_number = (uint8_t) buffer[4];
-					uint8_t time = (uint8_t) buffer[5];
+                } else if (commandID == SETFUSEON) {
+                    uint8_t preamp_number = (uint8_t) buffer[4];
+                    uint8_t time = (uint8_t) buffer[5];
 
-					for (uint8_t i = 0; i < 48; i++){
-						MCP_pinWrite(&preampMCP[MCPFC0+i/16],i%16+1,0);
-					}
+                    for (uint8_t i = 0; i < 48; i++) {
+                        MCP_pinWrite(&preampMCP[MCPFC0 + i / 16], i % 16 + 1,
+                                0);
+                    }
 
-					MCP_pinWrite(&preampMCP[MCPFC0+preamp_number/16],preamp_number%16+1,1);
+                    MCP_pinWrite(&preampMCP[MCPFC0 + preamp_number / 16],
+                            preamp_number % 16 + 1, 1);
 
-					if (time > 0){
-						delay_ms(time*1000);
-						MCP_pinWrite(&preampMCP[MCPFC0+preamp_number/16],preamp_number%16+1,0);
-					}
+                    if (time > 0) {
+                        delay_ms(time * 1000);
+                        MCP_pinWrite(&preampMCP[MCPFC0 + preamp_number / 16],
+                                preamp_number % 16 + 1, 0);
+                    }
 
-					outBuffer[bufcount++] = SETFUSEON;
-					bufWrite(outBuffer, &bufcount, 2, 2);
-					bufWrite(outBuffer, &bufcount, preamp_number, 1);
-					bufWrite(outBuffer, &bufcount, time, 1);
-					outBufSend(g_uart, outBuffer, bufcount);
+                    outBuffer[bufcount++] = SETFUSEON;
+                    bufWrite(outBuffer, &bufcount, 2, 2);
+                    bufWrite(outBuffer, &bufcount, preamp_number, 1);
+                    bufWrite(outBuffer, &bufcount, time, 1);
+                    outBufSend(g_uart, outBuffer, bufcount);
 
-				}else if (commandID == SETFUSEOFF){
+                } else if (commandID == SETFUSEOFF) {
 
-					for (uint8_t i = 0; i < 48; i++){
-						MCP_pinWrite(&preampMCP[MCPFC0+i/16],i%16+1,0);
-					}
+                    for (uint8_t i = 0; i < 48; i++) {
+                        MCP_pinWrite(&preampMCP[MCPFC0 + i / 16], i % 16 + 1,
+                                0);
+                    }
 
-					outBuffer[bufcount++] = SETFUSEOFF;
-					bufWrite(outBuffer, &bufcount, 0, 2);
-					outBufSend(g_uart, outBuffer, bufcount);
+                    outBuffer[bufcount++] = SETFUSEOFF;
+                    bufWrite(outBuffer, &bufcount, 0, 2);
+                    outBufSend(g_uart, outBuffer, bufcount);
 
-				}else if (commandID == READKEY){
-					outBuffer[bufcount++] = READKEY;
-					bufWrite(outBuffer, &bufcount, 6, 2);
+                } else if (commandID == READKEY) {
+                    outBuffer[bufcount++] = READKEY;
+                    bufWrite(outBuffer, &bufcount, 6, 2);
 
-					uint16_t key_temp = ADC124S051_read(&g_spi[4], 0, 1);
-					uint16_t v2p5 = ADC124S051_read(&g_spi[4], 0, 3);
-					uint16_t v5p1 = ADC124S051_read(&g_spi[4], 0, 0);
+                    uint16_t key_temp = ADC124S051_read(&g_spi[4], 0, 1);
+                    uint16_t v2p5 = ADC124S051_read(&g_spi[4], 0, 3);
+                    uint16_t v5p1 = ADC124S051_read(&g_spi[4], 0, 0);
 
-					bufWrite(outBuffer, &bufcount, key_temp, 2);
-					bufWrite(outBuffer, &bufcount, v2p5, 2);
-					bufWrite(outBuffer, &bufcount, v5p1, 2);
-					outBufSend(g_uart, outBuffer, bufcount);
+                    bufWrite(outBuffer, &bufcount, key_temp, 2);
+                    bufWrite(outBuffer, &bufcount, v2p5, 2);
+                    bufWrite(outBuffer, &bufcount, v5p1, 2);
+                    outBufSend(g_uart, outBuffer, bufcount);
 
-				}else if (commandID == DDRSTATUS){
-					outBuffer[bufcount++] = DDRSTATUS;
-					bufWrite(outBuffer, &bufcount, 1, 2);
-					bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_CTRLREADY), 1);
-					outBufSend(g_uart, outBuffer, bufcount);
+                } else if (commandID == DDRSTATUS) {
+                    outBuffer[bufcount++] = DDRSTATUS;
+                    bufWrite(outBuffer, &bufcount, 1, 2);
+                    bufWrite(outBuffer, &bufcount,
+                            *(registers_0_addr + REG_ROC_DDR_CTRLREADY), 1);
+                    outBufSend(g_uart, outBuffer, bufcount);
 #endif
 
 //***********************************begin of DRAC Test commands****************************************************************************************
@@ -2160,17 +2195,16 @@ int main()
 #endif
 
 #ifdef PROGRAMMING
-                }else if (commandID == PROGRAMDIGIS){
+                } else if (commandID == PROGRAMDIGIS) {
 
-                       uint8_t actionCodes[8] = {
-                          DP_DEVICE_INFO_ACTION_CODE,
-                          DP_READ_IDCODE_ACTION_CODE,
-                          DP_ERASE_ACTION_CODE,
-                          DP_PROGRAM_ACTION_CODE,
-                          DP_VERIFY_ACTION_CODE,
-                          DP_ENC_DATA_AUTHENTICATION_ACTION_CODE,
-                          DP_VERIFY_DIGEST_ACTION_CODE
-                          };
+                    uint8_t actionCodes[8] = {
+                    DP_DEVICE_INFO_ACTION_CODE,
+                    DP_READ_IDCODE_ACTION_CODE,
+                    DP_ERASE_ACTION_CODE,
+                    DP_PROGRAM_ACTION_CODE,
+                    DP_VERIFY_ACTION_CODE,
+                    DP_ENC_DATA_AUTHENTICATION_ACTION_CODE,
+                    DP_VERIFY_DIGEST_ACTION_CODE };
 
                     uint8_t indata = (uint8_t) buffer[4];
                     _Bool whichdigi = indata & 0x80;
@@ -2179,9 +2213,50 @@ int main()
                     device_family = G5M_DEVICE_FAMILY;
                     outBuffer[bufcount++] = PROGRAMDIGIS;
                     bufWrite(outBuffer, &bufcount, 0, 2);
-                    g_pro_spi = (whichdigi==0?g_cal_pro_spi:g_hv_pro_spi);
+                    g_pro_spi = (whichdigi == 0 ? g_cal_pro_spi : g_hv_pro_spi);
                     outBufSend(g_uart, outBuffer, bufcount);
                     dp_top();
+#endif
+
+#ifdef IAP
+                }else if (commandID ==  IAPROC){
+
+
+
+                    clear_iap_data_buffer();
+
+                    uint8_t indata = (uint8_t) buffer[4];
+                    uint8_t action = indata & 0xF;
+
+                    outBuffer[bufcount++] = IAPROC;
+                    bufWrite(outBuffer, &bufcount, 0, 2);
+                    outBufSend(g_uart, outBuffer, bufcount);
+
+                    switch (action){
+                    case '1':
+                        execute_bitstream_authenticate();
+                        break;
+                    case '2':
+                        execute_iap_image_authenticate();
+                        break;
+                    case '3':
+                        UART_polled_tx_string(&g_uart,(const uint8_t*)"Erase the PolarFire device using the FlashPro ERASE action.\n\rNext Power cycle the board to initiate AutoProgramming on Blank device.\r\n");
+
+                        break;
+                    case '4':
+                    case '5':
+                    case '6':
+                        execute_iap(action);
+                        break;
+                    case '7':
+                        //execute_digest_check();
+                        break;
+                    default:
+//                        display_user_options();
+                        break;
+                    }
+
+
 #endif
 
 #ifdef	FIXEDSIZETEST
@@ -2287,7 +2362,7 @@ int main()
 					outBufSend(g_uart, outBuffer, bufcount);
 #endif
 
-                }else if (commandID == SETDIGIRW){
+                } else if (commandID == SETDIGIRW) {
                     // set if fiber (0) or serial (1) drives signals to DIGIs
                     uint8_t digirw_sel = (uint8_t) buffer[4];
                     *(registers_0_addr + REG_DIGIRW_SEL) = digirw_sel;
@@ -2296,9 +2371,6 @@ int main()
                     bufWrite(outBuffer, &bufcount, 1, 2);
                     bufWrite(outBuffer, &bufcount, digirw_sel, 1);
                     outBufSend(g_uart, outBuffer, bufcount);
-
-
-
 
 //***********************************begin of control_digi commands*******************************************************************************
 //				}else  (commandID == ADCRWCMDID){
@@ -2799,18 +2871,18 @@ int main()
 					outBufSend(g_uart, outBuffer, bufcount);
 	 
 #endif
-				} // end of commands if
+                } // end of commands if
 
-				// If we didn't use the whole buffer, the rest must be the next command
-				//memmove(&buffer[0],&buffer[numBytes],writePtr-numBytes);
-				for (uint16_t j=0;j<writePtr-numBytes;j++){
-					buffer[j] = buffer[j+numBytes];
-				}
-				writePtr -= numBytes;
-			}
-		}
-	}
+                // If we didn't use the whole buffer, the rest must be the next command
+                //memmove(&buffer[0],&buffer[numBytes],writePtr-numBytes);
+                for (uint16_t j = 0; j < writePtr - numBytes; j++) {
+                    buffer[j] = buffer[j + numBytes];
+                }
+                writePtr -= numBytes;
+            }
+        }
+    }
 
-	return 0;
+    return 0;
 }
 
