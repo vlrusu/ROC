@@ -692,6 +692,7 @@ static uint8_t execute_ss_command
     }
 
     /*make sure that service is complete i.e. SS_USER_BUSY is gone 0*/
+    //FIXME VR - this should have a timeout
     while(1 == HAL_get_32bit_reg_field(g_css_pf_base_addr, SS_USER_BUSY));
 
     /*Read the status returned by System Controller*/

@@ -6,6 +6,7 @@
  */
 
 #include "iaputils.h"
+#include "../utils.h"
 #include "drivers/CoreUARTapb/core_uart_apb.h"
 #include "drivers/CoreSysServices_PF/core_sysservices_pf.h"
 #include "drivers/CoreSPI/core_spi.h"
@@ -32,7 +33,7 @@ uint32_t g_flash_address = 0;
 
 uint8_t iap_data_buffer [1024];
 
-extern UART_instance_t g_uart;
+
 
 
 static const uint8_t g_separator[] =
@@ -698,18 +699,18 @@ void execute_iap(uint8_t option)
     uint8_t status = 0xFF;
     switch(option)
     {
-    case '4':
+    case 4:
         UART_polled_tx_string(&g_uart, (const uint8_t*)"\r\nIAP PROGRAM for image at index 2 is in progress...\n\rIt takes approximately 28 seconds\n\r");
 
         cmd = IAP_PROGRAM_BY_SPIIDX_CMD;
         spiaddr_or_idx = IMAGE_IDX;
         break;
-    case '5':
+    case 5:
         UART_polled_tx_string(&g_uart, (const uint8_t*)"\r\nIAP PROGRAM for image at address 0x1400000 is in progress...\n\rIt takes approximately 28 seconds\n\r");
         cmd = IAP_PROGRAM_BY_SPIADDR_CMD;
         spiaddr_or_idx = IAP_IMAGE_SPI_ADDRESS;
         break;
-    case '6':
+    case 6:
         UART_polled_tx_string(&g_uart, (const uint8_t*)"\r\nAuto update is in progress...\r\nIt takes approximately 28 seconds\n\r");
 
         cmd = IAP_AUTOUPDATE_CMD;
@@ -751,17 +752,17 @@ void execute_iap_image_authenticate(void)
     uint8_t status = 0xFF;
 
 
-    UART_polled_tx_string(&g_uart, (const uint8_t*)"\r\nIAP image authentication for image at index 2 is in progress...\n\r");
+    UART_polled_tx_string(&g_uart, "\r\nIAP image authentication for image at index 2 is in progress...\n\r");
     status = SYS_IAP_image_authenticate_service(IMAGE_IDX);
-    UART_polled_tx_string(&g_uart, (const uint8_t*)"Authentication status: ");
+    UART_polled_tx_string(&g_uart, "Authentication status: ");
     if(SYS_SUCCESS == status)
     {
-        UART_polled_tx_string(&g_uart, (const uint8_t*)"SUCCESS ");
+        UART_polled_tx_string(&g_uart,"SUCCESS ");
     }
     else
     {
         display_output(&status, 1);
     }
-    UART_polled_tx_string(&g_uart, (const uint8_t*)"\r\n");
+    UART_polled_tx_string(&g_uart, "\r\nProgDone\n");
 
 }

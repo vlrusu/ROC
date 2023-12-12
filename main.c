@@ -2233,22 +2233,22 @@ int main() {
                     outBufSend(g_uart, outBuffer, bufcount);
 
                     switch (action){
-                    case '1':
+                    case 1:
                         execute_bitstream_authenticate();
                         break;
-                    case '2':
+                    case 2:
                         execute_iap_image_authenticate();
                         break;
-                    case '3':
+                    case 3:
                         UART_polled_tx_string(&g_uart,(const uint8_t*)"Erase the PolarFire device using the FlashPro ERASE action.\n\rNext Power cycle the board to initiate AutoProgramming on Blank device.\r\n");
 
                         break;
-                    case '4':
-                    case '5':
-                    case '6':
+                    case 4:
+                    case 5:
+                    case 6:
                         execute_iap(action);
                         break;
-                    case '7':
+                    case 7:
                         //execute_digest_check();
                         break;
                     default:
