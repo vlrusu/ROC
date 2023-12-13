@@ -16,13 +16,13 @@
 //#define FIXEDSIZETEST  // if commented, skips all code inside    #ifdef	FIXEDSIZETEST ... #endif
 
 // Used to reduce size after adding DIGI programming
-//#define DIGITEST
+#define DIGITEST
 
 // Used for commands to uProc from DTC
-//#define DTCPROGRAM
+#define DTCPROGRAM
 
 // Used for code need in DRAC Standalone Tests
-//#define DRACTEST
+#define DRACTEST
 
 // Used for DIGI programming
 #define PROGRAMMING
@@ -78,7 +78,7 @@ int main() {
 
     //register address for bit banging
     registers_0_addr = (volatile uint32_t*) REGISTERBASEADDR;
-#ifdef DTCPROGRAMM
+#ifdef DTCPROGRAM
     // MT added  register address for DTC commands
     registers_1_addr = (volatile uint32_t *) DTC_BASE_ADDR;
 #endif
@@ -519,7 +519,7 @@ int main() {
          example_prev_rd = example_rd;
          */
 
-#ifdef DTCPROGRAMM
+#ifdef DTCPROGRAM
         //
         // decoding of DCS write command in address space 0x100-200 from DCX_RX_BUFFER:
         // - starts on DTC_CMD_READY (driven by SlowControls/DCSRegisters) seen high
