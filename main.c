@@ -2460,6 +2460,18 @@ int main() {
 #ifdef DIGITEST
 
 				}else if (commandID == AUTOBITSLIPCMDID){
+				    //reset the ADCs first, at this point, clock better be stable
+				    //digiRW(1,4+i,0x08,3)
+				    for (int i=0;i<12;i++){
+				        uint16_t adc_mask = (0x1 << i);
+				        adc_write(0x08, 3, adc_mask);
+				    }
+
+                    for (int i=0;i<12;i++){
+                        uint16_t adc_mask = (0x1 << i);
+                        adc_write(0x08, 0, adc_mask);
+                    }
+
 					autobitslip();
 
 				}else if (commandID == READRATESCMDID){
