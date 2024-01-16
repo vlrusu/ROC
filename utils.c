@@ -563,9 +563,9 @@ void read_data(int *delay_count, int *trigger_count)
 				if ((*delay_count) >= readout_maxDelay){
 					// if not doing continuous readout, tell python to end the run now
 					//if (readout_mode != 1){
-						readout_obloc = 0;
-						bufWrite(dataBuffer, &readout_obloc, EMPTY, 2);
-						UART_send(&g_uart, dataBuffer ,2);
+						//readout_obloc = 0;
+						//bufWrite(dataBuffer, &readout_obloc, EMPTY, 2);
+						//UART_send(&g_uart, dataBuffer ,2);
 					//}
 					break;
 				}
@@ -584,20 +584,22 @@ void read_data(int *delay_count, int *trigger_count)
 		for (int j=0;j<readout_wordsPerTrigger;j++){
 			volatile uint32_t digioutput;
 			*(registers_0_addr + re) = 1;
+			//delayUs(1);
 			digioutput = *(registers_0_addr + data_reg);
 			memlevel -= 1;
 			bufWrite(dataBuffer, &readout_obloc, ((digioutput & 0xFFFF0000)>>16), 2);
 			bufWrite(dataBuffer, &readout_obloc, ((digioutput & 0xFFFF)), 2);
 		}
 
+		//delayUs(100);
+
 		UART_send(&g_uart, dataBuffer ,readout_obloc);
 		(*trigger_count)++;
 
-
 		if ((*trigger_count) >= readout_numTriggers){
-			readout_obloc = 0;
-			bufWrite(dataBuffer, &readout_obloc, ENDOFDATA, 2);
-			UART_send(&g_uart, dataBuffer ,2);
+			//readout_obloc = 0;
+			//bufWrite(dataBuffer, &readout_obloc, ENDOFDATA, 2);
+			//UART_send(&g_uart, dataBuffer ,2);
 			break;
 		}
 	}
