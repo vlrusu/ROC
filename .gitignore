@@ -63,3 +63,4 @@ Debug\*
 /RemoteSystemsTempFiles/
 /CMSIS/
 /Release/
+.settings/language.settings.xml

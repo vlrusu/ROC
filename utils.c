@@ -67,6 +67,11 @@ spi_instance_t g_spi[5];
 pwm_instance_t g_pwm;
 gpio_instance_t g_gpio;
 
+spi_instance_t g_cal_pro_spi;
+spi_instance_t g_hv_pro_spi;
+spi_instance_t g_pro_spi;
+
+
 //void reset_fabric(){
 //	/* RESET the fabric */
 //	//SYSREG->SOFT_RST_CR |= SYSREG_FPGA_SOFTRESET_MASK;
@@ -309,7 +314,6 @@ uint16_t digi_read(uint8_t address, uint8_t hvcal)//hvcal can only be 1 or 2
 
 void read_histogram(uint8_t channel, uint8_t hv_or_cal, uint16_t *output){
 
-    // select channel
     uint8_t real_channel = 0;
     for (size_t i=0;i<96;i++){
         if (channel_map[i] == channel){
@@ -323,17 +327,18 @@ void read_histogram(uint8_t channel, uint8_t hv_or_cal, uint16_t *output){
         real_channel -= 48;
     }
     digi_write(DG_ADDR_HISTO_CHANNEL,((real_channel << 1) | (hv_or_cal & 0x1)),fpga);
-    // tell digi to write histogram to sram
-    digi_write(DG_ADDR_HISTO_RESET,0x1,fpga);
-    delayUs(1);
-    for (int i=0;i<256;i++){
-        output[i] = digi_read(DG_ADDR_HISTO_VAL,fpga);
-        digi_write(DG_ADDR_HISTO_RESET,0x3,fpga);
-        digi_write(DG_ADDR_HISTO_RESET,0x1,fpga);
-        delayUs(1);
-    }
 
-    digi_write(DG_ADDR_HISTO_RESET,0x0,fpga);
+	// tell digi to write histogram to sram
+	digi_write(DG_ADDR_HISTO_RESET,0x1,fpga);
+	delayUs(1);
+	for (int i=0;i<256;i++){
+	    output[i] = digi_read(DG_ADDR_HISTO_VAL,fpga);
+	    digi_write(DG_ADDR_HISTO_RESET,0x3,fpga);
+	    digi_write(DG_ADDR_HISTO_RESET,0x1,fpga);
+	    delayUs(1);
+	}
+	digi_write(DG_ADDR_HISTO_RESET,0x0,fpga);
+
 }
 
 uint16_t init_adc(uint16_t adc_mask, uint8_t pattern, uint8_t phase)

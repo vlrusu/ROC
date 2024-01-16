@@ -123,6 +123,11 @@
 #define READALIGN		93
 #define SETDIGIRW       94
 
+#define DDRTESTWRITE  95
+#define DDRTESTREAD   96
+#define DDRTESTSETUP  97
+#define DDRTESTSTATUS 98
+
 #define ADCRWCMDID 101
 #define BITSLIPCMDID 102
 #define AUTOBITSLIPCMDID 103
@@ -134,6 +139,9 @@
 #define MEASURETHRESHOLDCMDID 109
 
 #define PACKAGETESTCMDID 151
+
+#define PROGRAMDIGIS 152
+#define IAPROC 153
 
 // any command below is coming from DCS write to that address
 // address space is 0x100-0x200
@@ -238,10 +246,6 @@
 #define REG_TIMERRESET 0x13
 #define REG_TIMERCOUNTER 0x14
 
-#define	REG_ROC_USE_UART 0xF1
-#define REG_DIGIRW_SEL 0xF2   // WO   select between fiber (0) or serial (1) to drive some DIGI signals
-
-
 #define REG_ROC_DDR_PATTERN_EN 	0x20  // W enable pattern to DDR
 #define REG_ROC_DDR_ERROR_READ	0x21  // R error seen:[0] event_error, [1] header1_error, [2] header2_error, [3] data_error
 #define REG_ROC_DDR_ERROR_REQ 	0x22  // W request error to read:[0] event_error, [1] header1_error, [2] header2_error, [3] data_error
@@ -325,9 +329,6 @@
 #define REG_ROC_READ_ALIGNED 0xB6
 #define REG_ROC_READ_ALIGNMENT 0xB7
 
-#define REG_ERROR_ADDRESS  0xE0
-#define REG_ERROR_COUNTER  0xE1
-
 //#define REG_ROC_DDR_TRUEL	0xC0 	//R  LSB 32-bit of DDR read data when error seen
 //#define REG_ROC_DDR_TRUEH	0xC1 	//R  MSB 32-bit of DDR read data when error seen
 //#define REG_ROC_DDR_EXPCL	0xC2 	//R  LSB 32-bit of DDR expected data when error seen
@@ -345,7 +346,7 @@
 //#define REG_ROC_DDR_WRBCNT 	0xCE	//R  returns number of WR-data burst to DDR
 //#define REG_ROC_DDR_RDBCNT 	0xCF	//R  returns number of RD-data burst to DDR
 
-#define REG_ROC_PRBS_EN			0xD0 //W: enable PRBS to CORE_PCS (in loopback)
+#define REG_ROC_PRBS_EN		    0xD0 //W: enable PRBS to CORE_PCS (in loopback)
 #define REG_ROC_PRBS_START		0xD1 //W: PRBS sequence enable (level: high between START and STOP)
 #define REG_ROC_PRBS_ERRORIN	0xD2 //W: Inject PRBS sequence error (0xEFFE)  (self clearing)
 #define REG_ROC_PRBS_ERRORCLR	0xD3 //W: Reset error count and CDF FIFO (self clearing)
@@ -355,9 +356,22 @@
 #define REG_ROC_PRBS_CDCEMPTY	0xD7 //R: CDC FIFO Empty
 #define REG_ROC_PRBS_CDCWRCNT	0xD8 //R: CDC FIFO WR word counter
 #define REG_ROC_PRBS_ERRORCNT	0xD9 //R: PRBS sequence error counter
-#define REG_ROC_PRBS_VALID		0xDA //R: XCVR RX Valid on
-#define REG_ROC_PRBS_LOCK		0xDB //R: PRBS sequence ON
+#define REG_ROC_PRBS_ON		    0xDA //R: PRBS sequence ON
+#define REG_ROC_PRBS_LOCK		0xDB //R: PRBS fiber is locked
 #define REG_ROC_PRBS_PCSDATA	0xDC //R: PCS Diagnostics: [1:0]=TX invalid K; [3]=TX aligned [5:4]=RX error; [9:8]=RX bad disparity; [13:12]=RX bad 8to10
+
+#define REG_ERROR_ADDRESS   0xE0
+#define REG_ERROR_COUNTER   0xE1
+
+#define REG_ROC_DDRTEST_WREN     0xE2
+#define REG_ROC_DDRTEST_RDEN     0xE3
+#define REG_ROC_DDRTEST_BLKNO    0xE4
+#define REG_ROC_DDRTEST_STATUS   0xE5
+#define REG_ROC_DDRTEST_ERRCNT   0xE6
+#define REG_ROC_DDRTEST_ERRLOC   0xE7
+
+#define REG_ROC_USE_UART    0xF1
+#define REG_DIGIRW_SEL      0xF2   // WO   select between fiber (0) or serial (1) to drive some DIGI signals
 
 //***********************ADC_ADDR_* are the ADC addresses
 										//AD9212 memory map:
@@ -464,6 +478,11 @@ extern UART_instance_t g_uart;
 extern spi_instance_t g_spi[5];
 extern gpio_instance_t g_gpio;
 extern pwm_instance_t g_pwm;
+
+
+extern spi_instance_t g_cal_pro_spi;
+extern spi_instance_t g_hv_pro_spi;
+extern spi_instance_t g_pro_spi;
 
 //******************************************************************************
 //                             Functions
