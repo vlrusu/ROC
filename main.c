@@ -44,7 +44,9 @@
 #include "iaputils.h"
 
 
-#define BAUD_VALUE                  115200
+//#define BAUD_VALUE                  115200
+#define BAUD_VALUE                  57600
+//#define BAUD_VALUE 38400
 
 const uint16_t default_caldac[8] = { 1000, 1000, 1000, 1000, 1000, 1000, 1000,
         1000 };
@@ -489,14 +491,54 @@ int main() {
     // give DIGI registers controls to fiber
     *(registers_0_addr + REG_DIGIRW_SEL) = 0;
 
+    int readout_requestedTriggers = 0;
+    int readout_totalDelays = 0;
+    readout_totalTriggers = 0;
     while (1) {
-        if (readout_enabled) {
+        //if (readout_enabled) {
+        if (readout_totalTriggers < readout_requestedTriggers){
+            uint16_t remaining = readout_requestedTriggers - readout_totalTriggers;
+            if (remaining > 50){
+                readout_numTriggers = 50;
+            }else{
+                readout_numTriggers = remaining;
+            }
             int delay_count = 0;
             int trigger_count = 0;
             //UART_polled_tx_string( &g_uart, "datastream\n" );
 
             read_data(&delay_count, &trigger_count);
             readout_totalTriggers += trigger_count;
+            readout_totalDelays += delay_count;
+            if (readout_totalTriggers >= readout_requestedTriggers || readout_totalDelays > readout_maxDelay){
+                if (readout_totalTriggers >= readout_requestedTriggers){
+                        readout_obloc = 0;
+                        bufWrite(dataBuffer, &readout_obloc, ENDOFDATA, 2);
+                        UART_send(&g_uart, dataBuffer ,2);
+                }else{
+                    readout_obloc = 0;
+                    bufWrite(dataBuffer, &readout_obloc, EMPTY, 2);
+                    UART_send(&g_uart, dataBuffer ,2);
+                }
+                //sprintf(&dataBuffer[readout_obloc],"\nend\n");
+                //UART_polled_tx_string( &g_uart, dataBuffer );
+                bufcount = 0;
+                outBuffer[bufcount++] = READDATACMDID;
+                bufWrite(outBuffer, &bufcount, 5, 2);
+                outBuffer[bufcount++] = (uint8_t)(readout_totalTriggers == readout_requestedTriggers);
+
+                if (readout_totalTriggers == readout_requestedTriggers){
+                    //sprintf(outBuffer,"SUCCESS! Delayed %d times\n",delay_count);
+                    bufWrite(outBuffer, &bufcount, (uint32_t)readout_totalDelays, 4);
+                }else{
+                    //sprintf(outBuffer,"FAILED! Read %d triggers\n",trigger_count);
+                    bufWrite(outBuffer, &bufcount, (uint32_t)readout_totalTriggers, 4);
+                }
+
+                UART_send(&g_uart, outBuffer ,bufcount );
+                readout_requestedTriggers = 0;
+                readout_totalTriggers = 0;
+            }
         }
 
         if (loopCount == 20000) {
@@ -2830,6 +2872,28 @@ int main() {
 						int delay_count = 0;
 						int trigger_count = 0;
 
+						readout_requestedTriggers = num_triggers;
+
+						if (num_triggers == 0){
+
+                            readout_obloc = 0;
+                            bufWrite(dataBuffer, &readout_obloc, ENDOFDATA, 2);
+                            UART_send(&g_uart, dataBuffer ,2);
+			                //sprintf(&dataBuffer[readout_obloc],"\nend\n");
+			                //UART_polled_tx_string( &g_uart, dataBuffer );
+			                bufcount = 0;
+			                outBuffer[bufcount++] = READDATACMDID;
+			                bufWrite(outBuffer, &bufcount, 5, 2);
+			                outBuffer[bufcount++] = (uint8_t)(readout_totalTriggers == readout_requestedTriggers);
+                            //sprintf(outBuffer,"SUCCESS! Delayed %d times\n",delay_count);
+                            bufWrite(outBuffer, &bufcount, (uint32_t)readout_totalDelays, 4);
+
+			                UART_send(&g_uart, outBuffer ,bufcount );
+			                readout_requestedTriggers = 0;
+			                readout_totalTriggers = 0;
+						}
+
+						/*
 						read_data(&delay_count,&trigger_count);
 
 						//sprintf(&dataBuffer[readout_obloc],"\nend\n");
@@ -2848,6 +2912,7 @@ int main() {
 						}
 
 						UART_send(&g_uart, outBuffer ,bufcount );
+						*/
 
 						//UART_polled_tx_string( &g_uart, outBuffer );
 
