@@ -127,6 +127,7 @@
 #define DDRTESTREAD   96
 #define DDRTESTSETUP  97
 #define DDRTESTSTATUS 98
+#define DDRTESTEN     99
 
 #define ADCRWCMDID 101
 #define BITSLIPCMDID 102
@@ -369,6 +370,7 @@
 #define REG_ROC_DDRTEST_STATUS   0xE5
 #define REG_ROC_DDRTEST_ERRCNT   0xE6
 #define REG_ROC_DDRTEST_ERRLOC   0xE7
+#define REG_ROC_DDRTEST_EN       0xE8
 
 #define REG_ROC_USE_UART    0xF1
 #define REG_DIGIRW_SEL      0xF2   // WO   select between fiber (0) or serial (1) to drive some DIGI signals

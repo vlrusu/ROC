@@ -1426,6 +1426,15 @@ int main() {
                     bufWrite(outBuffer, &bufcount, 0, 2);
                     outBufSend(g_uart, outBuffer, bufcount);
 
+                }else if (commandID == DDRTESTEN){
+                    uint8_t ddr_test_en   = (uint8_t) buffer[4];
+                    *(registers_0_addr + REG_ROC_DDRTEST_EN) = ddr_test_en; // enable TEST DATA to DDR
+
+                    outBuffer[bufcount++] = DDRTESTEN;
+                    bufWrite(outBuffer, &bufcount, 1, 2);
+                    bufWrite(outBuffer, &bufcount, ddr_test_en, 1);
+                    outBufSend(g_uart, outBuffer, bufcount);
+
                 }else if (commandID == DDRTESTSETUP){
                     uint32_t ddr_blockno = readU32fromBytes(&buffer[4]); //maximum is 256
 
@@ -1439,17 +1448,31 @@ int main() {
 
                 }else if (commandID == DDRTESTWRITE){
 
+                    *(registers_0_addr + REG_ROC_DDRTEST_EN) = 1; // enable TEST DATA to DDR
+                    delayUs(100);
+
                     *(registers_0_addr + REG_ROC_DDRTEST_WREN) = 1;
-                    uint32_t ddr_blockno = *(registers_0_addr + REG_ROC_DDRTEST_BLKNO);
+                    delayUs(100);
+
+                    *(registers_0_addr + REG_ROC_DDRTEST_EN) = 0; // disable TEST DATA to DDR
+
+//                     uint32_t ddr_blockno = *(registers_0_addr + REG_ROC_DDRTEST_BLKNO);
 
                     outBuffer[bufcount++] = DDRTESTWRITE;
                     bufWrite(outBuffer, &bufcount, 4, 2);
-                    bufWrite(outBuffer, &bufcount, ddr_blockno, 4);
+//                    bufWrite(outBuffer, &bufcount, ddr_blockno, 4);
+                    bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDRTEST_BLKNO), 4);
                     outBufSend(g_uart, outBuffer, bufcount);
 
                 }else if (commandID == DDRTESTREAD){
 
+                    *(registers_0_addr + REG_ROC_DDRTEST_EN) = 1; // enable TEST DATA from DDR
+                    delayUs(100);
+
                     *(registers_0_addr + REG_ROC_DDRTEST_RDEN) = 1;
+                    delayUs(100);
+
+                    *(registers_0_addr + REG_ROC_DDRTEST_EN) = 0; // disable TEST DATA from DDR
 
                     outBuffer[bufcount++] = DDRTESTREAD;
                     bufWrite(outBuffer, &bufcount, 4, 2);
