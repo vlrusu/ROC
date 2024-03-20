@@ -152,8 +152,13 @@
 #define READBACKBLK 259 // 0x103 - write and read back BLOCK_WRITE of N values via "rocUtil block_write -a 259 -c N"
 #define READDEVICE  260 // 0x104 - fiber version of GETDEVICEID: execute with Single DCS_WRITE of any value (ignored) followed by DCS_BLOCK_READ of 52 ID values
 #define READSENSOR  261 // 0x105 - fiber version of READBMES: execute with Single DCS_WRITE of any value (ignored) followed by DCS_BLOCK_READ of 52 ID values
-#define TALKTOADC   262 // 0x106 - fiber version of DIGI_WRITE with parameters passed via BLOCK_WRITE
-#define DIAGDATA    263 // 0x107 - Block RD of assorted diagnostics, started by a single WR of any value
+#define TALKTOADC   262 // 0x106 - fiber version of ADCRWCMDID with parameters passed via BLOCK_WRITE
+#define TALKTOSDIGI 263 // 0x107 - fiber version of DIGIRW with parameters passed via BLOCK_WRITE
+#define FINDALIGN   264 // 0x108 - fiber version of AUTOBITSLIPCMDID with parameters passed via SINGLE or BLOCK_WRITE - Does only 1 iteration!!
+#define READDATA    265 // 0x109 - fiber version of READDATACMDID with parameters passed via BLOCK_WRITE
+#define PREAMPGAIN  266 // 0x10A - fiber version of SETPREAMPGAIN with parameters passed via BLOCK_WRITE
+#define PREAMPTHRESH  267 // 0x10B - fiber version of SETPREAMPTHRESHOLD with parameters passed via BLOCK_WRITE
+#define DIAGDATA    511 // 0x1FF - Block RD of assorted diagnostics, started by a single WR of any value
 
 //******************************************************************************
 //                             Registers & Addresses
@@ -530,6 +535,9 @@ int resetFIFO();
 void setPreampGain(uint16_t channel, uint16_t value);
 void setPreampThreshold(uint16_t channel, uint16_t value);
 //void findChThreshold(int num_delays, int num_samples, uint16_t channel, uint16_t target_rate, uint8_t verbose);
+
+// added by Monica
+void mask_channels(uint8_t channel);
 
 #endif /* UTILS_H_ */
 

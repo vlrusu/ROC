@@ -586,8 +586,9 @@ int main() {
 
             if(cmd_rx_cnt==0) {
                 // upon starting WHILE loop for procesor with CMD_READY seen,
-                // clear status register logic
+                // clear status register and written words register
                 *(registers_1_addr + CRDCS_CMD_STATUS) = 0;
+                *(registers_1_addr + CRDCS_DIAG_DATA) = 0;
                 cmd_fail = 0;
                 data_zero = get_cmd_rx;
 
@@ -597,6 +598,7 @@ int main() {
                 if (get_cmd_rx != CMDHEADER) cmd_fail = cmd_fail + 1;
 
             } else if(cmd_rx_cnt==2) {  // must be buffer LENGTH word
+
                 cmd_rx_size = get_cmd_rx;
                 if (get_cmd_rx == 0) {
                     cmd_fail = cmd_fail + 2;
@@ -605,15 +607,20 @@ int main() {
                     cmd_fail = cmd_fail + 4;
                     cmd_rx_size = MAX_BUFFER_SIZE - 4;
                 }
+
             } else if(cmd_rx_cnt==3) {  // must be COMMAND ID word
+
                 proc_commandID = get_cmd_rx & 0x0FFF;
                 if( (get_cmd_rx & 0xF000)!= 0xC000) cmd_fail = cmd_fail + 8;
 
             } else if(cmd_rx_cnt== (4+cmd_rx_size)) { // must be at the end of buffer with TRAILER word
+
                 dtc_cmd_ready = 0;
+                *(registers_1_addr + CRDCS_DIAG_DATA) = dtcPtr; // DCS write payload size
+
                 // pass number of payload words to DTCInterface/DRACRegister register 255
                 // and CMD_FAIL to DTCInterface/DRACRegister register 128
-                // CMD_FAIL cintent:
+                // CMD_FAIL content:
                 // bit(15) means end of packet has been seen
                 // bit(5)  bad payload: overflowing MAX TX BUFFER SIZE
                 // bit(4)  bad command trailer word
@@ -621,7 +628,6 @@ int main() {
                 // bit(2)  bad length word: FIFO overflow
                 // bit(1)  bad length word: zero length
                 // bit(0)  bad command header word
-                *(registers_1_addr + CRDCS_DIAG_DATA) = dtcPtr;
                 if(get_cmd_rx == CMDTRAILER) {
                     *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
                 } else {
@@ -649,8 +655,13 @@ int main() {
 
         uint8_t  rw = -1;
         uint8_t  adc_num = -1;
+        uint8_t chan_num = -1;
         uint16_t address = -1;
         uint16_t data = -1;
+        uint16_t align_mode = 0;
+        uint16_t value = -1;
+        uint16_t preamptype = 0;
+
         switch(proc_commandID) {
 
             // example of single data output to DCS_TX_BUFFER
@@ -661,6 +672,7 @@ int main() {
                 *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
                 *(registers_1_addr + CRDCS_WRITE_TX) = data_to_write;
                 *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
+
                 break;
 
             // example of block data output to DCS_TX_BUFFER
@@ -674,6 +686,7 @@ int main() {
                     *(registers_1_addr + CRDCS_WRITE_TX) = i+1;
                 }
                 *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
+
                 break;
 
             // write to DCS_TX Buffer data as in READMONADCS
@@ -712,25 +725,27 @@ int main() {
                 }
 
                 // give DIGI registers controls to serial
-                //*(registers_0_addr + REG_DIGIRW_SEL) = 1;
+                *(registers_0_addr + REG_DIGIRW_SEL) = 1;
 
                 for (uint8_t ihvcal=1; ihvcal<3; ihvcal++){
                     for (uint8_t i =0; i<4; i++){
                         // toggle DIGI registers controls to serial and back to fiber before calling DIGI_WRITE
-                        *(registers_0_addr + REG_DIGIRW_SEL) = 1;
+                        //*(registers_0_addr + REG_DIGIRW_SEL) = 1;
                         digi_write(DG_ADDR_TVS_ADDR, i, ihvcal);
                         delayUs(1);
                         tvs_val[i] = digi_read(DG_ADDR_TVS_VAL, ihvcal);
-                        *(registers_0_addr + REG_DIGIRW_SEL) = 0;
+                        // **
+                        //*(registers_0_addr + REG_DIGIRW_SEL) = 0;
 
                         *(registers_1_addr + CRDCS_WRITE_TX) = tvs_val[i];
                         delayUs(1);
                     }
                 }
-                // give DIGI registers controls to fiber
-                //*(registers_0_addr + REG_DIGIRW_SEL) = 0;
+                // return DIGI registers controls to fiber
+                *(registers_0_addr + REG_DIGIRW_SEL) = 0;
 
                 *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
+
                 break;
 
            // read back payload from DCS BLOCK WR
@@ -744,6 +759,7 @@ int main() {
                      *(registers_1_addr + CRDCS_WRITE_TX) = dtcbuffer[i];
                 }
                 *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
+
                 break;
 
 
@@ -759,8 +775,10 @@ int main() {
                uint8_t data_buffer[16];
                uint8_t dinfo_buffer[36];
                uint8_t status;
+
                status = SYS_get_serial_number(data_buffer, 0);
                status = SYS_get_design_info(dinfo_buffer,0);
+
 
                for (uint16_t i = 0 ; i <16; i++) {
                    *(registers_1_addr + CRDCS_WRITE_TX) = (0x00FF & data_buffer[i]);
@@ -770,6 +788,7 @@ int main() {
                }
 
                *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
+
                break;
 
 
@@ -824,6 +843,7 @@ int main() {
               *(registers_1_addr + CRDCS_WRITE_TX) = sensor_spi;
 
               *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
+
               break;
 
           case TALKTOADC:
@@ -845,11 +865,582 @@ int main() {
                     *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
                     *(registers_1_addr + CRDCS_WRITE_TX) = result;
                     *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
+
+                    // clear STATUS and DCS write size register
+                    *(registers_1_addr + CRDCS_CMD_STATUS) = 0;
+                    *(registers_1_addr + CRDCS_DIAG_DATA) = 0;
+
                 } else {  // for WRITE, pass
                     adc_write(address, (uint8_t)data, (0x1<<adc_num));
                 }
+
                 break;
 
+
+          case FINDALIGN:
+
+              // give control to serial
+              *(registers_0_addr + REG_DIGIRW_SEL) = 1;
+
+              //reset the ADCs first, at this point, clock better be stable
+              for (int i=0;i<12;i++){
+                  uint16_t adc_mask = (0x1 << i);
+                  adc_write(0x08, 3, adc_mask);
+              }
+
+              for (int i=0;i<12;i++){
+                  uint16_t adc_mask = (0x1 << i);
+                  adc_write(0x08, 0, adc_mask);
+              }
+
+              // defaults from Python, used for testing
+              uint16_t eye_monitor_width = 4;
+              uint16_t init_adc_phase = 0;
+              uint16_t ifcheck = 1;
+              channel_mask[0] = 0xFFFFFFFF;
+              channel_mask[1] = 0xFFFFFFFF;
+              channel_mask[2] = 0xFFFFFFFF;
+              chan_num = -1;
+              adc_num = -1;
+
+              // load parameters from DCS Block Write
+              eye_monitor_width = dtcbuffer[0];
+              init_adc_phase = dtcbuffer[1];
+              ifcheck =  dtcbuffer[2];
+              chan_num = (uint8_t) dtcbuffer[3];
+              adc_num = (uint8_t) dtcbuffer[4];
+              channel_mask[0] = (dtcbuffer[6])>>16  &  dtcbuffer[5];
+              channel_mask[1] = (dtcbuffer[8])>>16  &  dtcbuffer[7];
+              channel_mask[2] = (dtcbuffer[10])>>16  &  dtcbuffer[9];
+
+              // correct for parameters out of allowed values
+              if (eye_monitor_width > 7) eye_monitor_width = 7;
+              if (init_adc_phase > 11) init_adc_phase = 0;
+
+              //
+              // start channel mapping
+              if (chan_num >=0 && chan_num<96) {
+                  for (int i=0;i<96;i++) {
+                      if (channel_map[i]==chan_num) adc_num = i/8;
+                  }
+              }
+
+              // new function to replace util.py/CHANNELMASK
+              if( adc_num > 0 && adc_num<12 ) {
+                  for (int i=0; i<8; i++) mask_channels(channel_map[8*adc_num+i]);
+              }
+
+
+              *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
+              *(registers_1_addr + CRDCS_WRITE_TX) = 2+(1+24+96+6+1);   // payload is 130 = 0x82
+              *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
+
+              *(registers_1_addr + CRDCS_WRITE_TX) = eye_monitor_width;
+              *(registers_1_addr + CRDCS_WRITE_TX) = ifcheck;
+
+              //
+              // start copy of uncommented sections of autobitslip.c
+              get_mapped_channels();
+
+              uint8_t iteration = 0;
+              uint16_t faulted_adc = 0;
+
+              while (1)
+              {
+                  faulted_adc = 0;
+
+                  digi_write(DG_ADDR_BITALIGN_RSETN, 0, 0);
+                  delayUs(8);
+                  digi_write(DG_ADDR_BITALIGN_RSETN, 1, 0);
+
+                  digi_write(DG_ADDR_SAMPLE,1,0);
+                  digi_write(DG_ADDR_LOOKBACK,1,0);
+
+                  digi_write(DG_ADDR_TRIGGER_MODE,0,0);
+                  digi_write(DG_ADDR_ENABLE_PULSER,1,0);
+
+                  uint16_t activeADC = 0;
+                  for (uint8_t i=0;i<12;i++){
+                      if ((mapped_channel_mask[i/4] >> ((i%4)*8)) & 0xff){
+                          activeADC |= (((uint16_t)0x1) << i);
+                      }
+                  }
+
+                  //using pattern #9 (0x155/0x2aa) for alignment
+                  for (uint8_t i=0;i<12;i++){
+                      if (((0x1<<i) & ENABLED_ADCS) & activeADC) {
+                          //fix all adc at phase = 3 (default 180 deg)
+                          adc_write(ADC_ADDR_PHASE,init_adc_phase,(0x1<<i));
+                          adc_write(ADC_ADDR_TESTIO,0x9,(0x1<<i));
+                      }
+                      else //turn off the channels not in use
+                          mapped_channel_mask[i/4] &= (~((uint32_t)0xff << ((i%4)*8)));
+                  }
+
+                  *(registers_1_addr + CRDCS_WRITE_TX) = init_adc_phase;
+
+
+                  //turn on pulser, read one word a time
+                  *(registers_0_addr + REG_ROC_FIFO_HOWMANY) = 1;
+                  *(registers_0_addr + REG_ROC_EWW_PULSER) = 1;
+
+
+                  //set minimum eye monitor width
+                  digi_write(DG_ADDR_BITALIGN_EWM_WIDTH, (uint16_t)eye_monitor_width,0);
+
+                  uint16_t active_ch[6] = {0};
+                  active_ch[0] = (uint16_t)(mapped_channel_mask[0] & 0xffff);
+                  active_ch[1] = (uint16_t)((mapped_channel_mask[0] >> 16) & 0xffff);
+                  active_ch[2] = (uint16_t)(mapped_channel_mask[1] & 0xffff);
+                  active_ch[3] = (uint16_t)((mapped_channel_mask[1] >> 16) & 0xffff);
+                  active_ch[4] = (uint16_t)(mapped_channel_mask[2] & 0xffff);
+                  active_ch[5] = (uint16_t)((mapped_channel_mask[2] >> 16) & 0xffff);
+
+                  digi_write(DG_ADDR_MASK1, active_ch[0], 1);
+                  digi_write(DG_ADDR_MASK2, active_ch[1], 1);
+                  digi_write(DG_ADDR_MASK3, active_ch[2], 1);
+                  digi_write(DG_ADDR_MASK1, active_ch[3], 2);
+                  digi_write(DG_ADDR_MASK2, active_ch[4], 2);
+                  digi_write(DG_ADDR_MASK3, active_ch[5], 2);
+
+                  for (uint8_t i = 0; i < 6; i++){
+                       digi_write(DG_ADDR_RX_CH_MASK1+i%3, active_ch[i], 1+i/3);
+                      *(registers_1_addr + CRDCS_WRITE_TX) = active_ch[i];
+                  }
+
+                  //start bit align, set corresponding channel's restart to 1, then back to 0 after 8 ticks
+                  digi_write(DG_ADDR_BITALIGN_RSTRT, 1, 0);
+                  delayUs(8);
+                  digi_write(DG_ADDR_BITALIGN_RSTRT, 0, 0);
+
+                  volatile uint16_t completion[6] = {0};
+                  volatile uint16_t error[6] = {0};
+
+                  //wait until all channels are completed; timeout after 30 secs
+                  for (uint8_t i=0; i<3; i++){
+                      hwdelay(50000000);//check every 1 second if is done
+                      uint8_t bitalign_done = 1;
+                      for (uint8_t j = 0; j < 6; j++){
+                          completion[j] = digi_read(DG_ADDR_BITALIGN_CMP1+j%3, 1+j/3);
+                          error[j] = digi_read(DG_ADDR_BITALIGN_ERR1+j%3, 1+j/3);
+                          if ((completion[j] & active_ch[j]) != active_ch[j])
+                              bitalign_done = 0;
+                      }
+
+                      if (bitalign_done) break;
+                  }
+
+                  for (uint8_t i=0; i<6; i++){
+
+                      *(registers_1_addr + CRDCS_WRITE_TX) = completion[i];
+                      *(registers_1_addr + CRDCS_WRITE_TX) = error[i];
+
+                      if ((~completion[i]) & 0x00ff)
+                          faulted_adc |= ((uint16_t)0x1 << (2*i));
+                      if ((~completion[i]) & 0xff00)
+                          faulted_adc |= ((uint16_t)0x1 << (2*i+1));
+                  }
+
+                  ///////////////////////////////////
+                  //  DOING BITSLIP                //
+                  ///////////////////////////////////
+
+                  //switch to pattern #1 for bitslip
+                  for (uint8_t i=0;i<12;i++){
+                      if ((0x1<<i) & ENABLED_ADCS) {
+                          adc_write(ADC_ADDR_TESTIO,0x1,(0x1<<i));
+                      }
+                  }
+
+                  uint8_t bitslipstep[96];
+                  for (uint8_t ichan=0; ichan<96; ichan++) bitslipstep[ichan] = 0xff;
+                  volatile uint16_t bitstlip_done[6] = {0};
+
+                  for (uint8_t i=0; i<10; i++){
+                      hwdelay(50);
+
+                      digi_write(DG_ADDR_BSC_OPERATION_TYPE, 0, 0);
+                      digi_write(DG_ADDR_BITSLIP_STRT, 1, 0);
+                      delayUs(10);
+                      digi_write(DG_ADDR_BITSLIP_STRT, 0, 0);
+
+                      for (uint8_t j = 0; j < 6; j++)
+                          bitstlip_done[j] = digi_read(DG_ADDR_BITSLIP_DONE1+j%3, 1+j/3);
+
+                      for (uint8_t ichan=0; ichan<96; ichan++){
+                          uint16_t this_chan_mask = (uint16_t) 0x1 << (ichan%16);
+                          if (((bitstlip_done[ichan/16] & this_chan_mask) != 0) && (bitslipstep[ichan] == 0xff))
+                              bitslipstep[ichan] = i;
+                      }
+                  }
+
+                  for (uint8_t i=0; i<6; i++){
+                      *(registers_1_addr + CRDCS_WRITE_TX) = bitstlip_done[i];
+
+                     if ((~bitstlip_done[i]) & 0x00ff)
+                          faulted_adc |= ((uint16_t)0x1 << (2*i));
+                      if ((~bitstlip_done[i]) & 0xff00)
+                          faulted_adc |= ((uint16_t)0x1 << (2*i+1));
+                  }
+
+                  for (uint8_t i=0; i<96; i++) {
+                      // NB: these are reported as single byte via serial
+                      *(registers_1_addr + CRDCS_WRITE_TX) = (uint8_t) bitslipstep[i];
+                  }
+
+
+                  ///////////////////////////////////
+                  // CHECK RESULT                  //
+                  ///////////////////////////////////
+
+                  // check with mixed frequency ADC
+                  uint16_t pattern_match[6] = {0};
+                  if (ifcheck){
+                      for (uint8_t i=0;i<12;i++){
+                          if ((0x1<<i) & ENABLED_ADCS) {
+                              adc_write(ADC_ADDR_TESTIO,0xC,(0x1<<i));
+                          }
+                      }
+
+                      digi_write(DG_ADDR_BSC_OPERATION_TYPE, 1, 0);
+                      digi_write(DG_ADDR_BITSLIP_STRT, 1, 0);
+                      delayUs(10);
+                      digi_write(DG_ADDR_BITSLIP_STRT, 0, 0);
+
+                      for (uint8_t j = 0; j < 6; j++){
+                          pattern_match[j] = digi_read(DG_ADDR_BSC_PATTERN_MATCH1+j%3, 1+j/3);
+                          *(registers_1_addr + CRDCS_WRITE_TX) = pattern_match[j];
+
+                          if ((pattern_match[j] & active_ch[j] & 0x00ff) != (active_ch[j] & 0x00ff))
+                              faulted_adc |= ((uint16_t)0x1 << (2*j));
+                          if ((pattern_match[j] & active_ch[j] & 0xff00) != (active_ch[j] & 0xff00))
+                              faulted_adc |= ((uint16_t)0x1 << (2*j+1));
+                      }
+                  }
+                  else{
+                      for (uint8_t i=0;i<6;i++) *(registers_1_addr + CRDCS_WRITE_TX) = 0;
+                  }
+
+                  // ALLOW ONLY ONE ITERATION! Return faulted_adc status
+                  *(registers_1_addr + CRDCS_WRITE_TX) = faulted_adc;
+                  break;
+
+                  iteration ++;
+
+                  if (faulted_adc == 0) break;
+                  if (iteration == 6) break; //maximum: 3 trials at phase 0, 3 for faulted adc at different phase
+                  if (iteration == 3) init_adc_phase = (init_adc_phase+3)%12;
+                  if (iteration >= 3){
+                      for (uint8_t i=0; i<3; i++) mapped_channel_mask[i] = 0;
+                      for (uint8_t i=0; i<12; i++){
+                          if (faulted_adc & ((uint16_t)0x1 << (i))){
+                              mapped_channel_mask[i/4] |= ((uint32_t)0x000000ff)<<((i%4)*8);
+                          }
+                      }
+                  }
+
+              } //end while(1)
+
+              for (uint8_t i=0;i<12;i++){
+                  if ((0x1<<i) & ENABLED_ADCS) {
+                      adc_write(ADC_ADDR_TESTIO,0x0,(0x1<<i));
+                  }
+                      //make sure find_alignment exits with tracking incoming data not ADC pattern
+              }
+
+              *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
+
+              // return control to fiber
+              *(registers_0_addr + REG_DIGIRW_SEL) = 0;
+
+               break;
+
+
+          case READDATA:
+              // give control to serial
+              *(registers_0_addr + REG_DIGIRW_SEL) = 1;
+
+              *(registers_0_addr + 0xEE) = 0x1;
+              delayUs(1);
+              *(registers_0_addr + 0xEE) = 0x0;
+
+              // defaults from Python, used for testing
+              uint16_t adc_mode = 0;
+              uint16_t tdc_mode = 0;
+              uint16_t num_lookback = 8;
+              uint32_t num_triggers = 0;
+              channel_mask[0] = 0xFFFFFFFF;
+              channel_mask[1] = 0xFFFFFFFF;
+              channel_mask[2] = 0xFFFFFFFF;
+              uint16_t num_samples = 16;
+              uint8_t enable_pulser = 0;
+              uint16_t max_total_delay = 1;
+              uint8_t marker_clock = 0;
+
+              // load parameters - Vadim says to ignore "message" (-M) and "chan_num" (-c)
+              adc_mode = dtcbuffer[0];                                  // -a
+              tdc_mode = dtcbuffer[1];                                  // -t
+              num_lookback = dtcbuffer[2];                              // -l
+              num_triggers = (dtcbuffer[4]>>16) & dtcbuffer[3];         // -T
+              channel_mask[0] = (dtcbuffer[6]>>16)  &  dtcbuffer[5];    // -C
+              channel_mask[1] = (dtcbuffer[8]>>16)  &  dtcbuffer[7];    // -D
+              channel_mask[2] = (dtcbuffer[10]>>16) &  dtcbuffer[9];    // -E
+              num_samples = dtcbuffer[11];                     // -s
+              enable_pulser = (uint8_t) dtcbuffer[12];         // -p
+              max_total_delay = dtcbuffer[13];                 // -d (def 1)
+              marker_clock = (uint8_t) dtcbuffer[14];          // -m
+
+
+              // pass test values as in command
+              // read -a 0 -t 0 -s 1 -l 8 -T 10 -m 3 -p 1 -C 0 -D 1400 -E 880000
+              adc_mode = 0;
+              tdc_mode = 0;
+              num_samples = 1;
+              num_lookback = 8;
+              num_triggers = 10;
+              marker_clock = 3;
+              enable_pulser = 1;
+              channel_mask[0] = 0x00000000;
+              channel_mask[1] = 0x1400;
+              channel_mask[2] = 0x88000000;
+
+
+              // override these two parameters (as sone in Python)
+              uint8_t mode = 0;
+              uint8_t clock = 99;
+
+              // new function to replace util.py/CHANNELMASK
+              //if(chan_num > 0)  mask_channels(chan_num);
+
+              if(num_samples>63) {
+                  num_samples = 63;  // this avoids dataBuffer overflow
+              //    datasize =  (5+num_samples*4)*num_triggers;  // needed??
+              }
+
+              if (marker_clock & 0x1)
+                *(registers_0_addr + REG_ROC_ENABLE_FIBER_CLOCK) = 1;
+              else
+                *(registers_0_addr + REG_ROC_ENABLE_FIBER_CLOCK) = 0;
+
+              if (marker_clock & 0x2)
+                *(registers_0_addr + REG_ROC_ENABLE_FIBER_MARKER) = 1;
+              else
+                *(registers_0_addr + REG_ROC_ENABLE_FIBER_MARKER) = 0;
+
+
+              digi_write(DG_ADDR_ENABLE_PULSER,enable_pulser,0);
+              if ((mode & 0x1) == 0x0){
+                  get_mapped_channels();
+                  uint32_t used_adcs = 0x0;
+                  for (int i=0;i<12;i++){
+                      uint32_t test_mask = (0xFF<<(8*(i%4)));
+                      if (mapped_channel_mask[i/4] & test_mask)
+                          used_adcs |= (0x1<<i);
+                  }
+                  //used_adcs = 0x800;
+                  for (uint8_t i=0;i<12;i++){
+                      if ((0x1<<i) & ENABLED_ADCS){
+                          if (clock < 99){
+                              //if ((0x1<<i) & used_adcs)
+                              adc_write(ADC_ADDR_PHASE,clock,(0x1<<i));
+                              adc_write(ADC_ADDR_TESTIO,adc_mode,(0x1<<i));
+                          }else{
+                              adc_write(ADC_ADDR_PHASE,adc_phases[i],(0x1<<i));
+                              adc_write(ADC_ADDR_TESTIO,adc_mode,(0x1<<i));
+                          }
+                      }
+
+                  }
+
+                  hvcal = 1;
+                  get_mapped_channels();
+
+                  // DISABLE CALIBRATION BEFORE ANY CHANGES TO SETTINGS
+                  digi_write(0x0F,0,0); // disable calibration
+
+                  digi_write(DG_ADDR_SAMPLE,num_samples,0);
+                  digi_write(DG_ADDR_LOOKBACK,num_lookback,0);
+                  digi_write(DG_ADDR_MASK1,(uint16_t) (mapped_channel_mask[0] & 0xFFFF), 1);
+                  digi_write(DG_ADDR_MASK2,(uint16_t) ((mapped_channel_mask[0] & 0xFFFF0000)>>16), 1);
+                  digi_write(DG_ADDR_MASK3,(uint16_t) (mapped_channel_mask[1] & 0xFFFF), 1);
+                  digi_write(DG_ADDR_MASK1,(uint16_t) ((mapped_channel_mask[1] & 0xFFFF0000)>>16), 2);
+                  digi_write(DG_ADDR_MASK2,(uint16_t) (mapped_channel_mask[2] & 0xFFFF), 2);
+                  digi_write(DG_ADDR_MASK3,(uint16_t) ((mapped_channel_mask[2] & 0xFFFF0000)>>16), 2);
+                  digi_write(DG_ADDR_TRIGGER_MODE,tdc_mode,0);
+                  digi_write(DG_ADDR_ENABLE_PULSER,enable_pulser,0);
+
+                  *(registers_0_addr + REG_ROC_EWW_PULSER) = 0;
+
+                  *(registers_0_addr + REG_ROC_FIFO_HOWMANY) = num_samples;
+
+                  if ((mapped_channel_mask[2]!=0)||((mapped_channel_mask[1]>>16)!=0))
+                      hvcal = 2;
+
+                  num_samples = digi_read(DG_ADDR_SAMPLE, hvcal);
+                  enable_pulser = digi_read(DG_ADDR_ENABLE_PULSER, hvcal);
+              }
+
+              delayUs(10000);
+
+              if ((mode & 0x1) == 0x0){
+                  // reset fifo
+                  resetFIFO();
+                  resetFIFO();
+                  delayUs(10000);
+                  *(registers_0_addr + REG_ROC_EWW_PULSER) = 1;
+
+
+                  digi_write(0x0F,enable_pulser,0); // enable calibration IF running internal pulser
+                  /* Vadim says to ignore this
+                  readout_obloc = 0;
+                  readout_maxDelay = max_total_delay*50;
+                  readout_mode = mode;
+                  readout_wordsPerTrigger = 8;//NUMTDCWORDS + 4*num_samples;
+                  readout_numTriggers = num_triggers;
+                  readout_totalTriggers = 0;
+
+                  readout_noUARTflag = 0;
+                  */
+              }
+
+              // Vadim says to ignore the rest of READDATACMDID
+               /*
+                       } else if (commandID == SETPREAMPGAIN){
+                           uint16_t channel = readU16fromBytes(&buffer[4]);
+                           uint16_t value = readU16fromBytes(&buffer[6]);
+
+                           setPreampGain(channel, value);
+
+                           outBuffer[bufcount++] = SETPREAMPGAIN;
+                           bufWrite(outBuffer, &bufcount, 4, 2);
+                           bufWrite(outBuffer, &bufcount, channel, 2);
+                           bufWrite(outBuffer, &bufcount, value, 2);
+                           outBufSend(g_uart, outBuffer, bufcount);
+
+                           // Set preamp threshold
+                       }else if (commandID == SETPREAMPTHRESHOLD){
+                           uint16_t channel = readU16fromBytes(&buffer[4]);
+
+                           uint16_t value = readU16fromBytes(&buffer[6]);
+
+                           setPreampThreshold(channel, value);
+
+                           outBuffer[bufcount++] = SETPREAMPTHRESHOLD;
+                           bufWrite(outBuffer, &bufcount, 4, 2);
+                           bufWrite(outBuffer, &bufcount, channel, 2);
+                           bufWrite(outBuffer, &bufcount, value, 2);
+                           outBufSend(g_uart, outBuffer, bufcount);
+               */
+
+              *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
+              *(registers_1_addr + CRDCS_WRITE_TX) = 18;
+              *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
+
+              *(registers_1_addr + CRDCS_WRITE_TX) = enable_pulser;
+              *(registers_1_addr + CRDCS_WRITE_TX) = num_samples;
+              *(registers_1_addr + CRDCS_WRITE_TX) = num_lookback;
+              *(registers_1_addr + CRDCS_WRITE_TX) = (channel_mask[0] & 0xFFFF);
+              *(registers_1_addr + CRDCS_WRITE_TX) = (channel_mask[0] & 0xFFFF0000)>>16;
+              *(registers_1_addr + CRDCS_WRITE_TX) = (channel_mask[1] & 0xFFFF);
+              *(registers_1_addr + CRDCS_WRITE_TX) = (channel_mask[1] & 0xFFFF0000)>>16;
+              *(registers_1_addr + CRDCS_WRITE_TX) = (channel_mask[2] & 0xFFFF);
+              *(registers_1_addr + CRDCS_WRITE_TX) = (channel_mask[2] & 0xFFFF0000)>>16;
+              *(registers_1_addr + CRDCS_WRITE_TX) = adc_mode;
+              *(registers_1_addr + CRDCS_WRITE_TX) = tdc_mode;
+              *(registers_1_addr + CRDCS_WRITE_TX) = (num_triggers & 0xFFFF);
+              *(registers_1_addr + CRDCS_WRITE_TX) = (num_triggers & 0xFFFF0000)>>16;
+              *(registers_1_addr + CRDCS_WRITE_TX) = digi_read(DG_ADDR_MASK1,hvcal);
+              *(registers_1_addr + CRDCS_WRITE_TX) = digi_read(DG_ADDR_MASK2,hvcal);
+              *(registers_1_addr + CRDCS_WRITE_TX) = digi_read(DG_ADDR_MASK3,hvcal);
+              *(registers_1_addr + CRDCS_WRITE_TX) = digi_read(DG_ADDR_ENABLE_PULSER,hvcal);
+              *(registers_1_addr + CRDCS_WRITE_TX) = mode;
+              *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
+
+              // return control to FIBER
+               *(registers_0_addr + REG_DIGIRW_SEL) = 0;
+
+               break;
+
+
+          // set PREAMP GAINS
+          case PREAMPGAIN:
+
+              // passing control to serial
+              *(registers_0_addr + REG_DIGIRW_SEL) = 0;
+
+              // Python defaults
+              chan_num  = -1;
+              value = -1;
+              preamptype = 0;
+
+              // for testing by hand
+              /*
+              chan_num  = 1;
+              value = 370;   // N.B. Expect that float to integer conversion has already happened!
+              preamptype = 1;
+               */
+
+              chan_num  = dtcbuffer[0];     // -c
+              value     = dtcbuffer[1];     // -d
+              preamptype= dtcbuffer[2];     // -hv
+
+
+              if (preamptype == 1) chan_num = chan_num + 96;
+
+              setPreampGain(chan_num, value);
+
+              *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
+              *(registers_1_addr + CRDCS_WRITE_TX) = 3;
+              *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
+              *(registers_1_addr + CRDCS_WRITE_TX) = chan_num;
+              *(registers_1_addr + CRDCS_WRITE_TX) = value;
+              *(registers_1_addr + CRDCS_WRITE_TX) = preamptype;
+              *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
+
+              // return control to FIBER
+               *(registers_0_addr + REG_DIGIRW_SEL) = 0;
+
+              break;
+
+
+         // set PREAMP THRESHOLD
+         case PREAMPTHRESH:
+
+             // passing control to serial
+             *(registers_0_addr + REG_DIGIRW_SEL) = 0;
+
+             // Python defaults
+             chan_num  = -1;
+             value = -1;
+             preamptype = 0;
+
+             // for testing by hand
+             /*
+             chan_num  = 1;
+             value = 450;   // N.B. Expect that float to integer conversion has already happened!
+             preamptype = 1;
+              */
+
+             chan_num  = dtcbuffer[0];     // -c
+             value     = dtcbuffer[1];     // -d
+             preamptype= dtcbuffer[2];     // -hv
+
+             if (preamptype == 1) chan_num = chan_num + 96;
+
+             setPreampThreshold(chan_num, value);
+
+             *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
+             *(registers_1_addr + CRDCS_WRITE_TX) = 3;
+             *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
+             *(registers_1_addr + CRDCS_WRITE_TX) = chan_num;
+             *(registers_1_addr + CRDCS_WRITE_TX) = value;
+             *(registers_1_addr + CRDCS_WRITE_TX) = preamptype;
+             *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
+
+             // return control to FIBER
+             *(registers_0_addr + REG_DIGIRW_SEL) = 0;
+
+             break;
 
           // read assorted diagnostic registers
           case DIAGDATA:
@@ -2697,7 +3288,7 @@ int main() {
 					channel_mask[0] = readU32fromBytes(&buffer[14]);
 					channel_mask[1] = readU32fromBytes(&buffer[18]);
 					channel_mask[2] = readU32fromBytes(&buffer[22]);
-					uint8_t clock = (uint8_t) buffer[26];
+					uint8_t clock = (uint8_t) buffer[26];  // ???? hard-coded in python
 					uint8_t enable_pulser = (uint8_t) buffer[27];
 					uint16_t max_total_delay = readU16fromBytes(&buffer[28]);
 					//uint8_t mode = buffer[30];

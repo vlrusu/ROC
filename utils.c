@@ -18,19 +18,19 @@ uint16_t default_threshs_hv[96] = {443,430,426,441,444,451,448,436,417,437,439,4
 
 uint8_t hvcal=1;//1 CAL 2 HV 0 both
 uint8_t channel_map[96]={
-		91,85,79,73,67,61,55,49,
-		43,37,31,25,19,13,7,1,
-		90,84,78,72,66,60,54,48,
-		42,36,30,24,18,12,6,0,
-		93,87,81,75,69,63,57,51,
-		45,39,33,27,21,15,9,3,
+		91, 85, 79, 73, 67, 61, 55, 49,
+		43, 37, 31, 25, 19, 13, 7,  1,
+		90, 84, 78, 72, 66, 60, 54, 48,
+		42, 36, 30, 24, 18, 12, 6,  0,
+		93, 87, 81, 75, 69, 63, 57, 51,
+		45, 39, 33, 27, 21, 15, 9,  3,
 	
-44, 38, 32, 26, 20, 14,  8,  2,
-92, 86, 80, 74, 68, 62, 56, 50,
-47, 41, 35, 29, 23, 17, 11,  5,
-95, 89, 83, 77, 71, 65, 59, 53,
-46, 40, 34, 28, 22, 16, 10,  4,
-94, 88, 82, 76, 70, 64, 58, 52};
+		44, 38, 32, 26, 20, 14,  8,  2,
+		92, 86, 80, 74, 68, 62, 56, 50,
+		47, 41, 35, 29, 23, 17, 11,  5,
+		95, 89, 83, 77, 71, 65, 59, 53,
+		46, 40, 34, 28, 22, 16, 10,  4,
+		94, 88, 82, 76, 70, 64, 58, 52};
 
 uint8_t adc_map[12] = {0,1,2,3,4,5,6,7,8,9,10,11};
 //uint8_t adcclk_map[12] = {1,1,2,3,3,3,6,6,6,9,11,11};
@@ -744,6 +744,29 @@ uint32_t get_rates(int num_delays, int num_samples, uint8_t channel, uint32_t* t
 		}
 	}
 	return result;
+}
+
+// same as utils.py/channelmask
+void mask_channels(uint8_t channel){
+    //mapped mask[0], mask[1][0:15] are CAl, rest HV
+
+    channel_mask[0] = -999;
+    channel_mask[1] = -999;
+    channel_mask[2] = -999;
+
+    if (channel>=0) {
+        channel_mask[0] = 0x0;
+        channel_mask[1] = 0x0;
+        channel_mask[2] = 0x0;
+        if      (channel<32)    channel_mask[0] |= (0x1 << channel);
+        else if (channel<64)    channel_mask[1] |= (0x1 << (channel-32));
+        else                    channel_mask[1] |= (0x1 << (channel-64));
+    }
+    else {
+        channel_mask[0] = 0xFFFFFFFF;
+        channel_mask[1] = 0xFFFFFFFF;
+        channel_mask[2] = 0xFFFFFFFF;
+    }
 }
 
 void get_mapped_channels(){
