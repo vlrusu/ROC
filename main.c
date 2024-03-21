@@ -904,14 +904,14 @@ int main() {
               adc_num = -1;
 
               // load parameters from DCS Block Write
-              eye_monitor_width = dtcbuffer[0];
-              init_adc_phase = dtcbuffer[1];
-              ifcheck =  dtcbuffer[2];
-              chan_num = (uint8_t) dtcbuffer[3];
-              adc_num = (uint8_t) dtcbuffer[4];
-              channel_mask[0] = (dtcbuffer[6])>>16  &  dtcbuffer[5];
-              channel_mask[1] = (dtcbuffer[8])>>16  &  dtcbuffer[7];
-              channel_mask[2] = (dtcbuffer[10])>>16  &  dtcbuffer[9];
+              eye_monitor_width = dtcbuffer[0];         // -w
+              init_adc_phase = dtcbuffer[1];            // -p
+              ifcheck =  dtcbuffer[2];                  // -ck
+              chan_num = (uint8_t) dtcbuffer[3];        // -c
+              adc_num = (uint8_t) dtcbuffer[4];         // -a
+              channel_mask[0] = (dtcbuffer[6])>>16  &  dtcbuffer[5];   // -C
+              channel_mask[1] = (dtcbuffer[8])>>16  &  dtcbuffer[7];   // -D
+              channel_mask[2] = (dtcbuffer[10])>>16  &  dtcbuffer[9];  // -E
 
               // correct for parameters out of allowed values
               if (eye_monitor_width > 7) eye_monitor_width = 7;
@@ -1366,7 +1366,7 @@ int main() {
           case PREAMPGAIN:
 
               // passing control to serial
-              *(registers_0_addr + REG_DIGIRW_SEL) = 0;
+              *(registers_0_addr + REG_DIGIRW_SEL) = 1;
 
               // Python defaults
               chan_num  = -1;
@@ -1407,7 +1407,7 @@ int main() {
          case PREAMPTHRESH:
 
              // passing control to serial
-             *(registers_0_addr + REG_DIGIRW_SEL) = 0;
+             *(registers_0_addr + REG_DIGIRW_SEL) = 1;
 
              // Python defaults
              chan_num  = -1;
@@ -1441,6 +1441,206 @@ int main() {
              *(registers_0_addr + REG_DIGIRW_SEL) = 0;
 
              break;
+
+
+         case PULSERON:
+
+             // passing control to serial
+             *(registers_0_addr + REG_DIGIRW_SEL) = 1;
+
+             // initialize as in Python defaults:
+             // - ignore oddoreven and pulser_odd (unused)
+             // - assume pulserDelay is already passed int(1./pulserFreq * 1000000)
+             uint8_t  chan_1in8 = -1;
+             uint8_t  chan_mask = 16;
+             uint16_t dutyCycle = 10;
+             uint32_t pulserDelay = 1000;
+
+
+             // original Python parameters
+             chan_1in8   = dtcbuffer[0];   // -c
+             chan_mask   = dtcbuffer[1];   // -C
+             dutyCycle   = dtcbuffer[2];   // -y
+             pulserDelay = (dtcbuffer[4]>>16)  &  dtcbuffer[3];   // -d  or  integer
+
+             if (chan_1in8 >= 0) chan_mask |= (0x1 << chan_1in8);
+
+             for (uint8_t i = 0; i < 16; i++){
+                 MCP_pinWrite(&preampMCP[MCPCALIB],i+1,0);
+             }
+
+             for (uint8_t i=0;i<8;i++){
+                 if ((0x1<<i) & chan_mask){
+                     MCP_pinWrite(&preampMCP[MCPCALIB],calpulse_chanmap[i],1);
+                 }
+             }
+
+             //granularity is clock period=25ns -- period is (gr+1)*1000=50us
+             //PWM_PERIOD = PWM_GRANULARITY * (period + 1) = 25 *1000 = 25us
+             PWM_init( &g_pwm, COREPWM_BASE_ADDR, 1, pulserDelay );
+             PWM_set_duty_cycle( &g_pwm, PWM_1,dutyCycle );//duty cycle is 4 x 25 = 100ns
+
+             PWM_enable(&g_pwm,PWM_1);
+
+/*
+        chan_mask = int(get_key_value(keys,"C"),16)
+        oddoreven = int(get_key_value(keys,"P"),16)
+        channel = int(get_key_value(keys,"c",-1))
+        pulser_odd = int(get_key_value(keys,"o",0))
+        if channel >= 0:
+            chan_mask |= (0x1 << channel)
+        if channel % 2 == 0:
+            oddoreven = 1
+        else:
+            oddoreven = 0
+
+        freq = float(get_key_value(keys,"f",-1))
+        delay = int(get_key_value(keys,"d",1000))
+        dutycycle = int(get_key_value(keys,"y",10))
+        if (freq > 0):
+            delay = int(1./freq*1000000.)
+
+        data=setpulseron(chan_mask,pulser_odd,dutycycle,delay)
+*/
+/*
+             for (uint8_t i = 0; i < 16; i++){
+                 MCP_pinWrite(&preampMCP[MCPCALIB],i+1,0);
+             }
+             uint8_t chan_mask = (uint8_t) buffer[4];
+             pulserOdd = (uint8_t) buffer[5];
+             for (uint8_t i=0;i<8;i++){
+                 if ((0x1<<i) & chan_mask){
+                     MCP_pinWrite(&preampMCP[MCPCALIB],calpulse_chanmap[i],1);
+                 }
+             }
+             dutyCycle=readU16fromBytes(&buffer[6]);
+             pulserDelay=readU32fromBytes(&buffer[8]);
+
+             //granularity is clock period=25ns -- period is (gr+1)*1000=50us
+             //PWM_PERIOD = PWM_GRANULARITY * (period + 1) = 25 *1000 = 25us
+             PWM_init( &g_pwm, COREPWM_BASE_ADDR, 1, pulserDelay );
+             PWM_set_duty_cycle( &g_pwm, PWM_1,dutyCycle );//duty cycle is 4 x 25 = 100ns
+
+             PWM_enable(&g_pwm,PWM_1);
+
+
+             outBuffer[bufcount++] = SETPULSERON;
+             bufWrite(outBuffer, &bufcount, 8, 2);
+             outBuffer[bufcount++] = chan_mask;
+             outBuffer[bufcount++] = pulserOdd;
+             bufWrite(outBuffer, &bufcount, dutyCycle, 2);
+             bufWrite(outBuffer, &bufcount, pulserDelay, 4);
+             outBufSend(g_uart, outBuffer, bufcount);
+*/
+             // write output for BLOCK_READ
+             *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
+             *(registers_1_addr + CRDCS_WRITE_TX) = 4;
+             *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
+             *(registers_1_addr + CRDCS_WRITE_TX) = chan_mask;
+             *(registers_1_addr + CRDCS_WRITE_TX) = dutyCycle;
+             *(registers_1_addr + CRDCS_WRITE_TX) = (pulserDelay & 0xFFFF);
+             *(registers_1_addr + CRDCS_WRITE_TX) = (pulserDelay & 0xFFFF0000)>>16;
+             *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
+
+             // return control to FIBER
+             *(registers_0_addr + REG_DIGIRW_SEL) = 0;
+
+             break;
+
+
+         case PULSEROFF:
+
+             // passing control to serial
+             *(registers_0_addr + REG_DIGIRW_SEL) = 1;
+
+             PWM_disable(&g_pwm,PWM_1);
+
+             // write output for BLOCK_READ
+             *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
+             *(registers_1_addr + CRDCS_WRITE_TX) = 1;
+             *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
+             *(registers_1_addr + CRDCS_WRITE_TX) = 1;   // meaning DONE!
+             *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
+
+             // return control to FIBER
+             *(registers_0_addr + REG_DIGIRW_SEL) = 0;
+
+             break;
+
+
+         case MEASURETHRESH:
+
+             // passing control to serial
+             *(registers_0_addr + REG_DIGIRW_SEL) = 1;
+
+             // initialize as in Python defaults
+             chan_num = -1;
+             channel_mask[0] = 0xFFFFFFFF;
+             channel_mask[1] = 0xFFFFFFFF;
+             channel_mask[2] = 0xFFFFFFFF;
+
+             // retrieve the paramaters passed via BLOCK_WRITE
+             chan_num  = dtcbuffer[0];     // -c
+             channel_mask[0] = (dtcbuffer[2]>>16)  &  dtcbuffer[1];    // -C
+             channel_mask[1] = (dtcbuffer[4]>>16)  &  dtcbuffer[3];    // -D
+             channel_mask[2] = (dtcbuffer[6]>>16)  &  dtcbuffer[5];    // -E
+
+             // new function to replace util.py/CHANNELMASK
+             if(chan_num >= 0)  mask_channels(chan_num);
+
+             get_mapped_channels();
+
+             //enable pulser as readstrawcmd does
+             digi_write(DG_ADDR_ENABLE_PULSER,1,0);
+
+             uint16_t threshold_array[288];
+             for (uint16_t i=0; i<288; i++) threshold_array[i] = 0xFFFF;
+
+             for (uint8_t ihvcal=1; ihvcal<3; ihvcal++){
+                 for (uint8_t k=(48*(ihvcal-1));k<48*ihvcal;k++){
+                     uint8_t condition = 0;
+                     uint8_t straw_num = channel_map[k];
+                     if (ihvcal == 1)
+                         condition =((k<32 && ((0x1<<k) & mapped_channel_mask[0])) || (k>=32 && ((0x1<<(k-32)) & mapped_channel_mask[1])));
+                     else if (ihvcal == 2)
+                         condition =((k<64 && ((0x1<<(k-32)) & mapped_channel_mask[1])) || (k>=64 && ((0x1<<(k-64)) & mapped_channel_mask[2])));
+
+                     if (condition){
+                         uint16_t gain_cal[3] = {0, default_gains_cal[straw_num], default_gains_cal[straw_num]};
+                         uint16_t gain_hv[3] = {default_gains_hv[straw_num], 0, default_gains_hv[straw_num]};
+                         //first zero cal, then hv, then both to default
+
+                         digi_write(DG_ADDR_SELECTSMA, k%48, ihvcal);
+                         //select channel
+                         for (uint8_t i=0; i<3; i++){
+                             setPreampGain(straw_num, gain_cal[i]);
+                             setPreampGain(straw_num+96, gain_hv[i]);
+                             hwdelay(500000);//wait for 10ms gain to reach written value and for SMA to settle
+
+                             digi_write(DG_ADDR_SMARDREQ, 1, ihvcal);
+                             delayUs(5);//write READREQ to 1 and freeze SMA module
+
+                             threshold_array[96*i+straw_num] = digi_read(DG_ADDR_SMADATA,ihvcal);
+                             digi_write(DG_ADDR_SMARDREQ, 0, ihvcal); //unfreeze SMA module
+                         }
+                     }
+                 }
+             }
+
+             // write output for BLOCK_READ
+             *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
+             *(registers_1_addr + CRDCS_WRITE_TX) = 288;
+             *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
+             for (uint16_t i=0; i<288; i++) {
+                 *(registers_1_addr + CRDCS_WRITE_TX) =  threshold_array[i];
+             }
+             *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
+
+             // return control to FIBER
+             *(registers_0_addr + REG_DIGIRW_SEL) = 0;
+
+             break;
+
 
           // read assorted diagnostic registers
           case DIAGDATA:

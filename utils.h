@@ -158,6 +158,9 @@
 #define READDATA    265 // 0x109 - fiber version of READDATACMDID with parameters passed via BLOCK_WRITE
 #define PREAMPGAIN  266 // 0x10A - fiber version of SETPREAMPGAIN with parameters passed via BLOCK_WRITE
 #define PREAMPTHRESH  267 // 0x10B - fiber version of SETPREAMPTHRESHOLD with parameters passed via BLOCK_WRITE
+#define PULSERON    268 // 0x10C - fiber version of SETPULSERON with parameters passed via BLOCK_WRITE
+#define PULSEROFF   269 // 0x10D - fiber version of SETPULSEROFF with parameters passed via  DCS WRITE
+#define MEASURETHRESH 270 // 0x10E - fiber version of MEASURETHRESHOLDCMDID with parameters passed via BLOCK_WRIT
 #define DIAGDATA    511 // 0x1FF - Block RD of assorted diagnostics, started by a single WR of any value
 
 //******************************************************************************
