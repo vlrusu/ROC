@@ -80,12 +80,13 @@ int main() {
 
     //register address for bit banging
     registers_0_addr = (volatile uint32_t*) REGISTERBASEADDR;
+
 #ifdef DTCPROGRAM
     // MT added  register address for DTC commands
     registers_1_addr = (volatile uint32_t *) DTC_BASE_ADDR;
 #endif
 
-    // give DIGI registers controls to serial
+    // give TWI control to microprocessor before calling DIGI_READ/WRITE or ADC_READ/WRITE
     *(registers_0_addr + REG_DIGIRW_SEL) = 1;
 
     //enabling hw counter
@@ -488,8 +489,9 @@ int main() {
     GPIO_set_output(&g_gpio, GPIO_0, 0);
     GPIO_set_output(&g_gpio, GPIO_1, 0);
 
-    // give DIGI registers controls to fiber
+    //give TWI control back to fiber
     *(registers_0_addr + REG_DIGIRW_SEL) = 0;
+
 
     int readout_requestedTriggers = 0;
     int readout_totalDelays = 0;
@@ -564,18 +566,31 @@ int main() {
 #ifdef DTCPROGRAM
         //
         // decoding of DCS write command in address space 0x100-200 from DCX_RX_BUFFER:
-        // - starts on DTC_CMD_READY (driven by SlowControls/DCSRegisters) seen high
-        // - ends on cmd_fail[15] (sent to DTCInterface/DRACRegisters) seen high
+        // - start on DTC_CMD_READY (driven by SlowControls/DCSRegisters) seen high
+        // - ends on CMD_STATUS[15] set high
+        //
+        //  CMD_STATUS bit (read via DRACRegister register 128) report:
+        // bit(15) means end of executing command    (add 0x8000)
+        // bit(14) means start of executing command (add 0x4000)
+        // bit(13) means end of decoding command    (add 0x2000)
+        // bit(12) means start of decoding command (add 0x1000)
+        // bit(5)  bad payload: overflowing MAX TX BUFFER SIZE
+        // bit(4)  bad command trailer word
+        // bit(3)  bad command ID word
+        // bit(2)  bad length word: FIFO overflow
+        // bit(1)  bad length word: zero length
+        // bit(0)  bad command header word
+
 		volatile uint16_t dtc_cmd_ready = *(registers_1_addr + CRDCS_CMD_READY);
 
         volatile uint16_t  get_cmd_rx = 0;
         uint16_t cmd_rx_cnt = 0;
         uint16_t cmd_rx_size = 0;
-        uint16_t  proc_commandID = 0;
-        uint16_t  data_to_write = 0;
-        uint16_t  data_zero = 0;
+        uint16_t proc_commandID = 0;
+        uint16_t data_to_write = 0;
+        uint16_t data_zero = 0;
         uint16_t cmd_fail = 0;
-        uint16_t  dtcPtr = 0;
+        uint16_t dtcPtr = 0;
         uint16_t dtcbuffer[1024]; // size of DCS_RX(TX)_FIFO in firmware
 
         while (dtc_cmd_ready == 1) {
@@ -587,7 +602,7 @@ int main() {
             if(cmd_rx_cnt==0) {
                 // upon starting WHILE loop for procesor with CMD_READY seen,
                 // clear status register and written words register
-                *(registers_1_addr + CRDCS_CMD_STATUS) = 0;
+                *(registers_1_addr + CRDCS_CMD_STATUS) = 0x1000;
                 *(registers_1_addr + CRDCS_DIAG_DATA) = 0;
                 cmd_fail = 0;
                 data_zero = get_cmd_rx;
@@ -620,19 +635,12 @@ int main() {
 
                 // pass number of payload words to DTCInterface/DRACRegister register 255
                 // and CMD_FAIL to DTCInterface/DRACRegister register 128
-                // CMD_FAIL content:
-                // bit(15) means end of packet has been seen
-                // bit(5)  bad payload: overflowing MAX TX BUFFER SIZE
-                // bit(4)  bad command trailer word
-                // bit(3)  bad command ID word
-                // bit(2)  bad length word: FIFO overflow
-                // bit(1)  bad length word: zero length
-                // bit(0)  bad command header word
+
                 if(get_cmd_rx == CMDTRAILER) {
-                    *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
+                    *(registers_1_addr + CRDCS_CMD_STATUS) = 0x2000 + cmd_fail;
                 } else {
                     cmd_fail = cmd_fail + 16;
-                    *(registers_1_addr + CRDCS_CMD_STATUS) = cmd_fail;
+                    *(registers_1_addr + CRDCS_CMD_STATUS) = 0x1000 + cmd_fail;
                 }
 
             } else {  // must be payload => start filling DTCBUFFER
@@ -655,10 +663,7 @@ int main() {
 
         uint8_t  rw = -1;
         uint8_t  adc_num = -1;
-        uint8_t chan_num = -1;
-        uint16_t address = -1;
-        uint16_t data = -1;
-        uint16_t align_mode = 0;
+        uint8_t  chan_num = -1;
         uint16_t value = -1;
         uint16_t preamptype = 0;
 
@@ -666,6 +671,10 @@ int main() {
 
             // example of single data output to DCS_TX_BUFFER
             case TESTDCSNGL:
+
+                // update CMD_STATUS
+                *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
+
                 // writing only LBS 16-bit of 32 bits APB bus
                 *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
                 *(registers_1_addr + CRDCS_WRITE_TX) = cmd_rx_size;
@@ -673,10 +682,18 @@ int main() {
                 *(registers_1_addr + CRDCS_WRITE_TX) = data_to_write;
                 *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
 
+                // update CMD_STATUS
+                *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
+
                 break;
+
 
             // example of block data output to DCS_TX_BUFFER
             case TESTDCSBLK:
+
+                // update CMD_STATUS
+                *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
+
                 // writing only LBS 16-bit of 32 bits APB bus
                 *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
                 *(registers_1_addr + CRDCS_WRITE_TX) = data_to_write+4;
@@ -687,10 +704,18 @@ int main() {
                 }
                 *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
 
+                // update CMD_STATUS
+                *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
+
                 break;
+
 
             // write to DCS_TX Buffer data as in READMONADCS
             case READSPI:
+
+                // update CMD_STATUS
+                *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
+
                 // writing only LBS 16-bit of 32 bits APB bus
                 *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
                 // not until we can deal with DIGI_WRITE while fiber is in control of DIGI registers
@@ -724,32 +749,37 @@ int main() {
                     delayUs(1);
                 }
 
-                // give DIGI registers controls to serial
-                *(registers_0_addr + REG_DIGIRW_SEL) = 1;
+                // give TWI control to uProc before calling DIGI_READ/WRITE
+               *(registers_0_addr + REG_DIGIRW_SEL) = 1;
 
                 for (uint8_t ihvcal=1; ihvcal<3; ihvcal++){
                     for (uint8_t i =0; i<4; i++){
-                        // toggle DIGI registers controls to serial and back to fiber before calling DIGI_WRITE
-                        //*(registers_0_addr + REG_DIGIRW_SEL) = 1;
                         digi_write(DG_ADDR_TVS_ADDR, i, ihvcal);
+
                         delayUs(1);
                         tvs_val[i] = digi_read(DG_ADDR_TVS_VAL, ihvcal);
-                        // **
-                        //*(registers_0_addr + REG_DIGIRW_SEL) = 0;
 
                         *(registers_1_addr + CRDCS_WRITE_TX) = tvs_val[i];
                         delayUs(1);
                     }
                 }
-                // return DIGI registers controls to fiber
+                // return TWI control to fiber
                 *(registers_0_addr + REG_DIGIRW_SEL) = 0;
 
                 *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
 
+                // update CMD_STATUS
+                *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
+
                 break;
+
 
            // read back payload from DCS BLOCK WR
            case READBACKBLK:
+
+               // update CMD_STATUS
+               *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
+
                 // writing only LBS 16-bit of 32 bits APB bus
                 *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
                 *(registers_1_addr + CRDCS_WRITE_TX) = cmd_rx_size;
@@ -760,11 +790,18 @@ int main() {
                 }
                 *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
 
+                // update CMD_STATUS
+                *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
+
                 break;
 
 
            // write to DCS_TX Buffer data as in GETDEVICEID
            case READDEVICE:
+
+               // update CMD_STATUS
+               *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
+
                // writing only LBS 16-bit of 32 bits APB bus
                *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
                // not until we can deal with DIGI_WRITE while fiber is in control of DIGI registers
@@ -789,11 +826,18 @@ int main() {
 
                *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
 
+               // update CMD_STATUS
+               *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
+
                break;
 
 
           // write to DCS_TX Buffer data as in READBMES
           case READSENSOR:
+
+              // update CMD_STATUS
+              *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
+
               // writing only LBS 16-bit of 32 bits APB bus
               *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
               // not until we can deal with DIGI_WRITE while fiber is in control of DIGI registers
@@ -841,46 +885,163 @@ int main() {
               uint32_t sensor_spi = SPI_transfer_frame( &g_spi[0], addr);
               SPI_clear_slave_select( &g_spi[0] , SPI_SLAVE_2);
               *(registers_1_addr + CRDCS_WRITE_TX) = sensor_spi;
-
               *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
+
+              // update CMD_STATUS
+              *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
 
               break;
 
+
           case TALKTOADC:
-                rw     = (uint8_t) dtcbuffer[0];
-                adc_num= (uint8_t) dtcbuffer[1];
-                address= dtcbuffer[2];
-                data   = dtcbuffer[3];
 
-                if (rw == 1) { // for READ, report result from spi ADC_READ
-                    *(registers_0_addr + REG_DIGIRW_SEL) = 1;
-                    uint8_t result = adc_read(address, adc_num);
-                    *(registers_0_addr + REG_DIGIRW_SEL) = 0;
+              // update CMD_STATUS
+              *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
 
-                    //delay_ms(10); // wait for response from ADC
+              // Python defaults
+              rw = -1;                  // 0 for read, 1 for write
+              adc_num = -1;
+              uint16_t adcaddr = -1;
+              uint16_t adcdata = -1;
+              uint8_t result = -1;
 
-                    // fill DCS_RX_BUFFER
-                    *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
-                    *(registers_1_addr + CRDCS_WRITE_TX) = 1;
-                    *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
-                    *(registers_1_addr + CRDCS_WRITE_TX) = result;
-                    *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
+              // for testing of adc_read:
+              // ADC_ADDR_CONFIG = 0x00 should return result=0x18 for either ADCs
+              // ADC_ADDR_CID1   = 0x01 should return result=0x08 for (old) ADC9212 and 0x93 for ADC9637
+              /*
+              rw = 0;
+              //adcaddr =  ADC_ADDR_CID1;  // DOES NOT WORK, RETURNS 0???
+              adcaddr =  ADC_ADDR_CONFIG;  // THIS WORKS
+              adc_num = 0;
+              */
 
-                    // clear STATUS and DCS write size register
-                    *(registers_1_addr + CRDCS_CMD_STATUS) = 0;
-                    *(registers_1_addr + CRDCS_DIAG_DATA) = 0;
+              rw      = (uint8_t) dtcbuffer[0];   // -w
+              adc_num = (uint8_t) dtcbuffer[1];   // -A
+              adcaddr = dtcbuffer[2];             // -a
+              adcdata = dtcbuffer[3];             // -d
 
-                } else {  // for WRITE, pass
-                    adc_write(address, (uint8_t)data, (0x1<<adc_num));
-                }
+              // give TWI control to uProc before calling DIGI_READ/WRITE (called by ADC_READ/WRITE)
+              *(registers_0_addr + REG_DIGIRW_SEL) = 1;
 
-                break;
+              if (rw == 0) { // for READ, report result from SPI ADC_READ
+                  result = adc_read(adcaddr, adc_num);
+              } else {  // for WRITE, pass
+                  adc_write(adcaddr, (uint8_t)adcdata, (0x1<<adc_num));
+              }
+
+              // return TWI control to fiber
+              *(registers_0_addr + REG_DIGIRW_SEL) = 0;
+
+              // fill DCS_RX_BUFFER
+              *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
+              *(registers_1_addr + CRDCS_WRITE_TX) = 1;
+              *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
+              *(registers_1_addr + CRDCS_WRITE_TX) = result;
+              *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
+
+              // update CMD_STATUS
+              *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
+
+              break;
+
+
+          case TALKTODIGI:
+
+              // update CMD_STATUS
+              *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
+
+              // defaults from Python
+              rw = -1;              // 0 for read, 1 for write
+              uint8_t thishvcal = 1;        // 0,1,2 for DIGI R/W (0 for both, 1 for CAL, 2 for HV)
+                                            // 3 for specific register RW
+                                            // 4-15 for ADC R/W to ADC channel 0-11
+              uint16_t digiaddr = 16;
+              uint32_t digidata = 16;
+              uint16_t data_low = 0;
+              uint16_t data_high= 0;
+              uint16_t adc_mask = -1;
+              adc_num  = -1;
+
+              // used for testing read of addr=0 (read-only CHIP_configuration) of adc=1
+              // Should return 0x18;
+              /*
+              rw = 0;
+              thishvcal = 5;
+              digiaddr =  ADC_ADDR_CONFIG;
+              */
+
+              rw         = (uint8_t) dtcbuffer[0];      // -w
+              thishvcal  = (uint8_t) buffer[1];         // -h
+              digiaddr   = dtcbuffer[2];                // -a
+              data_low   = dtcbuffer[3];                // -d
+              data_high  = dtcbuffer[4];                // -d
+
+
+              digidata =  ((data_high<<16) & 0XFFFF0000)  +  (data_low & 0x0000FFFF);
+
+
+              // give TWI control to uProc before calling DIGI_READ/WRITE or ADC/READ_WRITE
+             *(registers_0_addr + REG_DIGIRW_SEL) = 1;
+
+              if (rw & 0x2) {
+                  digiaddr |= 0x100;
+                  rw &= 0x1;
+              }
+              if (thishvcal < 3) {
+                  if (rw == 0) {                  //read
+                      digidata = digi_read(digiaddr, thishvcal);
+                  } else {
+                      digi_write(digiaddr, digidata, thishvcal);
+                  }
+              } else {
+                  if (thishvcal == 3) {
+                      if (rw == 0) {                //read
+                          digidata = *(registers_0_addr + digiaddr);
+                      } else {
+                          *(registers_0_addr + digiaddr) = digidata;
+                      }
+                  } else {
+                      adc_num = thishvcal - 4;
+                      if (rw == 0) {
+                          digidata = adc_read(digiaddr, adc_num);
+                      } else {
+                          adc_mask = (0x1 << adc_num);
+                          adc_write(digiaddr, digidata, adc_mask);
+                      }
+                  }
+              }
+
+              // return TWI control to fiber
+              *(registers_0_addr + REG_DIGIRW_SEL) = 0;
+
+
+              // fill DCS_RX_BUFFER
+              *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
+              *(registers_1_addr + CRDCS_WRITE_TX) = 7;
+              *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
+              *(registers_1_addr + CRDCS_WRITE_TX) = rw;
+              *(registers_1_addr + CRDCS_WRITE_TX) = thishvcal;
+              *(registers_1_addr + CRDCS_WRITE_TX) = digiaddr;
+              *(registers_1_addr + CRDCS_WRITE_TX) = digidata & 0xFFFF;
+              *(registers_1_addr + CRDCS_WRITE_TX) = (digidata>>16);
+              *(registers_1_addr + CRDCS_WRITE_TX) = adc_num;
+              *(registers_1_addr + CRDCS_WRITE_TX) = adc_mask;
+              *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
+
+
+              // update CMD_STATUS
+              *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
+
+              break;
 
 
           case FINDALIGN:
 
-              // give control to serial
-              *(registers_0_addr + REG_DIGIRW_SEL) = 1;
+              // update CMD_STATUS
+              *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
+
+              // give TWI control to uProc before calling DIGI_READ/WRITE or ADC/READ_WRITE
+             *(registers_0_addr + REG_DIGIRW_SEL) = 1;
 
               //reset the ADCs first, at this point, clock better be stable
               for (int i=0;i<12;i++){
@@ -909,9 +1070,9 @@ int main() {
               ifcheck =  dtcbuffer[2];                  // -ck
               chan_num = (uint8_t) dtcbuffer[3];        // -c
               adc_num = (uint8_t) dtcbuffer[4];         // -a
-              channel_mask[0] = (dtcbuffer[6])>>16  &  dtcbuffer[5];   // -C
-              channel_mask[1] = (dtcbuffer[8])>>16  &  dtcbuffer[7];   // -D
-              channel_mask[2] = (dtcbuffer[10])>>16  &  dtcbuffer[9];  // -E
+              channel_mask[0] = (dtcbuffer[6]<<16)   +  dtcbuffer[5];   // -C
+              channel_mask[1] = (dtcbuffer[8]<<16)  +  dtcbuffer[7];   // -D
+              channel_mask[2] = (dtcbuffer[10]<<16) +  dtcbuffer[9];  // -E
 
               // correct for parameters out of allowed values
               if (eye_monitor_width > 7) eye_monitor_width = 7;
@@ -1147,18 +1308,19 @@ int main() {
                   }
                       //make sure find_alignment exits with tracking incoming data not ADC pattern
               }
+              // return TWI control to fiber
+               *(registers_0_addr + REG_DIGIRW_SEL) = 0;
 
               *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
 
-              // return control to fiber
-              *(registers_0_addr + REG_DIGIRW_SEL) = 0;
-
+              // update CMD_STATUS
+              *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
                break;
 
 
           case READDATA:
-              // give control to serial
-              *(registers_0_addr + REG_DIGIRW_SEL) = 1;
+              // update CMD_STATUS
+              *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
 
               *(registers_0_addr + 0xEE) = 0x1;
               delayUs(1);
@@ -1177,20 +1339,7 @@ int main() {
               uint16_t max_total_delay = 1;
               uint8_t marker_clock = 0;
 
-              // load parameters - Vadim says to ignore "message" (-M) and "chan_num" (-c)
-              adc_mode = dtcbuffer[0];                                  // -a
-              tdc_mode = dtcbuffer[1];                                  // -t
-              num_lookback = dtcbuffer[2];                              // -l
-              num_triggers = (dtcbuffer[4]>>16) & dtcbuffer[3];         // -T
-              channel_mask[0] = (dtcbuffer[6]>>16)  &  dtcbuffer[5];    // -C
-              channel_mask[1] = (dtcbuffer[8]>>16)  &  dtcbuffer[7];    // -D
-              channel_mask[2] = (dtcbuffer[10]>>16) &  dtcbuffer[9];    // -E
-              num_samples = dtcbuffer[11];                     // -s
-              enable_pulser = (uint8_t) dtcbuffer[12];         // -p
-              max_total_delay = dtcbuffer[13];                 // -d (def 1)
-              marker_clock = (uint8_t) dtcbuffer[14];          // -m
-
-
+              /*
               // pass test values as in command
               // read -a 0 -t 0 -s 1 -l 8 -T 10 -m 3 -p 1 -C 0 -D 1400 -E 880000
               adc_mode = 0;
@@ -1203,6 +1352,20 @@ int main() {
               channel_mask[0] = 0x00000000;
               channel_mask[1] = 0x1400;
               channel_mask[2] = 0x88000000;
+              */
+
+              // load parameters - Vadim says to ignore "message" (-M) and "chan_num" (-c)
+              adc_mode = dtcbuffer[0];                                  // -a
+              tdc_mode = dtcbuffer[1];                                  // -t
+              num_lookback = dtcbuffer[2];                              // -l
+              num_triggers = (dtcbuffer[4]<<16) + dtcbuffer[3];         // -T
+              channel_mask[0] = (dtcbuffer[6]<<16)  +  dtcbuffer[5];    // -C
+              channel_mask[1] = (dtcbuffer[8]<<16)  +  dtcbuffer[7];    // -D
+              channel_mask[2] = (dtcbuffer[10]<<16) +  dtcbuffer[9];    // -E
+              num_samples = dtcbuffer[11];                     // -s
+              enable_pulser = (uint8_t) dtcbuffer[12];         // -p
+              max_total_delay = dtcbuffer[13];                 // -d (def 1)
+              marker_clock = (uint8_t) dtcbuffer[14];          // -m
 
 
               // override these two parameters (as sone in Python)
@@ -1227,6 +1390,8 @@ int main() {
               else
                 *(registers_0_addr + REG_ROC_ENABLE_FIBER_MARKER) = 0;
 
+              // give TWI control to uProc before calling DIGI_READ/WRITE or ADC/READ_WRITE
+             *(registers_0_addr + REG_DIGIRW_SEL) = 1;
 
               digi_write(DG_ADDR_ENABLE_PULSER,enable_pulser,0);
               if ((mode & 0x1) == 0x0){
@@ -1331,6 +1496,8 @@ int main() {
                            bufWrite(outBuffer, &bufcount, value, 2);
                            outBufSend(g_uart, outBuffer, bufcount);
                */
+              // return TWI control to fiber
+              *(registers_0_addr + REG_DIGIRW_SEL) = 0;
 
               *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
               *(registers_1_addr + CRDCS_WRITE_TX) = 18;
@@ -1356,8 +1523,8 @@ int main() {
               *(registers_1_addr + CRDCS_WRITE_TX) = mode;
               *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
 
-              // return control to FIBER
-               *(registers_0_addr + REG_DIGIRW_SEL) = 0;
+               // update CMD_STATUS
+              *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
 
                break;
 
@@ -1365,25 +1532,26 @@ int main() {
           // set PREAMP GAINS
           case PREAMPGAIN:
 
-              // passing control to serial
-              *(registers_0_addr + REG_DIGIRW_SEL) = 1;
+              // update CMD_STATUS
+              *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
+              // needed??
+              //*(registers_0_addr + REG_DIGIRW_SEL) = 1;
 
               // Python defaults
-              chan_num  = -1;
+              chan_num = -1;
               value = -1;
               preamptype = 0;
 
-              // for testing by hand
               /*
+              // for testing by hand
               chan_num  = 1;
               value = 370;   // N.B. Expect that float to integer conversion has already happened!
               preamptype = 1;
-               */
+              */
 
               chan_num  = dtcbuffer[0];     // -c
               value     = dtcbuffer[1];     // -d
               preamptype= dtcbuffer[2];     // -hv
-
 
               if (preamptype == 1) chan_num = chan_num + 96;
 
@@ -1397,8 +1565,10 @@ int main() {
               *(registers_1_addr + CRDCS_WRITE_TX) = preamptype;
               *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
 
-              // return control to FIBER
-               *(registers_0_addr + REG_DIGIRW_SEL) = 0;
+              // return control to fiber and issue CMD_DONE
+              //*(registers_0_addr + REG_DIGIRW_SEL) = 0;
+              // update CMD_STATUS
+              *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
 
               break;
 
@@ -1406,11 +1576,13 @@ int main() {
          // set PREAMP THRESHOLD
          case PREAMPTHRESH:
 
-             // passing control to serial
-             *(registers_0_addr + REG_DIGIRW_SEL) = 1;
+             // update CMD_STATUS
+             *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
+             // needed??
+             //*(registers_0_addr + REG_DIGIRW_SEL) = 1;
 
              // Python defaults
-             chan_num  = -1;
+             chan_num = -1;
              value = -1;
              preamptype = 0;
 
@@ -1419,7 +1591,7 @@ int main() {
              chan_num  = 1;
              value = 450;   // N.B. Expect that float to integer conversion has already happened!
              preamptype = 1;
-              */
+             */
 
              chan_num  = dtcbuffer[0];     // -c
              value     = dtcbuffer[1];     // -d
@@ -1437,16 +1609,20 @@ int main() {
              *(registers_1_addr + CRDCS_WRITE_TX) = preamptype;
              *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
 
-             // return control to FIBER
-             *(registers_0_addr + REG_DIGIRW_SEL) = 0;
+             // return control to fiber and issue CMD_DONE
+             //*(registers_0_addr + REG_DIGIRW_SEL) = 0;
+             // update CMD_STATUS
+             *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
 
              break;
 
 
          case PULSERON:
 
-             // passing control to serial
-             *(registers_0_addr + REG_DIGIRW_SEL) = 1;
+             // update CMD_STATUS
+             *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
+             // needed??
+             //*(registers_0_addr + REG_DIGIRW_SEL) = 1;
 
              // initialize as in Python defaults:
              // - ignore oddoreven and pulser_odd (unused)
@@ -1482,56 +1658,6 @@ int main() {
 
              PWM_enable(&g_pwm,PWM_1);
 
-/*
-        chan_mask = int(get_key_value(keys,"C"),16)
-        oddoreven = int(get_key_value(keys,"P"),16)
-        channel = int(get_key_value(keys,"c",-1))
-        pulser_odd = int(get_key_value(keys,"o",0))
-        if channel >= 0:
-            chan_mask |= (0x1 << channel)
-        if channel % 2 == 0:
-            oddoreven = 1
-        else:
-            oddoreven = 0
-
-        freq = float(get_key_value(keys,"f",-1))
-        delay = int(get_key_value(keys,"d",1000))
-        dutycycle = int(get_key_value(keys,"y",10))
-        if (freq > 0):
-            delay = int(1./freq*1000000.)
-
-        data=setpulseron(chan_mask,pulser_odd,dutycycle,delay)
-*/
-/*
-             for (uint8_t i = 0; i < 16; i++){
-                 MCP_pinWrite(&preampMCP[MCPCALIB],i+1,0);
-             }
-             uint8_t chan_mask = (uint8_t) buffer[4];
-             pulserOdd = (uint8_t) buffer[5];
-             for (uint8_t i=0;i<8;i++){
-                 if ((0x1<<i) & chan_mask){
-                     MCP_pinWrite(&preampMCP[MCPCALIB],calpulse_chanmap[i],1);
-                 }
-             }
-             dutyCycle=readU16fromBytes(&buffer[6]);
-             pulserDelay=readU32fromBytes(&buffer[8]);
-
-             //granularity is clock period=25ns -- period is (gr+1)*1000=50us
-             //PWM_PERIOD = PWM_GRANULARITY * (period + 1) = 25 *1000 = 25us
-             PWM_init( &g_pwm, COREPWM_BASE_ADDR, 1, pulserDelay );
-             PWM_set_duty_cycle( &g_pwm, PWM_1,dutyCycle );//duty cycle is 4 x 25 = 100ns
-
-             PWM_enable(&g_pwm,PWM_1);
-
-
-             outBuffer[bufcount++] = SETPULSERON;
-             bufWrite(outBuffer, &bufcount, 8, 2);
-             outBuffer[bufcount++] = chan_mask;
-             outBuffer[bufcount++] = pulserOdd;
-             bufWrite(outBuffer, &bufcount, dutyCycle, 2);
-             bufWrite(outBuffer, &bufcount, pulserDelay, 4);
-             outBufSend(g_uart, outBuffer, bufcount);
-*/
              // write output for BLOCK_READ
              *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
              *(registers_1_addr + CRDCS_WRITE_TX) = 4;
@@ -1542,55 +1668,59 @@ int main() {
              *(registers_1_addr + CRDCS_WRITE_TX) = (pulserDelay & 0xFFFF0000)>>16;
              *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
 
-             // return control to FIBER
-             *(registers_0_addr + REG_DIGIRW_SEL) = 0;
+             // return control to fiber and issue CMD_DONE
+             //*(registers_0_addr + REG_DIGIRW_SEL) = 0;
+             // update CMD_STATUS
+             *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
 
              break;
 
 
          case PULSEROFF:
 
-             // passing control to serial
-             *(registers_0_addr + REG_DIGIRW_SEL) = 1;
+             // update CMD_STATUS
+             *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
+             // needed??
+             //*(registers_0_addr + REG_DIGIRW_SEL) = 1;
 
              PWM_disable(&g_pwm,PWM_1);
 
-             // write output for BLOCK_READ
-             *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
-             *(registers_1_addr + CRDCS_WRITE_TX) = 1;
-             *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
-             *(registers_1_addr + CRDCS_WRITE_TX) = 1;   // meaning DONE!
-             *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
 
-             // return control to FIBER
-             *(registers_0_addr + REG_DIGIRW_SEL) = 0;
+             // return control to fiber and issue CMD_DONE
+             //*(registers_0_addr + REG_DIGIRW_SEL) = 0;
+             // update CMD_STATUS
+             *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
 
              break;
 
 
          case MEASURETHRESH:
 
-             // passing control to serial
-             *(registers_0_addr + REG_DIGIRW_SEL) = 1;
+             // update CMD_STATUS
+             *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
 
-             // initialize as in Python defaults
+             // initialize as in Python defaults. Used for testing.
              chan_num = -1;
              channel_mask[0] = 0xFFFFFFFF;
              channel_mask[1] = 0xFFFFFFFF;
              channel_mask[2] = 0xFFFFFFFF;
 
              // retrieve the paramaters passed via BLOCK_WRITE
-             chan_num  = dtcbuffer[0];     // -c
-             channel_mask[0] = (dtcbuffer[2]>>16)  &  dtcbuffer[1];    // -C
-             channel_mask[1] = (dtcbuffer[4]>>16)  &  dtcbuffer[3];    // -D
-             channel_mask[2] = (dtcbuffer[6]>>16)  &  dtcbuffer[5];    // -E
+             chan_num  = dtcbuffer[0];                                  // -c
+             channel_mask[0] = (dtcbuffer[2]<<16)  +  dtcbuffer[1];     // -C
+             channel_mask[1] = (dtcbuffer[4]<<16)  +  dtcbuffer[3];     // -D
+             channel_mask[2] = (dtcbuffer[6]<<16)  +  dtcbuffer[5];     // -E
 
              // new function to replace util.py/CHANNELMASK
              if(chan_num >= 0)  mask_channels(chan_num);
 
+             // this returnc MAPPED_CHANNEL_MASK
              get_mapped_channels();
 
-             //enable pulser as readstrawcmd does
+             // give TWI control to uProc before calling DIGI_READ/WRITE or ADC/READ_WRITE
+             *(registers_0_addr + REG_DIGIRW_SEL) = 1;
+
+            //enable pulser as readstrawcmd does
              digi_write(DG_ADDR_ENABLE_PULSER,1,0);
 
              uint16_t threshold_array[288];
@@ -1626,6 +1756,8 @@ int main() {
                      }
                  }
              }
+             // return TWI control to fiber
+             *(registers_0_addr + REG_DIGIRW_SEL) = 0;
 
              // write output for BLOCK_READ
              *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
@@ -1636,14 +1768,17 @@ int main() {
              }
              *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
 
-             // return control to FIBER
-             *(registers_0_addr + REG_DIGIRW_SEL) = 0;
+             // update CMD_STATUS
+             *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
 
              break;
 
 
           // read assorted diagnostic registers
           case DIAGDATA:
+                // update CMD_STATUS
+                *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
+
                 // header
                 *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
                 // payload word
@@ -1662,6 +1797,9 @@ int main() {
                 *(registers_1_addr + CRDCS_WRITE_TX) = get_cmd_rx;  // last read word
                 //trailer
                 *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
+
+                // update CMD_STATUS
+                *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
                 break;
 
           default:

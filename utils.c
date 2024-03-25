@@ -250,6 +250,8 @@ void digi_write(uint8_t address, uint16_t data, uint8_t hvcal)
 		*(init_p_hv) = 1;
 		while (*(busy_p_hv) != 0){};
 	}
+
+	// redundant??
 	if (hvcal==0){
 		busy_p_cal = registers_0_addr+REG_ROC_CAL_BUSY_P;
 		data_p_cal = registers_0_addr+REG_ROC_CAL_DATA_P;

@@ -152,8 +152,8 @@
 #define READBACKBLK 259 // 0x103 - write and read back BLOCK_WRITE of N values via "rocUtil block_write -a 259 -c N"
 #define READDEVICE  260 // 0x104 - fiber version of GETDEVICEID: execute with Single DCS_WRITE of any value (ignored) followed by DCS_BLOCK_READ of 52 ID values
 #define READSENSOR  261 // 0x105 - fiber version of READBMES: execute with Single DCS_WRITE of any value (ignored) followed by DCS_BLOCK_READ of 52 ID values
-#define TALKTOADC   262 // 0x106 - fiber version of ADCRWCMDID with parameters passed via BLOCK_WRITE
-#define TALKTOSDIGI 263 // 0x107 - fiber version of DIGIRW with parameters passed via BLOCK_WRITE
+#define TALKTOADC   262 // 0x106 - fiber version of ADCRWCMDID with parameters passed via BLOCK_WRITE and results read via simple read
+#define TALKTODIGI  263 // 0x107 - fiber version of DIGIRW with parameters passed via BLOCK_WRITE
 #define FINDALIGN   264 // 0x108 - fiber version of AUTOBITSLIPCMDID with parameters passed via SINGLE or BLOCK_WRITE - Does only 1 iteration!!
 #define READDATA    265 // 0x109 - fiber version of READDATACMDID with parameters passed via BLOCK_WRITE
 #define PREAMPGAIN  266 // 0x10A - fiber version of SETPREAMPGAIN with parameters passed via BLOCK_WRITE
