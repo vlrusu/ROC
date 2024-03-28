@@ -1632,12 +1632,15 @@ int main() {
              uint16_t dutyCycle = 10;
              uint32_t pulserDelay = 1000;
 
-
-             // original Python parameters
-             chan_1in8   = dtcbuffer[0];   // -c
-             chan_mask   = dtcbuffer[1];   // -C
+             // block_write is throwing an exception in Pasha's function
+             // use single write with chan_1in8 as paraneter instead
+             chan_1in8   = data_to_write;
+/*
+             chan_1in8   = (uint8_t)dtcbuffer[0];   // -c
+             chan_mask   = (uint8_t)dtcbuffer[1];   // -C
              dutyCycle   = dtcbuffer[2];   // -y
              pulserDelay = (dtcbuffer[4]<<16)  +  dtcbuffer[3];   // -d  or  integer
+*/
 
              if (chan_1in8 >= 0) chan_mask |= (0x1 << chan_1in8);
 
