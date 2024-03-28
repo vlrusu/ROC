@@ -1637,7 +1637,7 @@ int main() {
              chan_1in8   = dtcbuffer[0];   // -c
              chan_mask   = dtcbuffer[1];   // -C
              dutyCycle   = dtcbuffer[2];   // -y
-             pulserDelay = (dtcbuffer[4]>>16)  &  dtcbuffer[3];   // -d  or  integer
+             pulserDelay = (dtcbuffer[4]<<16)  +  dtcbuffer[3];   // -d  or  integer
 
              if (chan_1in8 >= 0) chan_mask |= (0x1 << chan_1in8);
 
