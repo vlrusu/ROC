@@ -534,7 +534,8 @@ void read_data(int *delay_count, int *trigger_count)
 			// now only allow readout of as many triggers as currently in memory
 			if (memlevel < requiredMemLevel){
 				(*delay_count)++;
-				if ((*delay_count) >= readout_maxDelay){
+				//if ((*delay_count) >= readout_maxDelay){
+				if ((*delay_count) >= 50){
 					// we delayed as much as we can
 					break;
 				}

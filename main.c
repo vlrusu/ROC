@@ -540,6 +540,7 @@ int main() {
                 UART_send(&g_uart, outBuffer ,bufcount );
                 readout_requestedTriggers = 0;
                 readout_totalTriggers = 0;
+                readout_totalDelays = 0;
             }
         }
 
