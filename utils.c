@@ -41,6 +41,8 @@ uint8_t adc_phases[12] = {0};
 char outBuffer[2000]; // buffer for printing to serial port
 char dataBuffer[4096];
 char init_buff[30];// buffer for storing adc_init returns
+uint16_t fiberBuffer[1024];  // buffer for 16-bit words to DTC
+
 uint8_t rx_buff[100];
 uint8_t buffer[256]; // buffer for reading from serial port
 uint32_t writePtr;
@@ -49,6 +51,8 @@ uint16_t bufcount;
 uint16_t bufcount_place_holder;
 uint16_t readout_obloc;
 uint16_t readout_obloc_place_holder;
+uint16_t fibercount;
+uint16_t fibercount_place_holder;
 
 uint32_t thischanmask;
 

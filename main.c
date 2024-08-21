@@ -718,6 +718,7 @@ int main() {
                 // update CMD_STATUS
                 *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
 
+/*  old working version
                 // writing only LBS 16-bit of 32 bits APB bus
                 *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
                 // not until we can deal with DIGI_WRITE while fiber is in control of DIGI registers
@@ -770,6 +771,76 @@ int main() {
 
                 *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
 
+*/
+/*   new version with variable size buffer  */
+
+                fibercount = 0;
+//                bufWrite(fiberBuffer, &fibercount, CMDHEADER, 2);
+//                fibercount += 2;
+
+                fiberBuffer[fibercount++] = CMDHEADER;
+
+                // save index to overwrite and fill payload size with temporary value
+                fibercount_place_holder = fibercount;
+                fiberBuffer[fibercount++] = fibercount;
+
+                fiberBuffer[fibercount++] = 0xC000 + proc_commandID;
+
+                // fill up payload with 16-bit words
+                uint32_t spi32;
+                for (uint8_t i = 0 ; i < 2; i++) {
+                    for (uint8_t j = 0 ; j < 12; j++) {
+                        SPI_set_slave_select( &g_spi[i] , ((j>=8)?SPI_SLAVE_2:(j<4?SPI_SLAVE_0:SPI_SLAVE_1)));
+
+                        uint16_t addr = (j%4 <<11 );
+                        SPI_transfer_frame( &g_spi[i], addr);
+                        SPI_transfer_frame( &g_spi[i], addr);
+                        spi32 = SPI_transfer_frame( &g_spi[i], addr);
+
+                        SPI_clear_slave_select( &g_spi[i] , ((j>=8)?SPI_SLAVE_2:(j<4?SPI_SLAVE_0:SPI_SLAVE_1)));
+
+                        fiberBuffer[fibercount++] = (0x0000FFFF & spi32);
+                     }
+                }
+
+                uint16_t tvs_val[4] = {0};
+                for (uint8_t i =0; i<4; i++){
+                    *(registers_0_addr+REG_ROC_TVS_ADDR) = i;
+                    delayUs(1);
+                    tvs_val[i] = *(registers_0_addr + REG_ROC_TVS_VAL);
+
+                    fiberBuffer[fibercount++] = tvs_val[i];
+                    delayUs(1);
+                }
+
+                // give TWI control to uProc before calling DIGI_READ/WRITE
+               *(registers_0_addr + REG_DIGIRW_SEL) = 1;
+
+                for (uint8_t ihvcal=1; ihvcal<3; ihvcal++){
+                    for (uint8_t i =0; i<4; i++){
+                        digi_write(DG_ADDR_TVS_ADDR, i, ihvcal);
+
+                        delayUs(1);
+                        tvs_val[i] = digi_read(DG_ADDR_TVS_VAL, ihvcal);
+
+                        fiberBuffer[fibercount++] = tvs_val[i];
+                        delayUs(1);
+                    }
+                }
+                // return TWI control to fiber
+                *(registers_0_addr + REG_DIGIRW_SEL) = 0;
+                fiberBuffer[fibercount++] = CMDTRAILER;
+
+                // fill final payload size value
+                if (fibercount > 4) {
+                    fiberBuffer[fibercount_place_holder] = fibercount-4;
+                } else {
+                    fiberBuffer[fibercount_place_holder] = 1;
+                }
+
+                for (uint8_t ib=0; ib<fibercount; ib++) {
+                    *(registers_1_addr + CRDCS_WRITE_TX) = fiberBuffer[ib];
+                }
                 // update CMD_STATUS
                 *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
 
@@ -779,8 +850,8 @@ int main() {
            // read back payload from DCS BLOCK WR
            case READBACKBLK:
 
-               // update CMD_STATUS
-               *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
+                // update CMD_STATUS
+                *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
 
                 // writing only LBS 16-bit of 32 bits APB bus
                 *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
