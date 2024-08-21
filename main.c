@@ -42,6 +42,7 @@
 #include "version.h"
 
 #include "iaputils.h"
+#include "ilps22qs.h"
 
 
 //#define BAUD_VALUE                  115200

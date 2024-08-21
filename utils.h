@@ -382,6 +382,11 @@
 
 #define REG_ROC_USE_UART    0xF1
 #define REG_DIGIRW_SEL      0xF2   // WO   select between fiber (0) or serial (1) to drive some DIGI signals
+#define REG_ROC_LEAK_MUX    0xF3
+#define REG_ROC_LEAK_SDIR    0xF4
+#define REG_ROC_LEAK_SCL    0xF5
+#define REG_ROC_LEAK_CS    0xF6
+#define REG_ROC_LEAK_SDA    0xF7
 
 //***********************ADC_ADDR_* are the ADC addresses
 										//AD9212 memory map:
