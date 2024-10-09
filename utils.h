@@ -65,6 +65,7 @@
 #define SETFUSEON 19
 #define SETFUSEOFF 20
 #define READKEY 21
+#define GETILP 22
 
 //DDR command ID
 #define DDRSETUP 50
@@ -338,6 +339,9 @@
 #define REG_ROC_READ_ALIGNED 0xB6
 #define REG_ROC_READ_ALIGNMENT 0xB7
 
+
+
+
 //#define REG_ROC_DDR_TRUEL	0xC0 	//R  LSB 32-bit of DDR read data when error seen
 //#define REG_ROC_DDR_TRUEH	0xC1 	//R  MSB 32-bit of DDR read data when error seen
 //#define REG_ROC_DDR_EXPCL	0xC2 	//R  LSB 32-bit of DDR expected data when error seen
@@ -382,11 +386,12 @@
 
 #define REG_ROC_USE_UART    0xF1
 #define REG_DIGIRW_SEL      0xF2   // WO   select between fiber (0) or serial (1) to drive some DIGI signals
+
+//LEAK SENSOR REGS
 #define REG_ROC_LEAK_MUX    0xF3
 #define REG_ROC_LEAK_SDIR    0xF4
 #define REG_ROC_LEAK_SCL    0xF5
-#define REG_ROC_LEAK_CS    0xF6
-#define REG_ROC_LEAK_SDA    0xF7
+#define REG_ROC_LEAK_SDA    0xF6
 
 //***********************ADC_ADDR_* are the ADC addresses
 										//AD9212 memory map:

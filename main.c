@@ -485,6 +485,8 @@ int main() {
      }
      */
 
+
+
     UART_polled_tx_string(&g_uart, "Initialization completed");
 
     GPIO_set_output(&g_gpio, GPIO_0, 0);
@@ -2372,6 +2374,31 @@ int main() {
                         outBuffer[bufcount++] = dinfo_buffer[i];
                     outBufSend(g_uart, outBuffer, bufcount);
 
+                }else if (commandID == GETILP){
+                                  outBuffer[bufcount++] = GETILP;
+                                  bufWrite(outBuffer, &bufcount, 7, 2);
+
+
+                                  ilp22qs_init();
+                                  uint8_t ret = ilps22qs_id_get();
+                                  bufWrite(outBuffer, &bufcount, ret, 1);
+                                  ilps22qs_all_sources_t all_sources;
+                                  ilps22qs_all_sources_get(&all_sources);
+                                  ilps22qs_md_t md;
+                                   md.odr = ILPS22QS_4Hz;
+                                   md.avg = ILPS22QS_16_AVG;
+                                   md.lpf = ILPS22QS_LPF_ODR_DIV_4;
+                                   md.fs = ILPS22QS_4060hPa;
+                                   ilps22qs_data_t data;
+                                   ilps22qs_data_get( &md, &data);
+                                   bufWrite(outBuffer, &bufcount, data.heat.raw, 2);
+                                   bufWrite(outBuffer, &bufcount, data.pressure.raw, 4);
+
+
+
+                                  outBufSend(g_uart, outBuffer, bufcount);
+
+
 
                 } else if (commandID == SETFUSEON) {
                     uint8_t preamp_number = (uint8_t) buffer[4];
@@ -2410,15 +2437,17 @@ int main() {
 
                 } else if (commandID == READKEY) {
                     outBuffer[bufcount++] = READKEY;
-                    bufWrite(outBuffer, &bufcount, 6, 2);
+                    bufWrite(outBuffer, &bufcount, 8, 2);
 
                     uint16_t key_temp = ADC124S051_read(&g_spi[4], 0, 1);
                     uint16_t v2p5 = ADC124S051_read(&g_spi[4], 0, 3);
                     uint16_t v5p1 = ADC124S051_read(&g_spi[4], 0, 0);
+                    uint16_t dcdctemp = ADC124S051_read(&g_spi[4], 0, 2);
 
                     bufWrite(outBuffer, &bufcount, key_temp, 2);
                     bufWrite(outBuffer, &bufcount, v2p5, 2);
                     bufWrite(outBuffer, &bufcount, v5p1, 2);
+                    bufWrite(outBuffer, &bufcount, dcdctemp, 2);
                     outBufSend(g_uart, outBuffer, bufcount);
 
                 } else if (commandID == DDRSTATUS) {
