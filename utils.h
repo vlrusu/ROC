@@ -66,6 +66,7 @@
 #define SETFUSEOFF 20
 #define READKEY 21
 #define GETILP 22
+#define GETGITREV 23
 
 //DDR command ID
 #define DDRSETUP 50

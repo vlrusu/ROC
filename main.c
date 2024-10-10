@@ -5,7 +5,6 @@
 #include "drivers/CoreSPI/core_spi.h"
 #include "drivers/CoreSysServices_PF/core_sysservices_pf.h"
 
-
 #include "riscv_hal.h"
 
 // ALWAYS COMMENT this define in SoftConsole_variablesize
@@ -44,7 +43,6 @@
 #include "iaputils.h"
 #include "ilps22qs.h"
 
-
 //#define BAUD_VALUE                  115200
 #define BAUD_VALUE                  57600
 //#define BAUD_VALUE 38400
@@ -68,8 +66,8 @@ int main() {
 
     /* Send greeting message over the UART_0 */
     UART_polled_tx_string(&g_uart, greeting);
-    //		sprintf(outBuffer,"Last git revision: %s\n",LAST_GIT_REV);
-    //			UART_polled_tx_string( &g_uart, outBuffer );
+//    sprintf(outBuffer,"Last git revision: %s\n",LAST_GIT_REV);
+//    UART_polled_tx_string( &g_uart, outBuffer );
 
     GPIO_init(&g_gpio, COREGPIO_BASE_ADDR, GPIO_APB_32_BITS_BUS);
     //	GPIO_config( &g_gpio, GPIO_0, GPIO_OUTPUT_MODE);
@@ -84,7 +82,7 @@ int main() {
 
 #ifdef DTCPROGRAM
     // MT added  register address for DTC commands
-    registers_1_addr = (volatile uint32_t *) DTC_BASE_ADDR;
+    registers_1_addr = (volatile uint32_t*) DTC_BASE_ADDR;
 #endif
 
     // give TWI control to microprocessor before calling DIGI_READ/WRITE or ADC_READ/WRITE
@@ -485,8 +483,6 @@ int main() {
      }
      */
 
-
-
     UART_polled_tx_string(&g_uart, "Initialization completed");
 
     GPIO_set_output(&g_gpio, GPIO_0, 0);
@@ -495,17 +491,17 @@ int main() {
     //give TWI control back to fiber
     *(registers_0_addr + REG_DIGIRW_SEL) = 0;
 
-
     int readout_requestedTriggers = 0;
     int readout_totalDelays = 0;
     readout_totalTriggers = 0;
     while (1) {
         //if (readout_enabled) {
-        if (readout_totalTriggers < readout_requestedTriggers){
-            uint16_t remaining = readout_requestedTriggers - readout_totalTriggers;
-            if (remaining > 50){
+        if (readout_totalTriggers < readout_requestedTriggers) {
+            uint16_t remaining = readout_requestedTriggers
+                    - readout_totalTriggers;
+            if (remaining > 50) {
                 readout_numTriggers = 50;
-            }else{
+            } else {
                 readout_numTriggers = remaining;
             }
             int delay_count = 0;
@@ -515,32 +511,36 @@ int main() {
             read_data(&delay_count, &trigger_count);
             readout_totalTriggers += trigger_count;
             readout_totalDelays += delay_count;
-            if (readout_totalTriggers >= readout_requestedTriggers || readout_totalDelays > readout_maxDelay){
-                if (readout_totalTriggers >= readout_requestedTriggers){
-                        readout_obloc = 0;
-                        bufWrite(dataBuffer, &readout_obloc, ENDOFDATA, 2);
-                        UART_send(&g_uart, dataBuffer ,2);
-                }else{
+            if (readout_totalTriggers >= readout_requestedTriggers
+                    || readout_totalDelays > readout_maxDelay) {
+                if (readout_totalTriggers >= readout_requestedTriggers) {
+                    readout_obloc = 0;
+                    bufWrite(dataBuffer, &readout_obloc, ENDOFDATA, 2);
+                    UART_send(&g_uart, dataBuffer, 2);
+                } else {
                     readout_obloc = 0;
                     bufWrite(dataBuffer, &readout_obloc, EMPTY, 2);
-                    UART_send(&g_uart, dataBuffer ,2);
+                    UART_send(&g_uart, dataBuffer, 2);
                 }
                 //sprintf(&dataBuffer[readout_obloc],"\nend\n");
                 //UART_polled_tx_string( &g_uart, dataBuffer );
                 bufcount = 0;
                 outBuffer[bufcount++] = READDATACMDID;
                 bufWrite(outBuffer, &bufcount, 5, 2);
-                outBuffer[bufcount++] = (uint8_t)(readout_totalTriggers == readout_requestedTriggers);
+                outBuffer[bufcount++] = (uint8_t) (readout_totalTriggers
+                        == readout_requestedTriggers);
 
-                if (readout_totalTriggers == readout_requestedTriggers){
+                if (readout_totalTriggers == readout_requestedTriggers) {
                     //sprintf(outBuffer,"SUCCESS! Delayed %d times\n",delay_count);
-                    bufWrite(outBuffer, &bufcount, (uint32_t)readout_totalDelays, 4);
-                }else{
+                    bufWrite(outBuffer, &bufcount,
+                            (uint32_t) readout_totalDelays, 4);
+                } else {
                     //sprintf(outBuffer,"FAILED! Read %d triggers\n",trigger_count);
-                    bufWrite(outBuffer, &bufcount, (uint32_t)readout_totalTriggers, 4);
+                    bufWrite(outBuffer, &bufcount,
+                            (uint32_t) readout_totalTriggers, 4);
                 }
 
-                UART_send(&g_uart, outBuffer ,bufcount );
+                UART_send(&g_uart, outBuffer, bufcount);
                 readout_requestedTriggers = 0;
                 readout_totalTriggers = 0;
                 readout_totalDelays = 0;
@@ -585,9 +585,9 @@ int main() {
         // bit(1)  bad length word: zero length
         // bit(0)  bad command header word
 
-		volatile uint16_t dtc_cmd_ready = *(registers_1_addr + CRDCS_CMD_READY);
+        volatile uint16_t dtc_cmd_ready = *(registers_1_addr + CRDCS_CMD_READY);
 
-        volatile uint16_t  get_cmd_rx = 0;
+        volatile uint16_t get_cmd_rx = 0;
         uint16_t cmd_rx_cnt = 0;
         uint16_t cmd_rx_size = 0;
         uint16_t proc_commandID = 0;
@@ -602,8 +602,7 @@ int main() {
             // starts reading DCS_RX_BUFFER contents
             get_cmd_rx = *(registers_1_addr + CRDCS_READ_RX);
 
-
-            if(cmd_rx_cnt==0) {
+            if (cmd_rx_cnt == 0) {
                 // upon starting WHILE loop for procesor with CMD_READY seen,
                 // clear status register and written words register
                 *(registers_1_addr + CRDCS_CMD_STATUS) = 0x1000;
@@ -611,12 +610,12 @@ int main() {
                 cmd_fail = 0;
                 data_zero = get_cmd_rx;
 
+            } else if (cmd_rx_cnt == 1) {  // must be buffer HEADER word
 
-            } else if(cmd_rx_cnt==1) {  // must be buffer HEADER word
+                if (get_cmd_rx != CMDHEADER)
+                    cmd_fail = cmd_fail + 1;
 
-                if (get_cmd_rx != CMDHEADER) cmd_fail = cmd_fail + 1;
-
-            } else if(cmd_rx_cnt==2) {  // must be buffer LENGTH word
+            } else if (cmd_rx_cnt == 2) {  // must be buffer LENGTH word
 
                 cmd_rx_size = get_cmd_rx;
                 if (get_cmd_rx == 0) {
@@ -627,12 +626,13 @@ int main() {
                     cmd_rx_size = MAX_BUFFER_SIZE - 4;
                 }
 
-            } else if(cmd_rx_cnt==3) {  // must be COMMAND ID word
+            } else if (cmd_rx_cnt == 3) {  // must be COMMAND ID word
 
                 proc_commandID = get_cmd_rx & 0x0FFF;
-                if( (get_cmd_rx & 0xF000)!= 0xC000) cmd_fail = cmd_fail + 8;
+                if ((get_cmd_rx & 0xF000) != 0xC000)
+                    cmd_fail = cmd_fail + 8;
 
-            } else if(cmd_rx_cnt== (4+cmd_rx_size)) { // must be at the end of buffer with TRAILER word
+            } else if (cmd_rx_cnt == (4 + cmd_rx_size)) { // must be at the end of buffer with TRAILER word
 
                 dtc_cmd_ready = 0;
                 *(registers_1_addr + CRDCS_DIAG_DATA) = dtcPtr; // DCS write payload size
@@ -640,7 +640,7 @@ int main() {
                 // pass number of payload words to DTCInterface/DRACRegister register 255
                 // and CMD_FAIL to DTCInterface/DRACRegister register 128
 
-                if(get_cmd_rx == CMDTRAILER) {
+                if (get_cmd_rx == CMDTRAILER) {
                     *(registers_1_addr + CRDCS_CMD_STATUS) = 0x2000 + cmd_fail;
                 } else {
                     cmd_fail = cmd_fail + 16;
@@ -650,10 +650,10 @@ int main() {
             } else {  // must be payload => start filling DTCBUFFER
 
                 // stop filling dtcbuffer when DCS_TX_BUFFER is overflowing
-                if (cmd_rx_cnt > (MAX_BUFFER_SIZE-1)) {
+                if (cmd_rx_cnt > (MAX_BUFFER_SIZE - 1)) {
                     cmd_fail = cmd_fail + 32;
                 } else {
-                    dtcbuffer[dtcPtr]= get_cmd_rx;
+                    dtcbuffer[dtcPtr] = get_cmd_rx;
                 }
 
                 dtcPtr++;
@@ -665,1223 +665,1273 @@ int main() {
         }
         delayUs(1);
 
-        uint8_t  rw = -1;
-        uint8_t  adc_num = -1;
-        uint8_t  chan_num = -1;
+        uint8_t rw = -1;
+        uint8_t adc_num = -1;
+        uint8_t chan_num = -1;
         uint16_t value = -1;
         uint16_t preamptype = 0;
 
-        switch(proc_commandID) {
+        switch (proc_commandID) {
 
-            // example of single data output to DCS_TX_BUFFER
-            case TESTDCSNGL:
+        // example of single data output to DCS_TX_BUFFER
+        case TESTDCSNGL:
 
-                // update CMD_STATUS
-                *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
+            // update CMD_STATUS
+            *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
 
-                // writing only LBS 16-bit of 32 bits APB bus
-                *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
-                *(registers_1_addr + CRDCS_WRITE_TX) = cmd_rx_size;
-                *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
-                *(registers_1_addr + CRDCS_WRITE_TX) = data_to_write;
-                *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
+            // writing only LBS 16-bit of 32 bits APB bus
+            *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
+            *(registers_1_addr + CRDCS_WRITE_TX) = cmd_rx_size;
+            *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
+            *(registers_1_addr + CRDCS_WRITE_TX) = data_to_write;
+            *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
 
-                // update CMD_STATUS
-                *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
+            // update CMD_STATUS
+            *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
 
-                break;
-
+            break;
 
             // example of block data output to DCS_TX_BUFFER
-            case TESTDCSBLK:
+        case TESTDCSBLK:
 
-                // update CMD_STATUS
-                *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
+            // update CMD_STATUS
+            *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
 
-                // writing only LBS 16-bit of 32 bits APB bus
-                *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
-                *(registers_1_addr + CRDCS_WRITE_TX) = data_to_write+4;
-                *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
-                // fill up payload
-                for (uint16_t i = 0 ; i <data_to_write; i++) {
-                    *(registers_1_addr + CRDCS_WRITE_TX) = i+1;
-                }
-                *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
+            // writing only LBS 16-bit of 32 bits APB bus
+            *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
+            *(registers_1_addr + CRDCS_WRITE_TX) = data_to_write + 4;
+            *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
+            // fill up payload
+            for (uint16_t i = 0; i < data_to_write; i++) {
+                *(registers_1_addr + CRDCS_WRITE_TX) = i + 1;
+            }
+            *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
 
-                // update CMD_STATUS
-                *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
+            // update CMD_STATUS
+            *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
 
-                break;
-
+            break;
 
             // write to DCS_TX Buffer data as in READMONADCS
-            case READSPI:
+        case READSPI:
 
-                // update CMD_STATUS
-                *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
+            // update CMD_STATUS
+            *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
 
-/*  old working version
-                // writing only LBS 16-bit of 32 bits APB bus
-                *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
-                // not until we can deal with DIGI_WRITE while fiber is in control of DIGI registers
-                *(registers_1_addr + CRDCS_WRITE_TX) = 36;
-                *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
+            /*  old working version
+             // writing only LBS 16-bit of 32 bits APB bus
+             *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
+             // not until we can deal with DIGI_WRITE while fiber is in control of DIGI registers
+             *(registers_1_addr + CRDCS_WRITE_TX) = 36;
+             *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
 
-                // fill up payload with 16-bit words
-                uint32_t spi32;
-                for (uint8_t i = 0 ; i < 2; i++) {
-                    for (uint8_t j = 0 ; j < 12; j++) {
-                        SPI_set_slave_select( &g_spi[i] , ((j>=8)?SPI_SLAVE_2:(j<4?SPI_SLAVE_0:SPI_SLAVE_1)));
+             // fill up payload with 16-bit words
+             uint32_t spi32;
+             for (uint8_t i = 0 ; i < 2; i++) {
+             for (uint8_t j = 0 ; j < 12; j++) {
+             SPI_set_slave_select( &g_spi[i] , ((j>=8)?SPI_SLAVE_2:(j<4?SPI_SLAVE_0:SPI_SLAVE_1)));
 
-                        uint16_t addr = (j%4 <<11 );
-                        SPI_transfer_frame( &g_spi[i], addr);
-                        SPI_transfer_frame( &g_spi[i], addr);
-                        spi32 = SPI_transfer_frame( &g_spi[i], addr);
+             uint16_t addr = (j%4 <<11 );
+             SPI_transfer_frame( &g_spi[i], addr);
+             SPI_transfer_frame( &g_spi[i], addr);
+             spi32 = SPI_transfer_frame( &g_spi[i], addr);
 
-                        SPI_clear_slave_select( &g_spi[i] , ((j>=8)?SPI_SLAVE_2:(j<4?SPI_SLAVE_0:SPI_SLAVE_1)));
+             SPI_clear_slave_select( &g_spi[i] , ((j>=8)?SPI_SLAVE_2:(j<4?SPI_SLAVE_0:SPI_SLAVE_1)));
 
-                        *(registers_1_addr + CRDCS_WRITE_TX) = (0x0000FFFF & spi32);
-                     }
-                }
+             *(registers_1_addr + CRDCS_WRITE_TX) = (0x0000FFFF & spi32);
+             }
+             }
 
-                uint16_t tvs_val[4] = {0};
-                for (uint8_t i =0; i<4; i++){
-                    *(registers_0_addr+REG_ROC_TVS_ADDR) = i;
-                    delayUs(1);
-                    tvs_val[i] = *(registers_0_addr + REG_ROC_TVS_VAL);
+             uint16_t tvs_val[4] = {0};
+             for (uint8_t i =0; i<4; i++){
+             *(registers_0_addr+REG_ROC_TVS_ADDR) = i;
+             delayUs(1);
+             tvs_val[i] = *(registers_0_addr + REG_ROC_TVS_VAL);
 
-                    *(registers_1_addr + CRDCS_WRITE_TX) = tvs_val[i];
-                    delayUs(1);
-                }
+             *(registers_1_addr + CRDCS_WRITE_TX) = tvs_val[i];
+             delayUs(1);
+             }
 
-                // give TWI control to uProc before calling DIGI_READ/WRITE
-               *(registers_0_addr + REG_DIGIRW_SEL) = 1;
+             // give TWI control to uProc before calling DIGI_READ/WRITE
+             *(registers_0_addr + REG_DIGIRW_SEL) = 1;
 
-                for (uint8_t ihvcal=1; ihvcal<3; ihvcal++){
-                    for (uint8_t i =0; i<4; i++){
-                        digi_write(DG_ADDR_TVS_ADDR, i, ihvcal);
+             for (uint8_t ihvcal=1; ihvcal<3; ihvcal++){
+             for (uint8_t i =0; i<4; i++){
+             digi_write(DG_ADDR_TVS_ADDR, i, ihvcal);
 
-                        delayUs(1);
-                        tvs_val[i] = digi_read(DG_ADDR_TVS_VAL, ihvcal);
+             delayUs(1);
+             tvs_val[i] = digi_read(DG_ADDR_TVS_VAL, ihvcal);
 
-                        *(registers_1_addr + CRDCS_WRITE_TX) = tvs_val[i];
-                        delayUs(1);
-                    }
-                }
-                // return TWI control to fiber
-                *(registers_0_addr + REG_DIGIRW_SEL) = 0;
+             *(registers_1_addr + CRDCS_WRITE_TX) = tvs_val[i];
+             delayUs(1);
+             }
+             }
+             // return TWI control to fiber
+             *(registers_0_addr + REG_DIGIRW_SEL) = 0;
 
-                *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
+             *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
 
-*/
-/*   new version with variable size buffer  */
+             */
+            /*   new version with variable size buffer  */
 
-                fibercount = 0;
+            fibercount = 0;
 //                bufWrite(fiberBuffer, &fibercount, CMDHEADER, 2);
 //                fibercount += 2;
 
-                fiberBuffer[fibercount++] = CMDHEADER;
+            fiberBuffer[fibercount++] = CMDHEADER;
 
-                // save index to overwrite and fill payload size with temporary value
-                fibercount_place_holder = fibercount;
-                fiberBuffer[fibercount++] = fibercount;
+            // save index to overwrite and fill payload size with temporary value
+            fibercount_place_holder = fibercount;
+            fiberBuffer[fibercount++] = fibercount;
 
-                fiberBuffer[fibercount++] = 0xC000 + proc_commandID;
+            fiberBuffer[fibercount++] = 0xC000 + proc_commandID;
 
-                // fill up payload with 16-bit words
-                uint32_t spi32;
-                for (uint8_t i = 0 ; i < 2; i++) {
-                    for (uint8_t j = 0 ; j < 12; j++) {
-                        SPI_set_slave_select( &g_spi[i] , ((j>=8)?SPI_SLAVE_2:(j<4?SPI_SLAVE_0:SPI_SLAVE_1)));
+            // fill up payload with 16-bit words
+            uint32_t spi32;
+            for (uint8_t i = 0; i < 2; i++) {
+                for (uint8_t j = 0; j < 12; j++) {
+                    SPI_set_slave_select(&g_spi[i],
+                            ((j >= 8) ?
+                                    SPI_SLAVE_2 :
+                                    (j < 4 ? SPI_SLAVE_0 : SPI_SLAVE_1)));
 
-                        uint16_t addr = (j%4 <<11 );
-                        SPI_transfer_frame( &g_spi[i], addr);
-                        SPI_transfer_frame( &g_spi[i], addr);
-                        spi32 = SPI_transfer_frame( &g_spi[i], addr);
+                    uint16_t addr = (j % 4 << 11);
+                    SPI_transfer_frame(&g_spi[i], addr);
+                    SPI_transfer_frame(&g_spi[i], addr);
+                    spi32 = SPI_transfer_frame(&g_spi[i], addr);
 
-                        SPI_clear_slave_select( &g_spi[i] , ((j>=8)?SPI_SLAVE_2:(j<4?SPI_SLAVE_0:SPI_SLAVE_1)));
+                    SPI_clear_slave_select(&g_spi[i],
+                            ((j >= 8) ?
+                                    SPI_SLAVE_2 :
+                                    (j < 4 ? SPI_SLAVE_0 : SPI_SLAVE_1)));
 
-                        fiberBuffer[fibercount++] = (0x0000FFFF & spi32);
-                     }
+                    fiberBuffer[fibercount++] = (0x0000FFFF & spi32);
                 }
+            }
 
-                uint16_t tvs_val[4] = {0};
-                for (uint8_t i =0; i<4; i++){
-                    *(registers_0_addr+REG_ROC_TVS_ADDR) = i;
+            uint16_t tvs_val[4] = { 0 };
+            for (uint8_t i = 0; i < 4; i++) {
+                *(registers_0_addr + REG_ROC_TVS_ADDR) = i;
+                delayUs(1);
+                tvs_val[i] = *(registers_0_addr + REG_ROC_TVS_VAL);
+
+                fiberBuffer[fibercount++] = tvs_val[i];
+                delayUs(1);
+            }
+
+            // give TWI control to uProc before calling DIGI_READ/WRITE
+            *(registers_0_addr + REG_DIGIRW_SEL) = 1;
+
+            for (uint8_t ihvcal = 1; ihvcal < 3; ihvcal++) {
+                for (uint8_t i = 0; i < 4; i++) {
+                    digi_write(DG_ADDR_TVS_ADDR, i, ihvcal);
+
                     delayUs(1);
-                    tvs_val[i] = *(registers_0_addr + REG_ROC_TVS_VAL);
+                    tvs_val[i] = digi_read(DG_ADDR_TVS_VAL, ihvcal);
 
                     fiberBuffer[fibercount++] = tvs_val[i];
                     delayUs(1);
                 }
+            }
+            // return TWI control to fiber
+            *(registers_0_addr + REG_DIGIRW_SEL) = 0;
+            fiberBuffer[fibercount++] = CMDTRAILER;
 
-                // give TWI control to uProc before calling DIGI_READ/WRITE
-               *(registers_0_addr + REG_DIGIRW_SEL) = 1;
+            // fill final payload size value
+            if (fibercount > 4) {
+                fiberBuffer[fibercount_place_holder] = fibercount - 4;
+            } else {
+                fiberBuffer[fibercount_place_holder] = 1;
+            }
 
-                for (uint8_t ihvcal=1; ihvcal<3; ihvcal++){
-                    for (uint8_t i =0; i<4; i++){
-                        digi_write(DG_ADDR_TVS_ADDR, i, ihvcal);
+            for (uint8_t ib = 0; ib < fibercount; ib++) {
+                *(registers_1_addr + CRDCS_WRITE_TX) = fiberBuffer[ib];
+            }
+            // update CMD_STATUS
+            *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
 
-                        delayUs(1);
-                        tvs_val[i] = digi_read(DG_ADDR_TVS_VAL, ihvcal);
+            break;
 
-                        fiberBuffer[fibercount++] = tvs_val[i];
-                        delayUs(1);
+            // read back payload from DCS BLOCK WR
+        case READBACKBLK:
+
+            // update CMD_STATUS
+            *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
+
+            // writing only LBS 16-bit of 32 bits APB bus
+            *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
+            *(registers_1_addr + CRDCS_WRITE_TX) = cmd_rx_size;
+            *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
+            // fill up payload
+            for (uint16_t i = 0; i < cmd_rx_size; i++) {
+                *(registers_1_addr + CRDCS_WRITE_TX) = dtcbuffer[i];
+            }
+            *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
+
+            // update CMD_STATUS
+            *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
+
+            break;
+
+            // write to DCS_TX Buffer data as in GETDEVICEID
+        case READDEVICE:
+
+            // update CMD_STATUS
+            *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
+
+            // writing only LBS 16-bit of 32 bits APB bus
+            *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
+            // not until we can deal with DIGI_WRITE while fiber is in control of DIGI registers
+            *(registers_1_addr + CRDCS_WRITE_TX) = 52;
+            *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
+
+            // fill payload with 16-bit words
+            uint8_t data_buffer[16];
+            uint8_t dinfo_buffer[36];
+            uint8_t status;
+
+            status = SYS_get_serial_number(data_buffer, 0);
+            status = SYS_get_design_info(dinfo_buffer, 0);
+
+            for (uint16_t i = 0; i < 16; i++) {
+                *(registers_1_addr + CRDCS_WRITE_TX) =
+                        (0x00FF & data_buffer[i]);
+            }
+            for (uint16_t i = 0; i < 36; i++) {
+                *(registers_1_addr + CRDCS_WRITE_TX) =
+                        (0x00FF & dinfo_buffer[i]);
+            }
+
+            *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
+
+            // update CMD_STATUS
+            *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
+
+            break;
+
+            // write to DCS_TX Buffer data as in READBMES
+        case READSENSOR:
+
+            // update CMD_STATUS
+            *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
+
+            // writing only LBS 16-bit of 32 bits APB bus
+            *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
+            // not until we can deal with DIGI_WRITE while fiber is in control of DIGI registers
+            *(registers_1_addr + CRDCS_WRITE_TX) =
+                    BME280_TEMP_PRESS_CALIB_DATA_LEN
+                            + BME280_HUMIDITY_CALIB_DATA_LEN
+                            + BME280_P_T_H_DATA_LEN + 4 + 4 + 2;
+            *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
+
+            //read with BME 280
+            uint8_t calib_data_tp[BME280_TEMP_PRESS_CALIB_DATA_LEN];
+            uint8_t calib_data_h[BME280_HUMIDITY_CALIB_DATA_LEN];
+            uint8_t raw_bme_data[BME280_P_T_H_DATA_LEN];
+
+            bme280_get_calib(&spi_sensor, calib_data_tp, calib_data_h);
+            bme280_get_htp(&spi_sensor, raw_bme_data);
+
+            for (uint16_t i = 0; i < BME280_TEMP_PRESS_CALIB_DATA_LEN; i++)
+                *(registers_1_addr + CRDCS_WRITE_TX) = (0x00FF
+                        & calib_data_tp[i]);
+            for (uint16_t i = 0; i < BME280_HUMIDITY_CALIB_DATA_LEN; i++)
+                *(registers_1_addr + CRDCS_WRITE_TX) =
+                        (0x00FF & calib_data_h[i]);
+            for (uint16_t i = 0; i < BME280_P_T_H_DATA_LEN; i++)
+                *(registers_1_addr + CRDCS_WRITE_TX) =
+                        (0x00FF & raw_bme_data[i]);
+
+            //Also take measurements from HDC 2080 chips
+            uint16_t this_temp = 0;
+            uint16_t this_humidity = 0;
+
+            rslt = hdc2080_reset(&pthdc);
+            delay_ms(10);
+
+            rslt = hdc2080_trigger_measurement(&pthdc);
+            rslt = hdc2080_read_temp(&pthdc, &this_temp);
+            rslt = hdc2080_read_humidity(&pthdc, &this_humidity);
+            *(registers_1_addr + CRDCS_WRITE_TX) = this_temp;
+            *(registers_1_addr + CRDCS_WRITE_TX) = this_humidity;
+
+            //readout amb_temp
+            uint16_t amb_temp_cal = ADC124S051_daisy_read(&spi_ambtemp_cal, 1);
+            uint16_t amb_temp_hv = ADC124S051_daisy_read(&spi_ambtemp_hv, 0);
+            *(registers_1_addr + CRDCS_WRITE_TX) = amb_temp_cal;
+            *(registers_1_addr + CRDCS_WRITE_TX) = amb_temp_hv;
+
+            //read out A0 for new pressure sensor
+            SPI_set_slave_select(&g_spi[0], SPI_SLAVE_2);
+            uint16_t addr = (8 % 4 << 11);
+            SPI_transfer_frame(&g_spi[0], addr);
+            uint32_t sensor_spi = SPI_transfer_frame(&g_spi[0], addr);
+            SPI_clear_slave_select(&g_spi[0], SPI_SLAVE_2);
+            *(registers_1_addr + CRDCS_WRITE_TX) = sensor_spi;
+            *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
+
+            // update CMD_STATUS
+            *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
+
+            break;
+
+        case TALKTOADC:
+
+            // update CMD_STATUS
+            *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
+
+            // Python defaults
+            rw = -1;                  // 0 for read, 1 for write
+            adc_num = -1;
+            uint16_t adcaddr = -1;
+            uint16_t adcdata = -1;
+            uint8_t result = -1;
+
+            // for testing of adc_read:
+            // ADC_ADDR_CONFIG = 0x00 should return result=0x18 for either ADCs
+            // ADC_ADDR_CID1   = 0x01 should return result=0x08 for (old) ADC9212 and 0x93 for ADC9637
+            /*
+             rw = 0;
+             //adcaddr =  ADC_ADDR_CID1;  // DOES NOT WORK, RETURNS 0???
+             adcaddr =  ADC_ADDR_CONFIG;  // THIS WORKS
+             adc_num = 0;
+             */
+
+            rw = (uint8_t) dtcbuffer[0];   // -w
+            adc_num = (uint8_t) dtcbuffer[1];   // -A
+            adcaddr = dtcbuffer[2];             // -a
+            adcdata = dtcbuffer[3];             // -d
+
+            // give TWI control to uProc before calling DIGI_READ/WRITE (called by ADC_READ/WRITE)
+            *(registers_0_addr + REG_DIGIRW_SEL) = 1;
+
+            if (rw == 0) { // for READ, report result from SPI ADC_READ
+                result = adc_read(adcaddr, adc_num);
+            } else {  // for WRITE, pass
+                adc_write(adcaddr, (uint8_t) adcdata, (0x1 << adc_num));
+            }
+
+            // return TWI control to fiber
+            *(registers_0_addr + REG_DIGIRW_SEL) = 0;
+
+            // fill DCS_RX_BUFFER
+            *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
+            *(registers_1_addr + CRDCS_WRITE_TX) = 1;
+            *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
+            *(registers_1_addr + CRDCS_WRITE_TX) = result;
+            *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
+
+            // update CMD_STATUS
+            *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
+
+            break;
+
+        case TALKTODIGI:
+
+            // update CMD_STATUS
+            *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
+
+            // defaults from Python
+            rw = -1;              // 0 for read, 1 for write
+            uint8_t thishvcal = 1; // 0,1,2 for DIGI R/W (0 for both, 1 for CAL, 2 for HV)
+                                   // 3 for specific register RW
+                                   // 4-15 for ADC R/W to ADC channel 0-11
+            uint16_t digiaddr = 16;
+            uint32_t digidata = 16;
+            uint16_t data_low = 0;
+            uint16_t data_high = 0;
+            uint16_t adc_mask = -1;
+            adc_num = -1;
+
+            // used for testing read of addr=0 (read-only CHIP_configuration) of adc=1
+            // Should return 0x18;
+            /*
+             rw = 0;
+             thishvcal = 5;
+             digiaddr =  ADC_ADDR_CONFIG;
+             */
+
+            rw = (uint8_t) dtcbuffer[0];      // -w
+            thishvcal = (uint8_t) buffer[1];         // -h
+            digiaddr = dtcbuffer[2];                // -a
+            data_low = dtcbuffer[3];                // -d
+            data_high = dtcbuffer[4];                // -d
+
+            digidata = ((data_high << 16) & 0XFFFF0000)
+                    + (data_low & 0x0000FFFF);
+
+            // give TWI control to uProc before calling DIGI_READ/WRITE or ADC/READ_WRITE
+            *(registers_0_addr + REG_DIGIRW_SEL) = 1;
+
+            if (rw & 0x2) {
+                digiaddr |= 0x100;
+                rw &= 0x1;
+            }
+            if (thishvcal < 3) {
+                if (rw == 0) {                  //read
+                    digidata = digi_read(digiaddr, thishvcal);
+                } else {
+                    digi_write(digiaddr, digidata, thishvcal);
+                }
+            } else {
+                if (thishvcal == 3) {
+                    if (rw == 0) {                //read
+                        digidata = *(registers_0_addr + digiaddr);
+                    } else {
+                        *(registers_0_addr + digiaddr) = digidata;
+                    }
+                } else {
+                    adc_num = thishvcal - 4;
+                    if (rw == 0) {
+                        digidata = adc_read(digiaddr, adc_num);
+                    } else {
+                        adc_mask = (0x1 << adc_num);
+                        adc_write(digiaddr, digidata, adc_mask);
                     }
                 }
-                // return TWI control to fiber
-                *(registers_0_addr + REG_DIGIRW_SEL) = 0;
-                fiberBuffer[fibercount++] = CMDTRAILER;
+            }
 
-                // fill final payload size value
-                if (fibercount > 4) {
-                    fiberBuffer[fibercount_place_holder] = fibercount-4;
+            // return TWI control to fiber
+            *(registers_0_addr + REG_DIGIRW_SEL) = 0;
+
+            // fill DCS_RX_BUFFER
+            *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
+            *(registers_1_addr + CRDCS_WRITE_TX) = 7;
+            *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
+            *(registers_1_addr + CRDCS_WRITE_TX) = rw;
+            *(registers_1_addr + CRDCS_WRITE_TX) = thishvcal;
+            *(registers_1_addr + CRDCS_WRITE_TX) = digiaddr;
+            *(registers_1_addr + CRDCS_WRITE_TX) = digidata & 0xFFFF;
+            *(registers_1_addr + CRDCS_WRITE_TX) = (digidata >> 16);
+            *(registers_1_addr + CRDCS_WRITE_TX) = adc_num;
+            *(registers_1_addr + CRDCS_WRITE_TX) = adc_mask;
+            *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
+
+            // update CMD_STATUS
+            *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
+
+            break;
+
+        case FINDALIGN:
+
+            // update CMD_STATUS
+            *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
+
+            // give TWI control to uProc before calling DIGI_READ/WRITE or ADC/READ_WRITE
+            *(registers_0_addr + REG_DIGIRW_SEL) = 1;
+
+            //reset the ADCs first, at this point, clock better be stable
+            for (int i = 0; i < 12; i++) {
+                uint16_t adc_mask = (0x1 << i);
+                adc_write(0x08, 3, adc_mask);
+            }
+
+            for (int i = 0; i < 12; i++) {
+                uint16_t adc_mask = (0x1 << i);
+                adc_write(0x08, 0, adc_mask);
+            }
+
+            // defaults from Python, used for testing
+            uint16_t eye_monitor_width = 4;
+            uint16_t init_adc_phase = 0;
+            uint16_t ifcheck = 1;
+            channel_mask[0] = 0xFFFFFFFF;
+            channel_mask[1] = 0xFFFFFFFF;
+            channel_mask[2] = 0xFFFFFFFF;
+            chan_num = -1;
+            adc_num = -1;
+
+            // load parameters from DCS Block Write
+            eye_monitor_width = dtcbuffer[0];         // -w
+            init_adc_phase = dtcbuffer[1];            // -p
+            ifcheck = dtcbuffer[2];                  // -ck
+            chan_num = (uint8_t) dtcbuffer[3];        // -c
+            adc_num = (uint8_t) dtcbuffer[4];         // -a
+            channel_mask[0] = (dtcbuffer[6] << 16) + dtcbuffer[5];   // -C
+            channel_mask[1] = (dtcbuffer[8] << 16) + dtcbuffer[7];   // -D
+            channel_mask[2] = (dtcbuffer[10] << 16) + dtcbuffer[9];  // -E
+
+            // correct for parameters out of allowed values
+            if (eye_monitor_width > 7)
+                eye_monitor_width = 7;
+            if (init_adc_phase > 11)
+                init_adc_phase = 0;
+
+            //
+            // start channel mapping
+            if (chan_num >= 0 && chan_num < 96) {
+                for (int i = 0; i < 96; i++) {
+                    if (channel_map[i] == chan_num)
+                        adc_num = i / 8;
+                }
+            }
+
+            // new function to replace util.py/CHANNELMASK
+            if (adc_num > 0 && adc_num < 12) {
+                for (int i = 0; i < 8; i++)
+                    mask_channels(channel_map[8 * adc_num + i]);
+            }
+
+            *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
+            *(registers_1_addr + CRDCS_WRITE_TX) = 2 + (1 + 24 + 96 + 6 + 1); // payload is 130 = 0x82
+            *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
+
+            *(registers_1_addr + CRDCS_WRITE_TX) = eye_monitor_width;
+            *(registers_1_addr + CRDCS_WRITE_TX) = ifcheck;
+
+            //
+            // start copy of uncommented sections of autobitslip.c
+            get_mapped_channels();
+
+            uint8_t iteration = 0;
+            uint16_t faulted_adc = 0;
+
+            while (1) {
+                faulted_adc = 0;
+
+                digi_write(DG_ADDR_BITALIGN_RSETN, 0, 0);
+                delayUs(8);
+                digi_write(DG_ADDR_BITALIGN_RSETN, 1, 0);
+
+                digi_write(DG_ADDR_SAMPLE, 1, 0);
+                digi_write(DG_ADDR_LOOKBACK, 1, 0);
+
+                digi_write(DG_ADDR_TRIGGER_MODE, 0, 0);
+                digi_write(DG_ADDR_ENABLE_PULSER, 1, 0);
+
+                uint16_t activeADC = 0;
+                for (uint8_t i = 0; i < 12; i++) {
+                    if ((mapped_channel_mask[i / 4] >> ((i % 4) * 8)) & 0xff) {
+                        activeADC |= (((uint16_t) 0x1) << i);
+                    }
+                }
+
+                //using pattern #9 (0x155/0x2aa) for alignment
+                for (uint8_t i = 0; i < 12; i++) {
+                    if (((0x1 << i) & ENABLED_ADCS) & activeADC) {
+                        //fix all adc at phase = 3 (default 180 deg)
+                        adc_write(ADC_ADDR_PHASE, init_adc_phase, (0x1 << i));
+                        adc_write(ADC_ADDR_TESTIO, 0x9, (0x1 << i));
+                    } else
+                        //turn off the channels not in use
+                        mapped_channel_mask[i / 4] &= (~((uint32_t) 0xff
+                                << ((i % 4) * 8)));
+                }
+
+                *(registers_1_addr + CRDCS_WRITE_TX) = init_adc_phase;
+
+                //turn on pulser, read one word a time
+                *(registers_0_addr + REG_ROC_FIFO_HOWMANY) = 1;
+                *(registers_0_addr + REG_ROC_EWW_PULSER) = 1;
+
+                //set minimum eye monitor width
+                digi_write(DG_ADDR_BITALIGN_EWM_WIDTH,
+                        (uint16_t) eye_monitor_width, 0);
+
+                uint16_t active_ch[6] = { 0 };
+                active_ch[0] = (uint16_t) (mapped_channel_mask[0] & 0xffff);
+                active_ch[1] = (uint16_t) ((mapped_channel_mask[0] >> 16)
+                        & 0xffff);
+                active_ch[2] = (uint16_t) (mapped_channel_mask[1] & 0xffff);
+                active_ch[3] = (uint16_t) ((mapped_channel_mask[1] >> 16)
+                        & 0xffff);
+                active_ch[4] = (uint16_t) (mapped_channel_mask[2] & 0xffff);
+                active_ch[5] = (uint16_t) ((mapped_channel_mask[2] >> 16)
+                        & 0xffff);
+
+                digi_write(DG_ADDR_MASK1, active_ch[0], 1);
+                digi_write(DG_ADDR_MASK2, active_ch[1], 1);
+                digi_write(DG_ADDR_MASK3, active_ch[2], 1);
+                digi_write(DG_ADDR_MASK1, active_ch[3], 2);
+                digi_write(DG_ADDR_MASK2, active_ch[4], 2);
+                digi_write(DG_ADDR_MASK3, active_ch[5], 2);
+
+                for (uint8_t i = 0; i < 6; i++) {
+                    digi_write(DG_ADDR_RX_CH_MASK1 + i % 3, active_ch[i],
+                            1 + i / 3);
+                    *(registers_1_addr + CRDCS_WRITE_TX) = active_ch[i];
+                }
+
+                //start bit align, set corresponding channel's restart to 1, then back to 0 after 8 ticks
+                digi_write(DG_ADDR_BITALIGN_RSTRT, 1, 0);
+                delayUs(8);
+                digi_write(DG_ADDR_BITALIGN_RSTRT, 0, 0);
+
+                volatile uint16_t completion[6] = { 0 };
+                volatile uint16_t error[6] = { 0 };
+
+                //wait until all channels are completed; timeout after 30 secs
+                for (uint8_t i = 0; i < 3; i++) {
+                    hwdelay(50000000); //check every 1 second if is done
+                    uint8_t bitalign_done = 1;
+                    for (uint8_t j = 0; j < 6; j++) {
+                        completion[j] = digi_read(DG_ADDR_BITALIGN_CMP1 + j % 3,
+                                1 + j / 3);
+                        error[j] = digi_read(DG_ADDR_BITALIGN_ERR1 + j % 3,
+                                1 + j / 3);
+                        if ((completion[j] & active_ch[j]) != active_ch[j])
+                            bitalign_done = 0;
+                    }
+
+                    if (bitalign_done)
+                        break;
+                }
+
+                for (uint8_t i = 0; i < 6; i++) {
+
+                    *(registers_1_addr + CRDCS_WRITE_TX) = completion[i];
+                    *(registers_1_addr + CRDCS_WRITE_TX) = error[i];
+
+                    if ((~completion[i]) & 0x00ff)
+                        faulted_adc |= ((uint16_t) 0x1 << (2 * i));
+                    if ((~completion[i]) & 0xff00)
+                        faulted_adc |= ((uint16_t) 0x1 << (2 * i + 1));
+                }
+
+                ///////////////////////////////////
+                //  DOING BITSLIP                //
+                ///////////////////////////////////
+
+                //switch to pattern #1 for bitslip
+                for (uint8_t i = 0; i < 12; i++) {
+                    if ((0x1 << i) & ENABLED_ADCS) {
+                        adc_write(ADC_ADDR_TESTIO, 0x1, (0x1 << i));
+                    }
+                }
+
+                uint8_t bitslipstep[96];
+                for (uint8_t ichan = 0; ichan < 96; ichan++)
+                    bitslipstep[ichan] = 0xff;
+                volatile uint16_t bitstlip_done[6] = { 0 };
+
+                for (uint8_t i = 0; i < 10; i++) {
+                    hwdelay(50);
+
+                    digi_write(DG_ADDR_BSC_OPERATION_TYPE, 0, 0);
+                    digi_write(DG_ADDR_BITSLIP_STRT, 1, 0);
+                    delayUs(10);
+                    digi_write(DG_ADDR_BITSLIP_STRT, 0, 0);
+
+                    for (uint8_t j = 0; j < 6; j++)
+                        bitstlip_done[j] = digi_read(
+                                DG_ADDR_BITSLIP_DONE1 + j % 3, 1 + j / 3);
+
+                    for (uint8_t ichan = 0; ichan < 96; ichan++) {
+                        uint16_t this_chan_mask = (uint16_t) 0x1
+                                << (ichan % 16);
+                        if (((bitstlip_done[ichan / 16] & this_chan_mask) != 0)
+                                && (bitslipstep[ichan] == 0xff))
+                            bitslipstep[ichan] = i;
+                    }
+                }
+
+                for (uint8_t i = 0; i < 6; i++) {
+                    *(registers_1_addr + CRDCS_WRITE_TX) = bitstlip_done[i];
+
+                    if ((~bitstlip_done[i]) & 0x00ff)
+                        faulted_adc |= ((uint16_t) 0x1 << (2 * i));
+                    if ((~bitstlip_done[i]) & 0xff00)
+                        faulted_adc |= ((uint16_t) 0x1 << (2 * i + 1));
+                }
+
+                for (uint8_t i = 0; i < 96; i++) {
+                    // NB: these are reported as single byte via serial
+                    *(registers_1_addr + CRDCS_WRITE_TX) =
+                            (uint8_t) bitslipstep[i];
+                }
+
+                ///////////////////////////////////
+                // CHECK RESULT                  //
+                ///////////////////////////////////
+
+                // check with mixed frequency ADC
+                uint16_t pattern_match[6] = { 0 };
+                if (ifcheck) {
+                    for (uint8_t i = 0; i < 12; i++) {
+                        if ((0x1 << i) & ENABLED_ADCS) {
+                            adc_write(ADC_ADDR_TESTIO, 0xC, (0x1 << i));
+                        }
+                    }
+
+                    digi_write(DG_ADDR_BSC_OPERATION_TYPE, 1, 0);
+                    digi_write(DG_ADDR_BITSLIP_STRT, 1, 0);
+                    delayUs(10);
+                    digi_write(DG_ADDR_BITSLIP_STRT, 0, 0);
+
+                    for (uint8_t j = 0; j < 6; j++) {
+                        pattern_match[j] = digi_read(
+                                DG_ADDR_BSC_PATTERN_MATCH1 + j % 3, 1 + j / 3);
+                        *(registers_1_addr + CRDCS_WRITE_TX) = pattern_match[j];
+
+                        if ((pattern_match[j] & active_ch[j] & 0x00ff)
+                                != (active_ch[j] & 0x00ff))
+                            faulted_adc |= ((uint16_t) 0x1 << (2 * j));
+                        if ((pattern_match[j] & active_ch[j] & 0xff00)
+                                != (active_ch[j] & 0xff00))
+                            faulted_adc |= ((uint16_t) 0x1 << (2 * j + 1));
+                    }
                 } else {
-                    fiberBuffer[fibercount_place_holder] = 1;
+                    for (uint8_t i = 0; i < 6; i++)
+                        *(registers_1_addr + CRDCS_WRITE_TX) = 0;
                 }
 
-                for (uint8_t ib=0; ib<fibercount; ib++) {
-                    *(registers_1_addr + CRDCS_WRITE_TX) = fiberBuffer[ib];
-                }
-                // update CMD_STATUS
-                *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
-
+                // ALLOW ONLY ONE ITERATION! Return faulted_adc status
+                *(registers_1_addr + CRDCS_WRITE_TX) = faulted_adc;
                 break;
 
+                iteration++;
 
-           // read back payload from DCS BLOCK WR
-           case READBACKBLK:
-
-                // update CMD_STATUS
-                *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
-
-                // writing only LBS 16-bit of 32 bits APB bus
-                *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
-                *(registers_1_addr + CRDCS_WRITE_TX) = cmd_rx_size;
-                *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
-                // fill up payload
-                for (uint16_t i = 0 ; i <cmd_rx_size; i++) {
-                     *(registers_1_addr + CRDCS_WRITE_TX) = dtcbuffer[i];
+                if (faulted_adc == 0)
+                    break;
+                if (iteration == 6)
+                    break; //maximum: 3 trials at phase 0, 3 for faulted adc at different phase
+                if (iteration == 3)
+                    init_adc_phase = (init_adc_phase + 3) % 12;
+                if (iteration >= 3) {
+                    for (uint8_t i = 0; i < 3; i++)
+                        mapped_channel_mask[i] = 0;
+                    for (uint8_t i = 0; i < 12; i++) {
+                        if (faulted_adc & ((uint16_t) 0x1 << (i))) {
+                            mapped_channel_mask[i / 4] |=
+                                    ((uint32_t) 0x000000ff) << ((i % 4) * 8);
+                        }
+                    }
                 }
-                *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
 
-                // update CMD_STATUS
-                *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
-
-                break;
-
-
-           // write to DCS_TX Buffer data as in GETDEVICEID
-           case READDEVICE:
-
-               // update CMD_STATUS
-               *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
-
-               // writing only LBS 16-bit of 32 bits APB bus
-               *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
-               // not until we can deal with DIGI_WRITE while fiber is in control of DIGI registers
-               *(registers_1_addr + CRDCS_WRITE_TX) = 52;
-               *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
-
-               // fill payload with 16-bit words
-               uint8_t data_buffer[16];
-               uint8_t dinfo_buffer[36];
-               uint8_t status;
-
-               status = SYS_get_serial_number(data_buffer, 0);
-               status = SYS_get_design_info(dinfo_buffer,0);
-
-
-               for (uint16_t i = 0 ; i <16; i++) {
-                   *(registers_1_addr + CRDCS_WRITE_TX) = (0x00FF & data_buffer[i]);
-               }
-               for (uint16_t i = 0 ; i <36; i++) {
-                   *(registers_1_addr + CRDCS_WRITE_TX) = (0x00FF & dinfo_buffer[i]);
-               }
-
-               *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
-
-               // update CMD_STATUS
-               *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
-
-               break;
-
-
-          // write to DCS_TX Buffer data as in READBMES
-          case READSENSOR:
-
-              // update CMD_STATUS
-              *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
-
-              // writing only LBS 16-bit of 32 bits APB bus
-              *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
-              // not until we can deal with DIGI_WRITE while fiber is in control of DIGI registers
-              *(registers_1_addr + CRDCS_WRITE_TX) = BME280_TEMP_PRESS_CALIB_DATA_LEN+BME280_HUMIDITY_CALIB_DATA_LEN+BME280_P_T_H_DATA_LEN+4+4+2;
-              *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
-
-              //read with BME 280
-              uint8_t calib_data_tp[BME280_TEMP_PRESS_CALIB_DATA_LEN];
-              uint8_t calib_data_h[BME280_HUMIDITY_CALIB_DATA_LEN];
-              uint8_t raw_bme_data[BME280_P_T_H_DATA_LEN];
-
-              bme280_get_calib(&spi_sensor, calib_data_tp, calib_data_h);
-              bme280_get_htp(&spi_sensor, raw_bme_data);
-
-              for (uint16_t i =0; i<BME280_TEMP_PRESS_CALIB_DATA_LEN; i++)
-                  *(registers_1_addr + CRDCS_WRITE_TX) = (0x00FF & calib_data_tp[i]);
-              for (uint16_t i =0; i<BME280_HUMIDITY_CALIB_DATA_LEN; i++)
-                  *(registers_1_addr + CRDCS_WRITE_TX) = (0x00FF & calib_data_h[i]);
-              for (uint16_t i =0; i<BME280_P_T_H_DATA_LEN; i++)
-                  *(registers_1_addr + CRDCS_WRITE_TX) = (0x00FF & raw_bme_data[i]);
-
-              //Also take measurements from HDC 2080 chips
-              uint16_t this_temp = 0;
-              uint16_t this_humidity = 0;
-
-              rslt = hdc2080_reset(&pthdc);
-              delay_ms(10);
-
-              rslt = hdc2080_trigger_measurement(&pthdc);
-              rslt = hdc2080_read_temp(&pthdc, &this_temp);
-              rslt = hdc2080_read_humidity(&pthdc, &this_humidity);
-              *(registers_1_addr + CRDCS_WRITE_TX) = this_temp;
-              *(registers_1_addr + CRDCS_WRITE_TX) = this_humidity;
-
-              //readout amb_temp
-              uint16_t amb_temp_cal = ADC124S051_daisy_read(&spi_ambtemp_cal, 1);
-              uint16_t amb_temp_hv = ADC124S051_daisy_read(&spi_ambtemp_hv, 0);
-              *(registers_1_addr + CRDCS_WRITE_TX) = amb_temp_cal;
-              *(registers_1_addr + CRDCS_WRITE_TX) = amb_temp_hv;
-
-              //read out A0 for new pressure sensor
-              SPI_set_slave_select( &g_spi[0] , SPI_SLAVE_2);
-              uint16_t addr = (8%4 <<11 );
-              SPI_transfer_frame( &g_spi[0], addr);
-              uint32_t sensor_spi = SPI_transfer_frame( &g_spi[0], addr);
-              SPI_clear_slave_select( &g_spi[0] , SPI_SLAVE_2);
-              *(registers_1_addr + CRDCS_WRITE_TX) = sensor_spi;
-              *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
-
-              // update CMD_STATUS
-              *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
-
-              break;
-
-
-          case TALKTOADC:
-
-              // update CMD_STATUS
-              *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
-
-              // Python defaults
-              rw = -1;                  // 0 for read, 1 for write
-              adc_num = -1;
-              uint16_t adcaddr = -1;
-              uint16_t adcdata = -1;
-              uint8_t result = -1;
-
-              // for testing of adc_read:
-              // ADC_ADDR_CONFIG = 0x00 should return result=0x18 for either ADCs
-              // ADC_ADDR_CID1   = 0x01 should return result=0x08 for (old) ADC9212 and 0x93 for ADC9637
-              /*
-              rw = 0;
-              //adcaddr =  ADC_ADDR_CID1;  // DOES NOT WORK, RETURNS 0???
-              adcaddr =  ADC_ADDR_CONFIG;  // THIS WORKS
-              adc_num = 0;
-              */
-
-              rw      = (uint8_t) dtcbuffer[0];   // -w
-              adc_num = (uint8_t) dtcbuffer[1];   // -A
-              adcaddr = dtcbuffer[2];             // -a
-              adcdata = dtcbuffer[3];             // -d
-
-              // give TWI control to uProc before calling DIGI_READ/WRITE (called by ADC_READ/WRITE)
-              *(registers_0_addr + REG_DIGIRW_SEL) = 1;
-
-              if (rw == 0) { // for READ, report result from SPI ADC_READ
-                  result = adc_read(adcaddr, adc_num);
-              } else {  // for WRITE, pass
-                  adc_write(adcaddr, (uint8_t)adcdata, (0x1<<adc_num));
-              }
-
-              // return TWI control to fiber
-              *(registers_0_addr + REG_DIGIRW_SEL) = 0;
-
-              // fill DCS_RX_BUFFER
-              *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
-              *(registers_1_addr + CRDCS_WRITE_TX) = 1;
-              *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
-              *(registers_1_addr + CRDCS_WRITE_TX) = result;
-              *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
-
-              // update CMD_STATUS
-              *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
-
-              break;
-
-
-          case TALKTODIGI:
-
-              // update CMD_STATUS
-              *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
-
-              // defaults from Python
-              rw = -1;              // 0 for read, 1 for write
-              uint8_t thishvcal = 1;        // 0,1,2 for DIGI R/W (0 for both, 1 for CAL, 2 for HV)
-                                            // 3 for specific register RW
-                                            // 4-15 for ADC R/W to ADC channel 0-11
-              uint16_t digiaddr = 16;
-              uint32_t digidata = 16;
-              uint16_t data_low = 0;
-              uint16_t data_high= 0;
-              uint16_t adc_mask = -1;
-              adc_num  = -1;
-
-              // used for testing read of addr=0 (read-only CHIP_configuration) of adc=1
-              // Should return 0x18;
-              /*
-              rw = 0;
-              thishvcal = 5;
-              digiaddr =  ADC_ADDR_CONFIG;
-              */
-
-              rw         = (uint8_t) dtcbuffer[0];      // -w
-              thishvcal  = (uint8_t) buffer[1];         // -h
-              digiaddr   = dtcbuffer[2];                // -a
-              data_low   = dtcbuffer[3];                // -d
-              data_high  = dtcbuffer[4];                // -d
-
-
-              digidata =  ((data_high<<16) & 0XFFFF0000)  +  (data_low & 0x0000FFFF);
-
-
-              // give TWI control to uProc before calling DIGI_READ/WRITE or ADC/READ_WRITE
-             *(registers_0_addr + REG_DIGIRW_SEL) = 1;
-
-              if (rw & 0x2) {
-                  digiaddr |= 0x100;
-                  rw &= 0x1;
-              }
-              if (thishvcal < 3) {
-                  if (rw == 0) {                  //read
-                      digidata = digi_read(digiaddr, thishvcal);
-                  } else {
-                      digi_write(digiaddr, digidata, thishvcal);
-                  }
-              } else {
-                  if (thishvcal == 3) {
-                      if (rw == 0) {                //read
-                          digidata = *(registers_0_addr + digiaddr);
-                      } else {
-                          *(registers_0_addr + digiaddr) = digidata;
-                      }
-                  } else {
-                      adc_num = thishvcal - 4;
-                      if (rw == 0) {
-                          digidata = adc_read(digiaddr, adc_num);
-                      } else {
-                          adc_mask = (0x1 << adc_num);
-                          adc_write(digiaddr, digidata, adc_mask);
-                      }
-                  }
-              }
-
-              // return TWI control to fiber
-              *(registers_0_addr + REG_DIGIRW_SEL) = 0;
-
-
-              // fill DCS_RX_BUFFER
-              *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
-              *(registers_1_addr + CRDCS_WRITE_TX) = 7;
-              *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
-              *(registers_1_addr + CRDCS_WRITE_TX) = rw;
-              *(registers_1_addr + CRDCS_WRITE_TX) = thishvcal;
-              *(registers_1_addr + CRDCS_WRITE_TX) = digiaddr;
-              *(registers_1_addr + CRDCS_WRITE_TX) = digidata & 0xFFFF;
-              *(registers_1_addr + CRDCS_WRITE_TX) = (digidata>>16);
-              *(registers_1_addr + CRDCS_WRITE_TX) = adc_num;
-              *(registers_1_addr + CRDCS_WRITE_TX) = adc_mask;
-              *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
-
-
-              // update CMD_STATUS
-              *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
-
-              break;
-
-
-          case FINDALIGN:
-
-              // update CMD_STATUS
-              *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
-
-              // give TWI control to uProc before calling DIGI_READ/WRITE or ADC/READ_WRITE
-             *(registers_0_addr + REG_DIGIRW_SEL) = 1;
-
-              //reset the ADCs first, at this point, clock better be stable
-              for (int i=0;i<12;i++){
-                  uint16_t adc_mask = (0x1 << i);
-                  adc_write(0x08, 3, adc_mask);
-              }
-
-              for (int i=0;i<12;i++){
-                  uint16_t adc_mask = (0x1 << i);
-                  adc_write(0x08, 0, adc_mask);
-              }
-
-              // defaults from Python, used for testing
-              uint16_t eye_monitor_width = 4;
-              uint16_t init_adc_phase = 0;
-              uint16_t ifcheck = 1;
-              channel_mask[0] = 0xFFFFFFFF;
-              channel_mask[1] = 0xFFFFFFFF;
-              channel_mask[2] = 0xFFFFFFFF;
-              chan_num = -1;
-              adc_num = -1;
-
-              // load parameters from DCS Block Write
-              eye_monitor_width = dtcbuffer[0];         // -w
-              init_adc_phase = dtcbuffer[1];            // -p
-              ifcheck =  dtcbuffer[2];                  // -ck
-              chan_num = (uint8_t) dtcbuffer[3];        // -c
-              adc_num = (uint8_t) dtcbuffer[4];         // -a
-              channel_mask[0] = (dtcbuffer[6]<<16)   +  dtcbuffer[5];   // -C
-              channel_mask[1] = (dtcbuffer[8]<<16)  +  dtcbuffer[7];   // -D
-              channel_mask[2] = (dtcbuffer[10]<<16) +  dtcbuffer[9];  // -E
-
-              // correct for parameters out of allowed values
-              if (eye_monitor_width > 7) eye_monitor_width = 7;
-              if (init_adc_phase > 11) init_adc_phase = 0;
-
-              //
-              // start channel mapping
-              if (chan_num >=0 && chan_num<96) {
-                  for (int i=0;i<96;i++) {
-                      if (channel_map[i]==chan_num) adc_num = i/8;
-                  }
-              }
-
-              // new function to replace util.py/CHANNELMASK
-              if( adc_num > 0 && adc_num<12 ) {
-                  for (int i=0; i<8; i++) mask_channels(channel_map[8*adc_num+i]);
-              }
-
-
-              *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
-              *(registers_1_addr + CRDCS_WRITE_TX) = 2+(1+24+96+6+1);   // payload is 130 = 0x82
-              *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
-
-              *(registers_1_addr + CRDCS_WRITE_TX) = eye_monitor_width;
-              *(registers_1_addr + CRDCS_WRITE_TX) = ifcheck;
-
-              //
-              // start copy of uncommented sections of autobitslip.c
-              get_mapped_channels();
-
-              uint8_t iteration = 0;
-              uint16_t faulted_adc = 0;
-
-              while (1)
-              {
-                  faulted_adc = 0;
-
-                  digi_write(DG_ADDR_BITALIGN_RSETN, 0, 0);
-                  delayUs(8);
-                  digi_write(DG_ADDR_BITALIGN_RSETN, 1, 0);
-
-                  digi_write(DG_ADDR_SAMPLE,1,0);
-                  digi_write(DG_ADDR_LOOKBACK,1,0);
-
-                  digi_write(DG_ADDR_TRIGGER_MODE,0,0);
-                  digi_write(DG_ADDR_ENABLE_PULSER,1,0);
-
-                  uint16_t activeADC = 0;
-                  for (uint8_t i=0;i<12;i++){
-                      if ((mapped_channel_mask[i/4] >> ((i%4)*8)) & 0xff){
-                          activeADC |= (((uint16_t)0x1) << i);
-                      }
-                  }
-
-                  //using pattern #9 (0x155/0x2aa) for alignment
-                  for (uint8_t i=0;i<12;i++){
-                      if (((0x1<<i) & ENABLED_ADCS) & activeADC) {
-                          //fix all adc at phase = 3 (default 180 deg)
-                          adc_write(ADC_ADDR_PHASE,init_adc_phase,(0x1<<i));
-                          adc_write(ADC_ADDR_TESTIO,0x9,(0x1<<i));
-                      }
-                      else //turn off the channels not in use
-                          mapped_channel_mask[i/4] &= (~((uint32_t)0xff << ((i%4)*8)));
-                  }
-
-                  *(registers_1_addr + CRDCS_WRITE_TX) = init_adc_phase;
-
-
-                  //turn on pulser, read one word a time
-                  *(registers_0_addr + REG_ROC_FIFO_HOWMANY) = 1;
-                  *(registers_0_addr + REG_ROC_EWW_PULSER) = 1;
-
-
-                  //set minimum eye monitor width
-                  digi_write(DG_ADDR_BITALIGN_EWM_WIDTH, (uint16_t)eye_monitor_width,0);
-
-                  uint16_t active_ch[6] = {0};
-                  active_ch[0] = (uint16_t)(mapped_channel_mask[0] & 0xffff);
-                  active_ch[1] = (uint16_t)((mapped_channel_mask[0] >> 16) & 0xffff);
-                  active_ch[2] = (uint16_t)(mapped_channel_mask[1] & 0xffff);
-                  active_ch[3] = (uint16_t)((mapped_channel_mask[1] >> 16) & 0xffff);
-                  active_ch[4] = (uint16_t)(mapped_channel_mask[2] & 0xffff);
-                  active_ch[5] = (uint16_t)((mapped_channel_mask[2] >> 16) & 0xffff);
-
-                  digi_write(DG_ADDR_MASK1, active_ch[0], 1);
-                  digi_write(DG_ADDR_MASK2, active_ch[1], 1);
-                  digi_write(DG_ADDR_MASK3, active_ch[2], 1);
-                  digi_write(DG_ADDR_MASK1, active_ch[3], 2);
-                  digi_write(DG_ADDR_MASK2, active_ch[4], 2);
-                  digi_write(DG_ADDR_MASK3, active_ch[5], 2);
-
-                  for (uint8_t i = 0; i < 6; i++){
-                       digi_write(DG_ADDR_RX_CH_MASK1+i%3, active_ch[i], 1+i/3);
-                      *(registers_1_addr + CRDCS_WRITE_TX) = active_ch[i];
-                  }
-
-                  //start bit align, set corresponding channel's restart to 1, then back to 0 after 8 ticks
-                  digi_write(DG_ADDR_BITALIGN_RSTRT, 1, 0);
-                  delayUs(8);
-                  digi_write(DG_ADDR_BITALIGN_RSTRT, 0, 0);
-
-                  volatile uint16_t completion[6] = {0};
-                  volatile uint16_t error[6] = {0};
-
-                  //wait until all channels are completed; timeout after 30 secs
-                  for (uint8_t i=0; i<3; i++){
-                      hwdelay(50000000);//check every 1 second if is done
-                      uint8_t bitalign_done = 1;
-                      for (uint8_t j = 0; j < 6; j++){
-                          completion[j] = digi_read(DG_ADDR_BITALIGN_CMP1+j%3, 1+j/3);
-                          error[j] = digi_read(DG_ADDR_BITALIGN_ERR1+j%3, 1+j/3);
-                          if ((completion[j] & active_ch[j]) != active_ch[j])
-                              bitalign_done = 0;
-                      }
-
-                      if (bitalign_done) break;
-                  }
-
-                  for (uint8_t i=0; i<6; i++){
-
-                      *(registers_1_addr + CRDCS_WRITE_TX) = completion[i];
-                      *(registers_1_addr + CRDCS_WRITE_TX) = error[i];
-
-                      if ((~completion[i]) & 0x00ff)
-                          faulted_adc |= ((uint16_t)0x1 << (2*i));
-                      if ((~completion[i]) & 0xff00)
-                          faulted_adc |= ((uint16_t)0x1 << (2*i+1));
-                  }
-
-                  ///////////////////////////////////
-                  //  DOING BITSLIP                //
-                  ///////////////////////////////////
-
-                  //switch to pattern #1 for bitslip
-                  for (uint8_t i=0;i<12;i++){
-                      if ((0x1<<i) & ENABLED_ADCS) {
-                          adc_write(ADC_ADDR_TESTIO,0x1,(0x1<<i));
-                      }
-                  }
-
-                  uint8_t bitslipstep[96];
-                  for (uint8_t ichan=0; ichan<96; ichan++) bitslipstep[ichan] = 0xff;
-                  volatile uint16_t bitstlip_done[6] = {0};
-
-                  for (uint8_t i=0; i<10; i++){
-                      hwdelay(50);
-
-                      digi_write(DG_ADDR_BSC_OPERATION_TYPE, 0, 0);
-                      digi_write(DG_ADDR_BITSLIP_STRT, 1, 0);
-                      delayUs(10);
-                      digi_write(DG_ADDR_BITSLIP_STRT, 0, 0);
-
-                      for (uint8_t j = 0; j < 6; j++)
-                          bitstlip_done[j] = digi_read(DG_ADDR_BITSLIP_DONE1+j%3, 1+j/3);
-
-                      for (uint8_t ichan=0; ichan<96; ichan++){
-                          uint16_t this_chan_mask = (uint16_t) 0x1 << (ichan%16);
-                          if (((bitstlip_done[ichan/16] & this_chan_mask) != 0) && (bitslipstep[ichan] == 0xff))
-                              bitslipstep[ichan] = i;
-                      }
-                  }
-
-                  for (uint8_t i=0; i<6; i++){
-                      *(registers_1_addr + CRDCS_WRITE_TX) = bitstlip_done[i];
-
-                     if ((~bitstlip_done[i]) & 0x00ff)
-                          faulted_adc |= ((uint16_t)0x1 << (2*i));
-                      if ((~bitstlip_done[i]) & 0xff00)
-                          faulted_adc |= ((uint16_t)0x1 << (2*i+1));
-                  }
-
-                  for (uint8_t i=0; i<96; i++) {
-                      // NB: these are reported as single byte via serial
-                      *(registers_1_addr + CRDCS_WRITE_TX) = (uint8_t) bitslipstep[i];
-                  }
-
-
-                  ///////////////////////////////////
-                  // CHECK RESULT                  //
-                  ///////////////////////////////////
-
-                  // check with mixed frequency ADC
-                  uint16_t pattern_match[6] = {0};
-                  if (ifcheck){
-                      for (uint8_t i=0;i<12;i++){
-                          if ((0x1<<i) & ENABLED_ADCS) {
-                              adc_write(ADC_ADDR_TESTIO,0xC,(0x1<<i));
-                          }
-                      }
-
-                      digi_write(DG_ADDR_BSC_OPERATION_TYPE, 1, 0);
-                      digi_write(DG_ADDR_BITSLIP_STRT, 1, 0);
-                      delayUs(10);
-                      digi_write(DG_ADDR_BITSLIP_STRT, 0, 0);
-
-                      for (uint8_t j = 0; j < 6; j++){
-                          pattern_match[j] = digi_read(DG_ADDR_BSC_PATTERN_MATCH1+j%3, 1+j/3);
-                          *(registers_1_addr + CRDCS_WRITE_TX) = pattern_match[j];
-
-                          if ((pattern_match[j] & active_ch[j] & 0x00ff) != (active_ch[j] & 0x00ff))
-                              faulted_adc |= ((uint16_t)0x1 << (2*j));
-                          if ((pattern_match[j] & active_ch[j] & 0xff00) != (active_ch[j] & 0xff00))
-                              faulted_adc |= ((uint16_t)0x1 << (2*j+1));
-                      }
-                  }
-                  else{
-                      for (uint8_t i=0;i<6;i++) *(registers_1_addr + CRDCS_WRITE_TX) = 0;
-                  }
-
-                  // ALLOW ONLY ONE ITERATION! Return faulted_adc status
-                  *(registers_1_addr + CRDCS_WRITE_TX) = faulted_adc;
-                  break;
-
-                  iteration ++;
-
-                  if (faulted_adc == 0) break;
-                  if (iteration == 6) break; //maximum: 3 trials at phase 0, 3 for faulted adc at different phase
-                  if (iteration == 3) init_adc_phase = (init_adc_phase+3)%12;
-                  if (iteration >= 3){
-                      for (uint8_t i=0; i<3; i++) mapped_channel_mask[i] = 0;
-                      for (uint8_t i=0; i<12; i++){
-                          if (faulted_adc & ((uint16_t)0x1 << (i))){
-                              mapped_channel_mask[i/4] |= ((uint32_t)0x000000ff)<<((i%4)*8);
-                          }
-                      }
-                  }
-
-              } //end while(1)
-
-              for (uint8_t i=0;i<12;i++){
-                  if ((0x1<<i) & ENABLED_ADCS) {
-                      adc_write(ADC_ADDR_TESTIO,0x0,(0x1<<i));
-                  }
-                      //make sure find_alignment exits with tracking incoming data not ADC pattern
-              }
-              // return TWI control to fiber
-               *(registers_0_addr + REG_DIGIRW_SEL) = 0;
-
-              *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
-
-              // update CMD_STATUS
-              *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
-               break;
-
-
-          case READDATA:
-              // update CMD_STATUS
-              *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
-
-              *(registers_0_addr + 0xEE) = 0x1;
-              delayUs(1);
-              *(registers_0_addr + 0xEE) = 0x0;
-
-              // defaults from Python, used for testing
-              uint16_t adc_mode = 0;
-              uint16_t tdc_mode = 0;
-              uint16_t num_lookback = 8;
-              uint32_t num_triggers = 0;
-              channel_mask[0] = 0xFFFFFFFF;
-              channel_mask[1] = 0xFFFFFFFF;
-              channel_mask[2] = 0xFFFFFFFF;
-              uint16_t num_samples = 16;
-              uint8_t enable_pulser = 0;
-              uint16_t max_total_delay = 1;
-              uint8_t marker_clock = 0;
-
-              /*
-              // pass test values as in command
-              // read -a 0 -t 0 -s 1 -l 8 -T 10 -m 3 -p 1 -C 0 -D 1400 -E 880000
-              adc_mode = 0;
-              tdc_mode = 0;
-              num_samples = 1;
-              num_lookback = 8;
-              num_triggers = 10;
-              marker_clock = 3;
-              enable_pulser = 1;
-              channel_mask[0] = 0x00000000;
-              channel_mask[1] = 0x1400;
-              channel_mask[2] = 0x88000000;
-              */
-
-              // load parameters - Vadim says to ignore "message" (-M) and "chan_num" (-c)
-              adc_mode = dtcbuffer[0];                                  // -a
-              tdc_mode = dtcbuffer[1];                                  // -t
-              num_lookback = dtcbuffer[2];                              // -l
-              num_triggers = (dtcbuffer[4]<<16) + dtcbuffer[3];         // -T
-              channel_mask[0] = (dtcbuffer[6]<<16)  +  dtcbuffer[5];    // -C
-              channel_mask[1] = (dtcbuffer[8]<<16)  +  dtcbuffer[7];    // -D
-              channel_mask[2] = (dtcbuffer[10]<<16) +  dtcbuffer[9];    // -E
-              num_samples = dtcbuffer[11];                     // -s
-              enable_pulser = (uint8_t) dtcbuffer[12];         // -p
-              max_total_delay = dtcbuffer[13];                 // -d (def 1)
-              marker_clock = (uint8_t) dtcbuffer[14];          // -m
-
-
-              // override these two parameters (as sone in Python)
-              uint8_t mode = 0;
-              uint8_t clock = 99;
-
-              // new function to replace util.py/CHANNELMASK
-              //if(chan_num > 0)  mask_channels(chan_num);
-
-              if(num_samples>63) {
-                  num_samples = 63;  // this avoids dataBuffer overflow
-              //    datasize =  (5+num_samples*4)*num_triggers;  // needed??
-              }
-
-              if (marker_clock & 0x1)
+            } //end while(1)
+
+            for (uint8_t i = 0; i < 12; i++) {
+                if ((0x1 << i) & ENABLED_ADCS) {
+                    adc_write(ADC_ADDR_TESTIO, 0x0, (0x1 << i));
+                }
+                //make sure find_alignment exits with tracking incoming data not ADC pattern
+            }
+            // return TWI control to fiber
+            *(registers_0_addr + REG_DIGIRW_SEL) = 0;
+
+            *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
+
+            // update CMD_STATUS
+            *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
+            break;
+
+        case READDATA:
+            // update CMD_STATUS
+            *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
+
+            *(registers_0_addr + 0xEE) = 0x1;
+            delayUs(1);
+            *(registers_0_addr + 0xEE) = 0x0;
+
+            // defaults from Python, used for testing
+            uint16_t adc_mode = 0;
+            uint16_t tdc_mode = 0;
+            uint16_t num_lookback = 8;
+            uint32_t num_triggers = 0;
+            channel_mask[0] = 0xFFFFFFFF;
+            channel_mask[1] = 0xFFFFFFFF;
+            channel_mask[2] = 0xFFFFFFFF;
+            uint16_t num_samples = 16;
+            uint8_t enable_pulser = 0;
+            uint16_t max_total_delay = 1;
+            uint8_t marker_clock = 0;
+
+            /*
+             // pass test values as in command
+             // read -a 0 -t 0 -s 1 -l 8 -T 10 -m 3 -p 1 -C 0 -D 1400 -E 880000
+             adc_mode = 0;
+             tdc_mode = 0;
+             num_samples = 1;
+             num_lookback = 8;
+             num_triggers = 10;
+             marker_clock = 3;
+             enable_pulser = 1;
+             channel_mask[0] = 0x00000000;
+             channel_mask[1] = 0x1400;
+             channel_mask[2] = 0x88000000;
+             */
+
+            // load parameters - Vadim says to ignore "message" (-M) and "chan_num" (-c)
+            adc_mode = dtcbuffer[0];                                  // -a
+            tdc_mode = dtcbuffer[1];                                  // -t
+            num_lookback = dtcbuffer[2];                              // -l
+            num_triggers = (dtcbuffer[4] << 16) + dtcbuffer[3];         // -T
+            channel_mask[0] = (dtcbuffer[6] << 16) + dtcbuffer[5];    // -C
+            channel_mask[1] = (dtcbuffer[8] << 16) + dtcbuffer[7];    // -D
+            channel_mask[2] = (dtcbuffer[10] << 16) + dtcbuffer[9];    // -E
+            num_samples = dtcbuffer[11];                     // -s
+            enable_pulser = (uint8_t) dtcbuffer[12];         // -p
+            max_total_delay = dtcbuffer[13];                 // -d (def 1)
+            marker_clock = (uint8_t) dtcbuffer[14];          // -m
+
+            // override these two parameters (as sone in Python)
+            uint8_t mode = 0;
+            uint8_t clock = 99;
+
+            // new function to replace util.py/CHANNELMASK
+            //if(chan_num > 0)  mask_channels(chan_num);
+
+            if (num_samples > 63) {
+                num_samples = 63;  // this avoids dataBuffer overflow
+                //    datasize =  (5+num_samples*4)*num_triggers;  // needed??
+            }
+
+            if (marker_clock & 0x1)
                 *(registers_0_addr + REG_ROC_ENABLE_FIBER_CLOCK) = 1;
-              else
+            else
                 *(registers_0_addr + REG_ROC_ENABLE_FIBER_CLOCK) = 0;
 
-              if (marker_clock & 0x2)
+            if (marker_clock & 0x2)
                 *(registers_0_addr + REG_ROC_ENABLE_FIBER_MARKER) = 1;
-              else
+            else
                 *(registers_0_addr + REG_ROC_ENABLE_FIBER_MARKER) = 0;
 
-              // give TWI control to uProc before calling DIGI_READ/WRITE or ADC/READ_WRITE
-             *(registers_0_addr + REG_DIGIRW_SEL) = 1;
+            // give TWI control to uProc before calling DIGI_READ/WRITE or ADC/READ_WRITE
+            *(registers_0_addr + REG_DIGIRW_SEL) = 1;
 
-              digi_write(DG_ADDR_ENABLE_PULSER,enable_pulser,0);
-              if ((mode & 0x1) == 0x0){
-                  get_mapped_channels();
-                  uint32_t used_adcs = 0x0;
-                  for (int i=0;i<12;i++){
-                      uint32_t test_mask = (0xFF<<(8*(i%4)));
-                      if (mapped_channel_mask[i/4] & test_mask)
-                          used_adcs |= (0x1<<i);
-                  }
-                  //used_adcs = 0x800;
-                  for (uint8_t i=0;i<12;i++){
-                      if ((0x1<<i) & ENABLED_ADCS){
-                          if (clock < 99){
-                              //if ((0x1<<i) & used_adcs)
-                              adc_write(ADC_ADDR_PHASE,clock,(0x1<<i));
-                              adc_write(ADC_ADDR_TESTIO,adc_mode,(0x1<<i));
-                          }else{
-                              adc_write(ADC_ADDR_PHASE,adc_phases[i],(0x1<<i));
-                              adc_write(ADC_ADDR_TESTIO,adc_mode,(0x1<<i));
-                          }
-                      }
+            digi_write(DG_ADDR_ENABLE_PULSER, enable_pulser, 0);
+            if ((mode & 0x1) == 0x0) {
+                get_mapped_channels();
+                uint32_t used_adcs = 0x0;
+                for (int i = 0; i < 12; i++) {
+                    uint32_t test_mask = (0xFF << (8 * (i % 4)));
+                    if (mapped_channel_mask[i / 4] & test_mask)
+                        used_adcs |= (0x1 << i);
+                }
+                //used_adcs = 0x800;
+                for (uint8_t i = 0; i < 12; i++) {
+                    if ((0x1 << i) & ENABLED_ADCS) {
+                        if (clock < 99) {
+                            //if ((0x1<<i) & used_adcs)
+                            adc_write(ADC_ADDR_PHASE, clock, (0x1 << i));
+                            adc_write(ADC_ADDR_TESTIO, adc_mode, (0x1 << i));
+                        } else {
+                            adc_write(ADC_ADDR_PHASE, adc_phases[i],
+                                    (0x1 << i));
+                            adc_write(ADC_ADDR_TESTIO, adc_mode, (0x1 << i));
+                        }
+                    }
 
-                  }
+                }
 
-                  hvcal = 1;
-                  get_mapped_channels();
+                hvcal = 1;
+                get_mapped_channels();
 
-                  // DISABLE CALIBRATION BEFORE ANY CHANGES TO SETTINGS
-                  digi_write(0x0F,0,0); // disable calibration
+                // DISABLE CALIBRATION BEFORE ANY CHANGES TO SETTINGS
+                digi_write(0x0F, 0, 0); // disable calibration
 
-                  digi_write(DG_ADDR_SAMPLE,num_samples,0);
-                  digi_write(DG_ADDR_LOOKBACK,num_lookback,0);
-                  digi_write(DG_ADDR_MASK1,(uint16_t) (mapped_channel_mask[0] & 0xFFFF), 1);
-                  digi_write(DG_ADDR_MASK2,(uint16_t) ((mapped_channel_mask[0] & 0xFFFF0000)>>16), 1);
-                  digi_write(DG_ADDR_MASK3,(uint16_t) (mapped_channel_mask[1] & 0xFFFF), 1);
-                  digi_write(DG_ADDR_MASK1,(uint16_t) ((mapped_channel_mask[1] & 0xFFFF0000)>>16), 2);
-                  digi_write(DG_ADDR_MASK2,(uint16_t) (mapped_channel_mask[2] & 0xFFFF), 2);
-                  digi_write(DG_ADDR_MASK3,(uint16_t) ((mapped_channel_mask[2] & 0xFFFF0000)>>16), 2);
-                  digi_write(DG_ADDR_TRIGGER_MODE,tdc_mode,0);
-                  digi_write(DG_ADDR_ENABLE_PULSER,enable_pulser,0);
+                digi_write(DG_ADDR_SAMPLE, num_samples, 0);
+                digi_write(DG_ADDR_LOOKBACK, num_lookback, 0);
+                digi_write(DG_ADDR_MASK1,
+                        (uint16_t) (mapped_channel_mask[0] & 0xFFFF), 1);
+                digi_write(DG_ADDR_MASK2,
+                        (uint16_t) ((mapped_channel_mask[0] & 0xFFFF0000) >> 16),
+                        1);
+                digi_write(DG_ADDR_MASK3,
+                        (uint16_t) (mapped_channel_mask[1] & 0xFFFF), 1);
+                digi_write(DG_ADDR_MASK1,
+                        (uint16_t) ((mapped_channel_mask[1] & 0xFFFF0000) >> 16),
+                        2);
+                digi_write(DG_ADDR_MASK2,
+                        (uint16_t) (mapped_channel_mask[2] & 0xFFFF), 2);
+                digi_write(DG_ADDR_MASK3,
+                        (uint16_t) ((mapped_channel_mask[2] & 0xFFFF0000) >> 16),
+                        2);
+                digi_write(DG_ADDR_TRIGGER_MODE, tdc_mode, 0);
+                digi_write(DG_ADDR_ENABLE_PULSER, enable_pulser, 0);
 
-                  *(registers_0_addr + REG_ROC_EWW_PULSER) = 0;
+                *(registers_0_addr + REG_ROC_EWW_PULSER) = 0;
 
-                  *(registers_0_addr + REG_ROC_FIFO_HOWMANY) = num_samples;
+                *(registers_0_addr + REG_ROC_FIFO_HOWMANY) = num_samples;
 
-                  if ((mapped_channel_mask[2]!=0)||((mapped_channel_mask[1]>>16)!=0))
-                      hvcal = 2;
+                if ((mapped_channel_mask[2] != 0)
+                        || ((mapped_channel_mask[1] >> 16) != 0))
+                    hvcal = 2;
 
-                  num_samples = digi_read(DG_ADDR_SAMPLE, hvcal);
-                  enable_pulser = digi_read(DG_ADDR_ENABLE_PULSER, hvcal);
-              }
+                num_samples = digi_read(DG_ADDR_SAMPLE, hvcal);
+                enable_pulser = digi_read(DG_ADDR_ENABLE_PULSER, hvcal);
+            }
 
-              delayUs(10000);
+            delayUs(10000);
 
-              if ((mode & 0x1) == 0x0){
-                  // reset fifo
-                  resetFIFO();
-                  resetFIFO();
-                  delayUs(10000);
-                  *(registers_0_addr + REG_ROC_EWW_PULSER) = 1;
+            if ((mode & 0x1) == 0x0) {
+                // reset fifo
+                resetFIFO();
+                resetFIFO();
+                delayUs(10000);
+                *(registers_0_addr + REG_ROC_EWW_PULSER) = 1;
 
+                digi_write(0x0F, enable_pulser, 0); // enable calibration IF running internal pulser
+                /* Vadim says to ignore this
+                 readout_obloc = 0;
+                 readout_maxDelay = max_total_delay*50;
+                 readout_mode = mode;
+                 readout_wordsPerTrigger = 8;//NUMTDCWORDS + 4*num_samples;
+                 readout_numTriggers = num_triggers;
+                 readout_totalTriggers = 0;
 
-                  digi_write(0x0F,enable_pulser,0); // enable calibration IF running internal pulser
-                  /* Vadim says to ignore this
-                  readout_obloc = 0;
-                  readout_maxDelay = max_total_delay*50;
-                  readout_mode = mode;
-                  readout_wordsPerTrigger = 8;//NUMTDCWORDS + 4*num_samples;
-                  readout_numTriggers = num_triggers;
-                  readout_totalTriggers = 0;
+                 readout_noUARTflag = 0;
+                 */
+            }
 
-                  readout_noUARTflag = 0;
-                  */
-              }
+            // Vadim says to ignore the rest of READDATACMDID
+            /*
+             } else if (commandID == SETPREAMPGAIN){
+             uint16_t channel = readU16fromBytes(&buffer[4]);
+             uint16_t value = readU16fromBytes(&buffer[6]);
 
-              // Vadim says to ignore the rest of READDATACMDID
-               /*
-                       } else if (commandID == SETPREAMPGAIN){
-                           uint16_t channel = readU16fromBytes(&buffer[4]);
-                           uint16_t value = readU16fromBytes(&buffer[6]);
+             setPreampGain(channel, value);
 
-                           setPreampGain(channel, value);
+             outBuffer[bufcount++] = SETPREAMPGAIN;
+             bufWrite(outBuffer, &bufcount, 4, 2);
+             bufWrite(outBuffer, &bufcount, channel, 2);
+             bufWrite(outBuffer, &bufcount, value, 2);
+             outBufSend(g_uart, outBuffer, bufcount);
 
-                           outBuffer[bufcount++] = SETPREAMPGAIN;
-                           bufWrite(outBuffer, &bufcount, 4, 2);
-                           bufWrite(outBuffer, &bufcount, channel, 2);
-                           bufWrite(outBuffer, &bufcount, value, 2);
-                           outBufSend(g_uart, outBuffer, bufcount);
+             // Set preamp threshold
+             }else if (commandID == SETPREAMPTHRESHOLD){
+             uint16_t channel = readU16fromBytes(&buffer[4]);
 
-                           // Set preamp threshold
-                       }else if (commandID == SETPREAMPTHRESHOLD){
-                           uint16_t channel = readU16fromBytes(&buffer[4]);
+             uint16_t value = readU16fromBytes(&buffer[6]);
 
-                           uint16_t value = readU16fromBytes(&buffer[6]);
+             setPreampThreshold(channel, value);
 
-                           setPreampThreshold(channel, value);
+             outBuffer[bufcount++] = SETPREAMPTHRESHOLD;
+             bufWrite(outBuffer, &bufcount, 4, 2);
+             bufWrite(outBuffer, &bufcount, channel, 2);
+             bufWrite(outBuffer, &bufcount, value, 2);
+             outBufSend(g_uart, outBuffer, bufcount);
+             */
+            // return TWI control to fiber
+            *(registers_0_addr + REG_DIGIRW_SEL) = 0;
 
-                           outBuffer[bufcount++] = SETPREAMPTHRESHOLD;
-                           bufWrite(outBuffer, &bufcount, 4, 2);
-                           bufWrite(outBuffer, &bufcount, channel, 2);
-                           bufWrite(outBuffer, &bufcount, value, 2);
-                           outBufSend(g_uart, outBuffer, bufcount);
-               */
-              // return TWI control to fiber
-              *(registers_0_addr + REG_DIGIRW_SEL) = 0;
+            *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
+            *(registers_1_addr + CRDCS_WRITE_TX) = 18;
+            *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
 
-              *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
-              *(registers_1_addr + CRDCS_WRITE_TX) = 18;
-              *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
+            *(registers_1_addr + CRDCS_WRITE_TX) = enable_pulser;
+            *(registers_1_addr + CRDCS_WRITE_TX) = num_samples;
+            *(registers_1_addr + CRDCS_WRITE_TX) = num_lookback;
+            *(registers_1_addr + CRDCS_WRITE_TX) = (channel_mask[0] & 0xFFFF);
+            *(registers_1_addr + CRDCS_WRITE_TX) =
+                    (channel_mask[0] & 0xFFFF0000) >> 16;
+            *(registers_1_addr + CRDCS_WRITE_TX) = (channel_mask[1] & 0xFFFF);
+            *(registers_1_addr + CRDCS_WRITE_TX) =
+                    (channel_mask[1] & 0xFFFF0000) >> 16;
+            *(registers_1_addr + CRDCS_WRITE_TX) = (channel_mask[2] & 0xFFFF);
+            *(registers_1_addr + CRDCS_WRITE_TX) =
+                    (channel_mask[2] & 0xFFFF0000) >> 16;
+            *(registers_1_addr + CRDCS_WRITE_TX) = adc_mode;
+            *(registers_1_addr + CRDCS_WRITE_TX) = tdc_mode;
+            *(registers_1_addr + CRDCS_WRITE_TX) = (num_triggers & 0xFFFF);
+            *(registers_1_addr + CRDCS_WRITE_TX) = (num_triggers & 0xFFFF0000)
+                    >> 16;
+            *(registers_1_addr + CRDCS_WRITE_TX) = digi_read(DG_ADDR_MASK1,
+                    hvcal);
+            *(registers_1_addr + CRDCS_WRITE_TX) = digi_read(DG_ADDR_MASK2,
+                    hvcal);
+            *(registers_1_addr + CRDCS_WRITE_TX) = digi_read(DG_ADDR_MASK3,
+                    hvcal);
+            *(registers_1_addr + CRDCS_WRITE_TX) = digi_read(
+                    DG_ADDR_ENABLE_PULSER, hvcal);
+            *(registers_1_addr + CRDCS_WRITE_TX) = mode;
+            *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
 
-              *(registers_1_addr + CRDCS_WRITE_TX) = enable_pulser;
-              *(registers_1_addr + CRDCS_WRITE_TX) = num_samples;
-              *(registers_1_addr + CRDCS_WRITE_TX) = num_lookback;
-              *(registers_1_addr + CRDCS_WRITE_TX) = (channel_mask[0] & 0xFFFF);
-              *(registers_1_addr + CRDCS_WRITE_TX) = (channel_mask[0] & 0xFFFF0000)>>16;
-              *(registers_1_addr + CRDCS_WRITE_TX) = (channel_mask[1] & 0xFFFF);
-              *(registers_1_addr + CRDCS_WRITE_TX) = (channel_mask[1] & 0xFFFF0000)>>16;
-              *(registers_1_addr + CRDCS_WRITE_TX) = (channel_mask[2] & 0xFFFF);
-              *(registers_1_addr + CRDCS_WRITE_TX) = (channel_mask[2] & 0xFFFF0000)>>16;
-              *(registers_1_addr + CRDCS_WRITE_TX) = adc_mode;
-              *(registers_1_addr + CRDCS_WRITE_TX) = tdc_mode;
-              *(registers_1_addr + CRDCS_WRITE_TX) = (num_triggers & 0xFFFF);
-              *(registers_1_addr + CRDCS_WRITE_TX) = (num_triggers & 0xFFFF0000)>>16;
-              *(registers_1_addr + CRDCS_WRITE_TX) = digi_read(DG_ADDR_MASK1,hvcal);
-              *(registers_1_addr + CRDCS_WRITE_TX) = digi_read(DG_ADDR_MASK2,hvcal);
-              *(registers_1_addr + CRDCS_WRITE_TX) = digi_read(DG_ADDR_MASK3,hvcal);
-              *(registers_1_addr + CRDCS_WRITE_TX) = digi_read(DG_ADDR_ENABLE_PULSER,hvcal);
-              *(registers_1_addr + CRDCS_WRITE_TX) = mode;
-              *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
+            // update CMD_STATUS
+            *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
 
-               // update CMD_STATUS
-              *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
+            break;
 
-               break;
+            // set PREAMP GAINS
+        case PREAMPGAIN:
 
+            // update CMD_STATUS
+            *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
+            // needed??
+            //*(registers_0_addr + REG_DIGIRW_SEL) = 1;
 
-          // set PREAMP GAINS
-          case PREAMPGAIN:
+            // Python defaults
+            chan_num = -1;
+            value = -1;
+            preamptype = 0;
 
-              // update CMD_STATUS
-              *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
-              // needed??
-              //*(registers_0_addr + REG_DIGIRW_SEL) = 1;
-
-              // Python defaults
-              chan_num = -1;
-              value = -1;
-              preamptype = 0;
-
-              /*
-              // for testing by hand
-              chan_num  = 1;
-              value = 370;   // N.B. Expect that float to integer conversion has already happened!
-              preamptype = 1;
-              */
-
-              chan_num  = dtcbuffer[0];     // -c
-              value     = dtcbuffer[1];     // -d
-              preamptype= dtcbuffer[2];     // -hv
-
-              if (preamptype == 1) chan_num = chan_num + 96;
-
-              setPreampGain(chan_num, value);
-
-              *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
-              *(registers_1_addr + CRDCS_WRITE_TX) = 3;
-              *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
-              *(registers_1_addr + CRDCS_WRITE_TX) = chan_num;
-              *(registers_1_addr + CRDCS_WRITE_TX) = value;
-              *(registers_1_addr + CRDCS_WRITE_TX) = preamptype;
-              *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
-
-              // return control to fiber and issue CMD_DONE
-              //*(registers_0_addr + REG_DIGIRW_SEL) = 0;
-              // update CMD_STATUS
-              *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
-
-              break;
-
-
-         // set PREAMP THRESHOLD
-         case PREAMPTHRESH:
-
-             // update CMD_STATUS
-             *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
-             // needed??
-             //*(registers_0_addr + REG_DIGIRW_SEL) = 1;
-
-             // Python defaults
-             chan_num = -1;
-             value = -1;
-             preamptype = 0;
-
+            /*
              // for testing by hand
-             /*
+             chan_num  = 1;
+             value = 370;   // N.B. Expect that float to integer conversion has already happened!
+             preamptype = 1;
+             */
+
+            chan_num = dtcbuffer[0];     // -c
+            value = dtcbuffer[1];     // -d
+            preamptype = dtcbuffer[2];     // -hv
+
+            if (preamptype == 1)
+                chan_num = chan_num + 96;
+
+            setPreampGain(chan_num, value);
+
+            *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
+            *(registers_1_addr + CRDCS_WRITE_TX) = 3;
+            *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
+            *(registers_1_addr + CRDCS_WRITE_TX) = chan_num;
+            *(registers_1_addr + CRDCS_WRITE_TX) = value;
+            *(registers_1_addr + CRDCS_WRITE_TX) = preamptype;
+            *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
+
+            // return control to fiber and issue CMD_DONE
+            //*(registers_0_addr + REG_DIGIRW_SEL) = 0;
+            // update CMD_STATUS
+            *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
+
+            break;
+
+            // set PREAMP THRESHOLD
+        case PREAMPTHRESH:
+
+            // update CMD_STATUS
+            *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
+            // needed??
+            //*(registers_0_addr + REG_DIGIRW_SEL) = 1;
+
+            // Python defaults
+            chan_num = -1;
+            value = -1;
+            preamptype = 0;
+
+            // for testing by hand
+            /*
              chan_num  = 1;
              value = 450;   // N.B. Expect that float to integer conversion has already happened!
              preamptype = 1;
              */
 
-             chan_num  = dtcbuffer[0];     // -c
-             value     = dtcbuffer[1];     // -d
-             preamptype= dtcbuffer[2];     // -hv
+            chan_num = dtcbuffer[0];     // -c
+            value = dtcbuffer[1];     // -d
+            preamptype = dtcbuffer[2];     // -hv
 
-             if (preamptype == 1) chan_num = chan_num + 96;
+            if (preamptype == 1)
+                chan_num = chan_num + 96;
 
-             setPreampThreshold(chan_num, value);
+            setPreampThreshold(chan_num, value);
 
-             *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
-             *(registers_1_addr + CRDCS_WRITE_TX) = 3;
-             *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
-             *(registers_1_addr + CRDCS_WRITE_TX) = chan_num;
-             *(registers_1_addr + CRDCS_WRITE_TX) = value;
-             *(registers_1_addr + CRDCS_WRITE_TX) = preamptype;
-             *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
+            *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
+            *(registers_1_addr + CRDCS_WRITE_TX) = 3;
+            *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
+            *(registers_1_addr + CRDCS_WRITE_TX) = chan_num;
+            *(registers_1_addr + CRDCS_WRITE_TX) = value;
+            *(registers_1_addr + CRDCS_WRITE_TX) = preamptype;
+            *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
 
-             // return control to fiber and issue CMD_DONE
-             //*(registers_0_addr + REG_DIGIRW_SEL) = 0;
-             // update CMD_STATUS
-             *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
+            // return control to fiber and issue CMD_DONE
+            //*(registers_0_addr + REG_DIGIRW_SEL) = 0;
+            // update CMD_STATUS
+            *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
 
-             break;
+            break;
 
+        case PULSERON:
 
-         case PULSERON:
+            // update CMD_STATUS
+            *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
+            // needed??
+            //*(registers_0_addr + REG_DIGIRW_SEL) = 1;
 
-             // update CMD_STATUS
-             *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
-             // needed??
-             //*(registers_0_addr + REG_DIGIRW_SEL) = 1;
+            // initialize as in Python defaults:
+            // - ignore oddoreven and pulser_odd (unused)
+            // - assume pulserDelay is already passed int(1./pulserFreq * 1000000)
+            uint8_t chan_1in8 = -1;
+            uint8_t chan_mask = 16;
+            uint16_t dutyCycle = 10;
+            uint32_t pulserDelay = 1000;
 
-             // initialize as in Python defaults:
-             // - ignore oddoreven and pulser_odd (unused)
-             // - assume pulserDelay is already passed int(1./pulserFreq * 1000000)
-             uint8_t  chan_1in8 = -1;
-             uint8_t  chan_mask = 16;
-             uint16_t dutyCycle = 10;
-             uint32_t pulserDelay = 1000;
-
-             // block_write is throwing an exception in Pasha's function
-             // use single write with chan_1in8 as paraneter instead
-             chan_1in8   = data_to_write;
-/*
+            // block_write is throwing an exception in Pasha's function
+            // use single write with chan_1in8 as paraneter instead
+            chan_1in8 = data_to_write;
+            /*
              chan_1in8   = (uint8_t)dtcbuffer[0];   // -c
              chan_mask   = (uint8_t)dtcbuffer[1];   // -C
              dutyCycle   = dtcbuffer[2];   // -y
              pulserDelay = (dtcbuffer[4]<<16)  +  dtcbuffer[3];   // -d  or  integer
-*/
+             */
 
-             if (chan_1in8 >= 0) chan_mask |= (0x1 << chan_1in8);
+            if (chan_1in8 >= 0)
+                chan_mask |= (0x1 << chan_1in8);
 
-             for (uint8_t i = 0; i < 16; i++){
-                 MCP_pinWrite(&preampMCP[MCPCALIB],i+1,0);
-             }
+            for (uint8_t i = 0; i < 16; i++) {
+                MCP_pinWrite(&preampMCP[MCPCALIB], i + 1, 0);
+            }
 
-             for (uint8_t i=0;i<8;i++){
-                 if ((0x1<<i) & chan_mask){
-                     MCP_pinWrite(&preampMCP[MCPCALIB],calpulse_chanmap[i],1);
-                 }
-             }
+            for (uint8_t i = 0; i < 8; i++) {
+                if ((0x1 << i) & chan_mask) {
+                    MCP_pinWrite(&preampMCP[MCPCALIB], calpulse_chanmap[i], 1);
+                }
+            }
 
-             //granularity is clock period=25ns -- period is (gr+1)*1000=50us
-             //PWM_PERIOD = PWM_GRANULARITY * (period + 1) = 25 *1000 = 25us
-             PWM_init( &g_pwm, COREPWM_BASE_ADDR, 1, pulserDelay );
-             PWM_set_duty_cycle( &g_pwm, PWM_1,dutyCycle );//duty cycle is 4 x 25 = 100ns
+            //granularity is clock period=25ns -- period is (gr+1)*1000=50us
+            //PWM_PERIOD = PWM_GRANULARITY * (period + 1) = 25 *1000 = 25us
+            PWM_init(&g_pwm, COREPWM_BASE_ADDR, 1, pulserDelay);
+            PWM_set_duty_cycle(&g_pwm, PWM_1, dutyCycle); //duty cycle is 4 x 25 = 100ns
 
-             PWM_enable(&g_pwm,PWM_1);
+            PWM_enable(&g_pwm, PWM_1);
 
-             // write output for BLOCK_READ
-             *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
-             *(registers_1_addr + CRDCS_WRITE_TX) = 4;
-             *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
-             *(registers_1_addr + CRDCS_WRITE_TX) = chan_mask;
-             *(registers_1_addr + CRDCS_WRITE_TX) = dutyCycle;
-             *(registers_1_addr + CRDCS_WRITE_TX) = (pulserDelay & 0xFFFF);
-             *(registers_1_addr + CRDCS_WRITE_TX) = (pulserDelay & 0xFFFF0000)>>16;
-             *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
+            // write output for BLOCK_READ
+            *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
+            *(registers_1_addr + CRDCS_WRITE_TX) = 4;
+            *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
+            *(registers_1_addr + CRDCS_WRITE_TX) = chan_mask;
+            *(registers_1_addr + CRDCS_WRITE_TX) = dutyCycle;
+            *(registers_1_addr + CRDCS_WRITE_TX) = (pulserDelay & 0xFFFF);
+            *(registers_1_addr + CRDCS_WRITE_TX) = (pulserDelay & 0xFFFF0000)
+                    >> 16;
+            *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
 
-             // return control to fiber and issue CMD_DONE
-             //*(registers_0_addr + REG_DIGIRW_SEL) = 0;
-             // update CMD_STATUS
-             *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
+            // return control to fiber and issue CMD_DONE
+            //*(registers_0_addr + REG_DIGIRW_SEL) = 0;
+            // update CMD_STATUS
+            *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
 
-             break;
+            break;
 
+        case PULSEROFF:
 
-         case PULSEROFF:
+            // update CMD_STATUS
+            *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
+            // needed??
+            //*(registers_0_addr + REG_DIGIRW_SEL) = 1;
 
-             // update CMD_STATUS
-             *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
-             // needed??
-             //*(registers_0_addr + REG_DIGIRW_SEL) = 1;
+            PWM_disable(&g_pwm, PWM_1);
 
-             PWM_disable(&g_pwm,PWM_1);
+            // return control to fiber and issue CMD_DONE
+            //*(registers_0_addr + REG_DIGIRW_SEL) = 0;
+            // update CMD_STATUS
+            *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
 
+            break;
 
-             // return control to fiber and issue CMD_DONE
-             //*(registers_0_addr + REG_DIGIRW_SEL) = 0;
-             // update CMD_STATUS
-             *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
+        case MEASURETHRESH:
 
-             break;
+            // update CMD_STATUS
+            *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
 
+            // initialize as in Python defaults. Used for testing.
+            chan_num = -1;
+            channel_mask[0] = 0xFFFFFFFF;
+            channel_mask[1] = 0xFFFFFFFF;
+            channel_mask[2] = 0xFFFFFFFF;
 
-         case MEASURETHRESH:
+            // retrieve the paramaters passed via BLOCK_WRITE
+            chan_num = dtcbuffer[0];                                  // -c
+            channel_mask[0] = (dtcbuffer[2] << 16) + dtcbuffer[1];     // -C
+            channel_mask[1] = (dtcbuffer[4] << 16) + dtcbuffer[3];     // -D
+            channel_mask[2] = (dtcbuffer[6] << 16) + dtcbuffer[5];     // -E
 
-             // update CMD_STATUS
-             *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
+            // new function to replace util.py/CHANNELMASK
+            if (chan_num >= 0)
+                mask_channels(chan_num);
 
-             // initialize as in Python defaults. Used for testing.
-             chan_num = -1;
-             channel_mask[0] = 0xFFFFFFFF;
-             channel_mask[1] = 0xFFFFFFFF;
-             channel_mask[2] = 0xFFFFFFFF;
+            // this returnc MAPPED_CHANNEL_MASK
+            get_mapped_channels();
 
-             // retrieve the paramaters passed via BLOCK_WRITE
-             chan_num  = dtcbuffer[0];                                  // -c
-             channel_mask[0] = (dtcbuffer[2]<<16)  +  dtcbuffer[1];     // -C
-             channel_mask[1] = (dtcbuffer[4]<<16)  +  dtcbuffer[3];     // -D
-             channel_mask[2] = (dtcbuffer[6]<<16)  +  dtcbuffer[5];     // -E
-
-             // new function to replace util.py/CHANNELMASK
-             if(chan_num >= 0)  mask_channels(chan_num);
-
-             // this returnc MAPPED_CHANNEL_MASK
-             get_mapped_channels();
-
-             // give TWI control to uProc before calling DIGI_READ/WRITE or ADC/READ_WRITE
-             *(registers_0_addr + REG_DIGIRW_SEL) = 1;
+            // give TWI control to uProc before calling DIGI_READ/WRITE or ADC/READ_WRITE
+            *(registers_0_addr + REG_DIGIRW_SEL) = 1;
 
             //enable pulser as readstrawcmd does
-             digi_write(DG_ADDR_ENABLE_PULSER,1,0);
+            digi_write(DG_ADDR_ENABLE_PULSER, 1, 0);
 
-             uint16_t threshold_array[288];
-             for (uint16_t i=0; i<288; i++) threshold_array[i] = 0xFFFF;
+            uint16_t threshold_array[288];
+            for (uint16_t i = 0; i < 288; i++)
+                threshold_array[i] = 0xFFFF;
 
-             for (uint8_t ihvcal=1; ihvcal<3; ihvcal++){
-                 for (uint8_t k=(48*(ihvcal-1));k<48*ihvcal;k++){
-                     uint8_t condition = 0;
-                     uint8_t straw_num = channel_map[k];
-                     if (ihvcal == 1)
-                         condition =((k<32 && ((0x1<<k) & mapped_channel_mask[0])) || (k>=32 && ((0x1<<(k-32)) & mapped_channel_mask[1])));
-                     else if (ihvcal == 2)
-                         condition =((k<64 && ((0x1<<(k-32)) & mapped_channel_mask[1])) || (k>=64 && ((0x1<<(k-64)) & mapped_channel_mask[2])));
+            for (uint8_t ihvcal = 1; ihvcal < 3; ihvcal++) {
+                for (uint8_t k = (48 * (ihvcal - 1)); k < 48 * ihvcal; k++) {
+                    uint8_t condition = 0;
+                    uint8_t straw_num = channel_map[k];
+                    if (ihvcal == 1)
+                        condition = ((k < 32
+                                && ((0x1 << k) & mapped_channel_mask[0]))
+                                || (k >= 32
+                                        && ((0x1 << (k - 32))
+                                                & mapped_channel_mask[1])));
+                    else if (ihvcal == 2)
+                        condition = ((k < 64
+                                && ((0x1 << (k - 32)) & mapped_channel_mask[1]))
+                                || (k >= 64
+                                        && ((0x1 << (k - 64))
+                                                & mapped_channel_mask[2])));
 
-                     if (condition){
-                         uint16_t gain_cal[3] = {0, default_gains_cal[straw_num], default_gains_cal[straw_num]};
-                         uint16_t gain_hv[3] = {default_gains_hv[straw_num], 0, default_gains_hv[straw_num]};
-                         //first zero cal, then hv, then both to default
+                    if (condition) {
+                        uint16_t gain_cal[3] = { 0,
+                                default_gains_cal[straw_num],
+                                default_gains_cal[straw_num] };
+                        uint16_t gain_hv[3] = { default_gains_hv[straw_num], 0,
+                                default_gains_hv[straw_num] };
+                        //first zero cal, then hv, then both to default
 
-                         digi_write(DG_ADDR_SELECTSMA, k%48, ihvcal);
-                         //select channel
-                         for (uint8_t i=0; i<3; i++){
-                             setPreampGain(straw_num, gain_cal[i]);
-                             setPreampGain(straw_num+96, gain_hv[i]);
-                             hwdelay(500000);//wait for 10ms gain to reach written value and for SMA to settle
+                        digi_write(DG_ADDR_SELECTSMA, k % 48, ihvcal);
+                        //select channel
+                        for (uint8_t i = 0; i < 3; i++) {
+                            setPreampGain(straw_num, gain_cal[i]);
+                            setPreampGain(straw_num + 96, gain_hv[i]);
+                            hwdelay(500000); //wait for 10ms gain to reach written value and for SMA to settle
 
-                             digi_write(DG_ADDR_SMARDREQ, 1, ihvcal);
-                             delayUs(5);//write READREQ to 1 and freeze SMA module
+                            digi_write(DG_ADDR_SMARDREQ, 1, ihvcal);
+                            delayUs(5); //write READREQ to 1 and freeze SMA module
 
-                             threshold_array[96*i+straw_num] = digi_read(DG_ADDR_SMADATA,ihvcal);
-                             digi_write(DG_ADDR_SMARDREQ, 0, ihvcal); //unfreeze SMA module
-                         }
-                     }
-                 }
-             }
-             // return TWI control to fiber
-             *(registers_0_addr + REG_DIGIRW_SEL) = 0;
+                            threshold_array[96 * i + straw_num] = digi_read(
+                                    DG_ADDR_SMADATA, ihvcal);
+                            digi_write(DG_ADDR_SMARDREQ, 0, ihvcal); //unfreeze SMA module
+                        }
+                    }
+                }
+            }
+            // return TWI control to fiber
+            *(registers_0_addr + REG_DIGIRW_SEL) = 0;
 
-             // write output for BLOCK_READ
-             *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
-             *(registers_1_addr + CRDCS_WRITE_TX) = 288;
-             *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
-             for (uint16_t i=0; i<288; i++) {
-                 *(registers_1_addr + CRDCS_WRITE_TX) =  threshold_array[i];
-             }
-             *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
+            // write output for BLOCK_READ
+            *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
+            *(registers_1_addr + CRDCS_WRITE_TX) = 288;
+            *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
+            for (uint16_t i = 0; i < 288; i++) {
+                *(registers_1_addr + CRDCS_WRITE_TX) = threshold_array[i];
+            }
+            *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
 
-             // update CMD_STATUS
-             *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
+            // update CMD_STATUS
+            *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
 
-             break;
+            break;
 
+            // read assorted diagnostic registers
+        case DIAGDATA:
+            // update CMD_STATUS
+            *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
 
-          // read assorted diagnostic registers
-          case DIAGDATA:
-                // update CMD_STATUS
-                *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
+            // header
+            *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
+            // payload word
+            *(registers_1_addr + CRDCS_WRITE_TX) = 9;
+            // CMD ID
+            *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
+            // payload of diagnostic data
+            *(registers_1_addr + CRDCS_WRITE_TX) = data_zero;
+            *(registers_1_addr + CRDCS_WRITE_TX) = cmd_rx_size; // buffer length
+            *(registers_1_addr + CRDCS_WRITE_TX) = cmd_fail;  // diagnostic word
+            *(registers_1_addr + CRDCS_WRITE_TX) = cmd_rx_cnt; // number of word written to TX_BUFFER
+            *(registers_1_addr + CRDCS_WRITE_TX) = data_to_write; // ie dtcbuffer[0]
+            *(registers_1_addr + CRDCS_WRITE_TX) = dtcbuffer[1];
+            *(registers_1_addr + CRDCS_WRITE_TX) = dtcbuffer[2];
+            *(registers_1_addr + CRDCS_WRITE_TX) = dtcPtr; // number of words in payload
+            *(registers_1_addr + CRDCS_WRITE_TX) = get_cmd_rx; // last read word
+            //trailer
+            *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
 
-                // header
-                *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
-                // payload word
-                *(registers_1_addr + CRDCS_WRITE_TX) = 9;
-                // CMD ID
-                *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
-                // payload of diagnostic data
-                *(registers_1_addr + CRDCS_WRITE_TX) = data_zero;
-                *(registers_1_addr + CRDCS_WRITE_TX) = cmd_rx_size; // buffer length
-                *(registers_1_addr + CRDCS_WRITE_TX) = cmd_fail;    // diagnostic word
-                *(registers_1_addr + CRDCS_WRITE_TX) = cmd_rx_cnt;  // number of word written to TX_BUFFER
-                *(registers_1_addr + CRDCS_WRITE_TX) = data_to_write; // ie dtcbuffer[0]
-                *(registers_1_addr + CRDCS_WRITE_TX) = dtcbuffer[1];
-                *(registers_1_addr + CRDCS_WRITE_TX) = dtcbuffer[2];
-                *(registers_1_addr + CRDCS_WRITE_TX) = dtcPtr;      // number of words in payload
-                *(registers_1_addr + CRDCS_WRITE_TX) = get_cmd_rx;  // last read word
-                //trailer
-                *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
+            // update CMD_STATUS
+            *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
+            break;
 
-                // update CMD_STATUS
-                *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
-                break;
-
-          default:
-                break;
+        default:
+            break;
         }
         delayUs(1);
 
@@ -1921,118 +1971,113 @@ int main() {
                     outBufSend(g_uart, outBuffer, bufcount);
 
 #ifdef DIGITEST
-                } else if (commandID == SETPREAMPGAIN){
-					uint16_t channel = readU16fromBytes(&buffer[4]);
-					uint16_t value = readU16fromBytes(&buffer[6]);
+                } else if (commandID == SETPREAMPGAIN) {
+                    uint16_t channel = readU16fromBytes(&buffer[4]);
+                    uint16_t value = readU16fromBytes(&buffer[6]);
 
-					setPreampGain(channel, value);
+                    setPreampGain(channel, value);
 
-					outBuffer[bufcount++] = SETPREAMPGAIN;
-					bufWrite(outBuffer, &bufcount, 4, 2);
-					bufWrite(outBuffer, &bufcount, channel, 2);
-					bufWrite(outBuffer, &bufcount, value, 2);
-					outBufSend(g_uart, outBuffer, bufcount);
+                    outBuffer[bufcount++] = SETPREAMPGAIN;
+                    bufWrite(outBuffer, &bufcount, 4, 2);
+                    bufWrite(outBuffer, &bufcount, channel, 2);
+                    bufWrite(outBuffer, &bufcount, value, 2);
+                    outBufSend(g_uart, outBuffer, bufcount);
 
-					// Set preamp threshold
-				}else if (commandID == SETPREAMPTHRESHOLD){
-					uint16_t channel = readU16fromBytes(&buffer[4]);
+                    // Set preamp threshold
+                } else if (commandID == SETPREAMPTHRESHOLD) {
+                    uint16_t channel = readU16fromBytes(&buffer[4]);
 
-					uint16_t value = readU16fromBytes(&buffer[6]);
+                    uint16_t value = readU16fromBytes(&buffer[6]);
 
-					setPreampThreshold(channel, value);
+                    setPreampThreshold(channel, value);
 
-					outBuffer[bufcount++] = SETPREAMPTHRESHOLD;
-					bufWrite(outBuffer, &bufcount, 4, 2);
-					bufWrite(outBuffer, &bufcount, channel, 2);
-					bufWrite(outBuffer, &bufcount, value, 2);
-					outBufSend(g_uart, outBuffer, bufcount);
+                    outBuffer[bufcount++] = SETPREAMPTHRESHOLD;
+                    bufWrite(outBuffer, &bufcount, 4, 2);
+                    bufWrite(outBuffer, &bufcount, channel, 2);
+                    bufWrite(outBuffer, &bufcount, value, 2);
+                    outBufSend(g_uart, outBuffer, bufcount);
 
+                } else if (commandID == SETCALDAC) {
 
-				 }else if (commandID == SETCALDAC){
+                    uint8_t chan_mask = (uint8_t) buffer[4];
+                    uint16_t value = readU16fromBytes(&buffer[5]);
 
-				 	uint8_t chan_mask = (uint8_t) buffer[4];
-				 	uint16_t value = readU16fromBytes(&buffer[5]);
+                    for (uint8_t i = 0; i < 8; i++) {
+                        if (chan_mask & (0x1 << i)) {
+                            if (i < 4)
+                                LTC2634_write(&caldac0, i, default_caldac[i]);
+                            else
+                                LTC2634_write(&caldac1, i - 4,
+                                        default_caldac[i]);
+                        }
+                    }
 
-				 	for (uint8_t i=0;i<8;i++){
-				 		if (chan_mask & (0x1<<i)){
-				 			if (i<4)
-				 				LTC2634_write(&caldac0,i,default_caldac[i]);
-				 			else
-				 				LTC2634_write(&caldac1,i-4,default_caldac[i]);
-				 		}
-				 	}
+                    outBuffer[bufcount++] = SETCALDAC;
+                    bufWrite(outBuffer, &bufcount, 3, 2);
+                    outBuffer[bufcount++] = chan_mask;
+                    bufWrite(outBuffer, &bufcount, value, 2);
+                    outBufSend(g_uart, outBuffer, bufcount);
 
+                    //				}else if (commandID == SENDONECALPULSE){
+                    //					uint8_t chan_mask = (uint8_t) buffer[4];
+                    //
+                    //					for (int i=0;i<8;i++){
+                    //						if ((0x1<<i) & chan_mask){
+                    //							MCP_pinWrite(&preampMCP[MCPCALIB],calpulse_chanmap[i],1);
+                    //						}
+                    //					}
+                    //
+                    //					if (togglecal)
+                    //						GPIO_write(CAL_CALEVEN,1);
+                    //					else
+                    //						GPIO_write(CAL_CALEVEN,0);
+                    //
+                    //					togglecal = !togglecal;
+                    //
+                    //					outBuffer[bufcount++] = SENDONECALPULSE;
+                    //					outBuffer[bufcount++] = 1;
+                    //					outBuffer[bufcount++] = chan_mask;
+                    //
+                    //					UART_send(&g_uart, outBuffer ,bufcount );
+                    //
 
-				 	outBuffer[bufcount++] = SETCALDAC;
-				 	bufWrite(outBuffer, &bufcount, 3, 2);
-				 	outBuffer[bufcount++] = chan_mask;
-				 	bufWrite(outBuffer, &bufcount, value, 2);
-				 	outBufSend(g_uart, outBuffer, bufcount);
+                } else if (commandID == SETPULSERON) {
 
+                    for (uint8_t i = 0; i < 16; i++) {
+                        MCP_pinWrite(&preampMCP[MCPCALIB], i + 1, 0);
+                    }
+                    uint8_t chan_mask = (uint8_t) buffer[4];
+                    pulserOdd = (uint8_t) buffer[5];
+                    for (uint8_t i = 0; i < 8; i++) {
+                        if ((0x1 << i) & chan_mask) {
+                            MCP_pinWrite(&preampMCP[MCPCALIB],
+                                    calpulse_chanmap[i], 1);
+                        }
+                    }
+                    dutyCycle = readU16fromBytes(&buffer[6]);
+                    pulserDelay = readU32fromBytes(&buffer[8]);
 
-					//				}else if (commandID == SENDONECALPULSE){
-					//					uint8_t chan_mask = (uint8_t) buffer[4];
-					//
-					//					for (int i=0;i<8;i++){
-					//						if ((0x1<<i) & chan_mask){
-					//							MCP_pinWrite(&preampMCP[MCPCALIB],calpulse_chanmap[i],1);
-					//						}
-					//					}
-					//
-					//					if (togglecal)
-					//						GPIO_write(CAL_CALEVEN,1);
-					//					else
-					//						GPIO_write(CAL_CALEVEN,0);
-					//
-					//					togglecal = !togglecal;
-					//
-					//					outBuffer[bufcount++] = SENDONECALPULSE;
-					//					outBuffer[bufcount++] = 1;
-					//					outBuffer[bufcount++] = chan_mask;
-					//
-					//					UART_send(&g_uart, outBuffer ,bufcount );
-					//
+                    //granularity is clock period=25ns -- period is (gr+1)*1000=50us
+                    //PWM_PERIOD = PWM_GRANULARITY * (period + 1) = 25 *1000 = 25us
+                    PWM_init(&g_pwm, COREPWM_BASE_ADDR, 1, pulserDelay);
+                    PWM_set_duty_cycle(&g_pwm, PWM_1, dutyCycle);//duty cycle is 4 x 25 = 100ns
 
-				}else if (commandID == SETPULSERON){
+                    PWM_enable(&g_pwm, PWM_1);
 
+                    outBuffer[bufcount++] = SETPULSERON;
+                    bufWrite(outBuffer, &bufcount, 8, 2);
+                    outBuffer[bufcount++] = chan_mask;
+                    outBuffer[bufcount++] = pulserOdd;
+                    bufWrite(outBuffer, &bufcount, dutyCycle, 2);
+                    bufWrite(outBuffer, &bufcount, pulserDelay, 4);
+                    outBufSend(g_uart, outBuffer, bufcount);
 
-					for (uint8_t i = 0; i < 16; i++){
-						MCP_pinWrite(&preampMCP[MCPCALIB],i+1,0);
-					}
-					uint8_t chan_mask = (uint8_t) buffer[4];
-					pulserOdd = (uint8_t) buffer[5];
-					for (uint8_t i=0;i<8;i++){
-						if ((0x1<<i) & chan_mask){
-							MCP_pinWrite(&preampMCP[MCPCALIB],calpulse_chanmap[i],1);
-						}
-					}
-					dutyCycle=readU16fromBytes(&buffer[6]);
-					pulserDelay=readU32fromBytes(&buffer[8]);
+                } else if (commandID == SETPULSEROFF) {
 
-					//granularity is clock period=25ns -- period is (gr+1)*1000=50us
-					//PWM_PERIOD = PWM_GRANULARITY * (period + 1) = 25 *1000 = 25us
-					PWM_init( &g_pwm, COREPWM_BASE_ADDR, 1, pulserDelay );
-					PWM_set_duty_cycle( &g_pwm, PWM_1,dutyCycle );//duty cycle is 4 x 25 = 100ns
-
-					PWM_enable(&g_pwm,PWM_1);
-
-
-					outBuffer[bufcount++] = SETPULSERON;
-					bufWrite(outBuffer, &bufcount, 8, 2);
-					outBuffer[bufcount++] = chan_mask;
-					outBuffer[bufcount++] = pulserOdd;
-					bufWrite(outBuffer, &bufcount, dutyCycle, 2);
-					bufWrite(outBuffer, &bufcount, pulserDelay, 4);
-					outBufSend(g_uart, outBuffer, bufcount);
-
-
-
-				}else if (commandID == SETPULSEROFF){
-
-					PWM_disable(&g_pwm,PWM_1);
-					outBuffer[bufcount++] = SETPULSEROFF;
-					bufWrite(outBuffer, &bufcount, 0, 2);
-					outBufSend(g_uart, outBuffer, bufcount);
+                    PWM_disable(&g_pwm, PWM_1);
+                    outBuffer[bufcount++] = SETPULSEROFF;
+                    bufWrite(outBuffer, &bufcount, 0, 2);
+                    outBufSend(g_uart, outBuffer, bufcount);
 
 //				}else if (commandID == WHOAREYOU){
 //
@@ -2191,7 +2236,6 @@ int main() {
                     }
                     outBufSend(g_uart, outBuffer, bufcount);
 
-
                 } else if (commandID == READBMES) {
                     /*
                      //Old sensor codes with BME 280
@@ -2326,7 +2370,6 @@ int main() {
                     outBuffer[bufcount++] = DIGIRW;
                     bufWrite(outBuffer, &bufcount, 7, 2);
 
-
                     if (thishvcal < 3) {
                         if (rw == 0) {					//read
                             data = digi_read(address, thishvcal);
@@ -2356,7 +2399,6 @@ int main() {
                     bufWrite(outBuffer, &bufcount, data, 4);
                     outBufSend(g_uart, outBuffer, bufcount);
 
-
 #ifndef	DTCDDRTEST  // Monica added for allowing all other DDR test functions
 
                 } else if (commandID == GETDEVICEID) {
@@ -2374,31 +2416,34 @@ int main() {
                         outBuffer[bufcount++] = dinfo_buffer[i];
                     outBufSend(g_uart, outBuffer, bufcount);
 
-                }else if (commandID == GETILP){
-                                  outBuffer[bufcount++] = GETILP;
-                                  bufWrite(outBuffer, &bufcount, 7, 2);
+                } else if (commandID == GETILP) {
+                    outBuffer[bufcount++] = GETILP;
+                    bufWrite(outBuffer, &bufcount, 7, 2);
 
+                    ilp22qs_init();
+                    uint8_t ret = ilps22qs_id_get();
+                    bufWrite(outBuffer, &bufcount, ret, 1);
+                    ilps22qs_all_sources_t all_sources;
+                    ilps22qs_all_sources_get(&all_sources);
+                    ilps22qs_md_t md;
+                    md.odr = ILPS22QS_4Hz;
+                    md.avg = ILPS22QS_16_AVG;
+                    md.lpf = ILPS22QS_LPF_ODR_DIV_4;
+                    md.fs = ILPS22QS_4060hPa;
+                    ilps22qs_data_t data;
+                    ilps22qs_data_get(&md, &data);
+                    bufWrite(outBuffer, &bufcount, data.heat.raw, 2);
+                    bufWrite(outBuffer, &bufcount, data.pressure.raw, 4);
 
-                                  ilp22qs_init();
-                                  uint8_t ret = ilps22qs_id_get();
-                                  bufWrite(outBuffer, &bufcount, ret, 1);
-                                  ilps22qs_all_sources_t all_sources;
-                                  ilps22qs_all_sources_get(&all_sources);
-                                  ilps22qs_md_t md;
-                                   md.odr = ILPS22QS_4Hz;
-                                   md.avg = ILPS22QS_16_AVG;
-                                   md.lpf = ILPS22QS_LPF_ODR_DIV_4;
-                                   md.fs = ILPS22QS_4060hPa;
-                                   ilps22qs_data_t data;
-                                   ilps22qs_data_get( &md, &data);
-                                   bufWrite(outBuffer, &bufcount, data.heat.raw, 2);
-                                   bufWrite(outBuffer, &bufcount, data.pressure.raw, 4);
+                    outBufSend(g_uart, outBuffer, bufcount);
 
-
-
-                                  outBufSend(g_uart, outBuffer, bufcount);
-
-
+                }else if (commandID == GETGITREV){
+                    outBuffer[bufcount++] = GETGITREV;
+                    bufWrite(outBuffer, &bufcount, sizeof(LAST_GIT_REV) , 2);
+                    for (uint8_t i = 0; i < sizeof(LAST_GIT_REV)-1; i++){
+                        outBuffer[bufcount++] = LAST_GIT_REV[i];
+                    }
+                    outBufSend(g_uart, outBuffer, bufcount);
 
                 } else if (commandID == SETFUSEON) {
                     uint8_t preamp_number = (uint8_t) buffer[4];
@@ -2461,8 +2506,8 @@ int main() {
 
 //***********************************begin of DRAC Test commands****************************************************************************************
 #ifdef  DRACTEST
-                }else if (commandID == PRBSET){
-                    uint8_t prbs_en   = (uint8_t) buffer[4];
+                } else if (commandID == PRBSET) {
+                    uint8_t prbs_en = (uint8_t) buffer[4];
                     *(registers_0_addr + REG_ROC_PRBS_EN) = prbs_en; // enable PRBS data to Core_PCS
 
                     outBuffer[bufcount++] = PRBSET;
@@ -2470,40 +2515,43 @@ int main() {
                     bufWrite(outBuffer, &bufcount, prbs_en, 1);
                     outBufSend(g_uart, outBuffer, bufcount);
 
-                }else if (commandID == PRBSSTATUS){
+                } else if (commandID == PRBSSTATUS) {
                     outBuffer[bufcount++] = PRBSSTATUS;
                     bufWrite(outBuffer, &bufcount, 6, 2);
-                    bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_PRBS_LOCK), 1);
-                    bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_PRBS_ON), 1);
-                    bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_PRBS_ERRORCNT), 4);
+                    bufWrite(outBuffer, &bufcount,
+                            *(registers_0_addr + REG_ROC_PRBS_LOCK), 1);
+                    bufWrite(outBuffer, &bufcount,
+                            *(registers_0_addr + REG_ROC_PRBS_ON), 1);
+                    bufWrite(outBuffer, &bufcount,
+                            *(registers_0_addr + REG_ROC_PRBS_ERRORCNT), 4);
                     outBufSend(g_uart, outBuffer, bufcount);
 
-                }else if (commandID == PRBSSTART){
+                } else if (commandID == PRBSSTART) {
                     *(registers_0_addr + REG_ROC_PRBS_EN) = 1; // enable PRBS data to Core_PCS
                     outBuffer[bufcount++] = PRBSSTART;
                     bufWrite(outBuffer, &bufcount, 0, 2);
                     outBufSend(g_uart, outBuffer, bufcount);
 
-                }else if (commandID == PRBSSTOP){
+                } else if (commandID == PRBSSTOP) {
                     *(registers_0_addr + REG_ROC_PRBS_EN) = 0; // disable PRBS data to Core_PCS
                     outBuffer[bufcount++] = PRBSSTOP;
                     bufWrite(outBuffer, &bufcount, 0, 2);
                     outBufSend(g_uart, outBuffer, bufcount);
 
-                }else if (commandID == PRBSERRORIN){
+                } else if (commandID == PRBSERRORIN) {
                     *(registers_0_addr + REG_ROC_PRBS_ERRORIN) = 1; // enable error as 0xEFFE in PRBS generator
                     outBuffer[bufcount++] = PRBSERRORIN;
                     bufWrite(outBuffer, &bufcount, 0, 2);
                     outBufSend(g_uart, outBuffer, bufcount);
 
-                }else if (commandID == PRBSERRORCLR){
+                } else if (commandID == PRBSERRORCLR) {
                     *(registers_0_addr + REG_ROC_PRBS_ERRORCLR) = 1; // enable PRBS generator and checker logic
                     outBuffer[bufcount++] = PRBSERRORCLR;
                     bufWrite(outBuffer, &bufcount, 0, 2);
                     outBufSend(g_uart, outBuffer, bufcount);
 
-                }else if (commandID == DDRTESTEN){
-                    uint8_t ddr_test_en   = (uint8_t) buffer[4];
+                } else if (commandID == DDRTESTEN) {
+                    uint8_t ddr_test_en = (uint8_t) buffer[4];
                     *(registers_0_addr + REG_ROC_DDRTEST_EN) = ddr_test_en; // enable TEST DATA to DDR
 
                     outBuffer[bufcount++] = DDRTESTEN;
@@ -2511,7 +2559,7 @@ int main() {
                     bufWrite(outBuffer, &bufcount, ddr_test_en, 1);
                     outBufSend(g_uart, outBuffer, bufcount);
 
-                }else if (commandID == DDRTESTSETUP){
+                } else if (commandID == DDRTESTSETUP) {
                     uint32_t ddr_blockno = readU32fromBytes(&buffer[4]); //maximum is 256
 
                     // PATTERN_EN must be set BEFORE page_no to prevent write to DDR3 from standard digififo
@@ -2522,7 +2570,7 @@ int main() {
                     bufWrite(outBuffer, &bufcount, ddr_blockno, 4);
                     outBufSend(g_uart, outBuffer, bufcount);
 
-                }else if (commandID == DDRTESTWRITE){
+                } else if (commandID == DDRTESTWRITE) {
 
                     *(registers_0_addr + REG_ROC_DDRTEST_EN) = 1; // enable TEST DATA to DDR
                     delayUs(100);
@@ -2537,10 +2585,11 @@ int main() {
                     outBuffer[bufcount++] = DDRTESTWRITE;
                     bufWrite(outBuffer, &bufcount, 4, 2);
 //                    bufWrite(outBuffer, &bufcount, ddr_blockno, 4);
-                    bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDRTEST_BLKNO), 4);
+                    bufWrite(outBuffer, &bufcount,
+                            *(registers_0_addr + REG_ROC_DDRTEST_BLKNO), 4);
                     outBufSend(g_uart, outBuffer, bufcount);
 
-                }else if (commandID == DDRTESTREAD){
+                } else if (commandID == DDRTESTREAD) {
 
                     *(registers_0_addr + REG_ROC_DDRTEST_EN) = 1; // enable TEST DATA from DDR
                     delayUs(100);
@@ -2552,16 +2601,21 @@ int main() {
 
                     outBuffer[bufcount++] = DDRTESTREAD;
                     bufWrite(outBuffer, &bufcount, 4, 2);
-                    bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDRTEST_BLKNO), 4);
+                    bufWrite(outBuffer, &bufcount,
+                            *(registers_0_addr + REG_ROC_DDRTEST_BLKNO), 4);
                     outBufSend(g_uart, outBuffer, bufcount);
 
-                }else if (commandID == DDRTESTSTATUS){
+                } else if (commandID == DDRTESTSTATUS) {
                     outBuffer[bufcount++] = DDRTESTSTATUS;
                     bufWrite(outBuffer, &bufcount, 10, 2);
-                    bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDR_CTRLREADY), 1);
-                    bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDRTEST_STATUS), 1);
-                    bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDRTEST_ERRCNT), 4);
-                    bufWrite(outBuffer, &bufcount, *(registers_0_addr + REG_ROC_DDRTEST_ERRLOC), 4);
+                    bufWrite(outBuffer, &bufcount,
+                            *(registers_0_addr + REG_ROC_DDR_CTRLREADY), 1);
+                    bufWrite(outBuffer, &bufcount,
+                            *(registers_0_addr + REG_ROC_DDRTEST_STATUS), 1);
+                    bufWrite(outBuffer, &bufcount,
+                            *(registers_0_addr + REG_ROC_DDRTEST_ERRCNT), 4);
+                    bufWrite(outBuffer, &bufcount,
+                            *(registers_0_addr + REG_ROC_DDRTEST_ERRLOC), 4);
                     outBufSend(g_uart, outBuffer, bufcount);
 
 #endif
@@ -3522,9 +3576,7 @@ int main() {
 #endif
 
 #ifdef IAP
-                }else if (commandID ==  IAPROC){
-
-
+                } else if (commandID == IAPROC) {
 
                     clear_iap_data_buffer();
 
@@ -3535,7 +3587,7 @@ int main() {
                     bufWrite(outBuffer, &bufcount, 0, 2);
                     outBufSend(g_uart, outBuffer, bufcount);
 
-                    switch (action){
+                    switch (action) {
                     case 1:
                         execute_bitstream_authenticate();
                         break;
@@ -3543,7 +3595,8 @@ int main() {
                         execute_iap_image_authenticate();
                         break;
                     case 3:
-                        UART_polled_tx_string(&g_uart,(const uint8_t*)"Erase the PolarFire device using the FlashPro ERASE action.\n\rNext Power cycle the board to initiate AutoProgramming on Blank device.\r\n");
+                        UART_polled_tx_string(&g_uart,
+                                (const uint8_t*) "Erase the PolarFire device using the FlashPro ERASE action.\n\rNext Power cycle the board to initiate AutoProgramming on Blank device.\r\n");
 
                         break;
                     case 4:
@@ -3558,7 +3611,6 @@ int main() {
 //                        display_user_options();
                         break;
                     }
-
 
 #endif
 
@@ -3600,7 +3652,7 @@ int main() {
 
 //***********************************begin of control_digi commands*******************************************************************************
 
-                }else if (commandID == ADCRWCMDID){
+                } else if (commandID == ADCRWCMDID) {
                     // adc read/write
                     uint8_t adc_num = (uint8_t) buffer[4];
                     uint8_t rw = (uint8_t) buffer[5];
@@ -3610,8 +3662,8 @@ int main() {
                     outBuffer[bufcount++] = ADCRWCMDID;
                     bufWrite(outBuffer, &bufcount, 6, 2);
 
-                    if (rw == 1){
-                        uint8_t result = adc_read(address,adc_num);
+                    if (rw == 1) {
+                        uint8_t result = adc_read(address, adc_num);
                         //                      sprintf(outBuffer,"Read adc %d address %02x: %02x\n",adc_num,address,result);
                         //                      UART_polled_tx_string( &g_uart, outBuffer );
 
@@ -3621,8 +3673,8 @@ int main() {
                         outBuffer[bufcount++] = result;
                         outBuffer[bufcount++] = 0;
                         outBufSend(g_uart, outBuffer, bufcount);
-                    }else{
-                        adc_write(address,(uint8_t) data,(0x1<<adc_num));
+                    } else {
+                        adc_write(address, (uint8_t) data, (0x1 << adc_num));
                         //                      sprintf(outBuffer,"Wrote adc %d address %02x: %02x\n",adc_num,address,data);
                         //                      UART_polled_tx_string( &g_uart, outBuffer );
 
@@ -3632,7 +3684,6 @@ int main() {
                         bufWrite(outBuffer, &bufcount, data, 2);
                         outBufSend(g_uart, outBuffer, bufcount);
                     }
-
 
 //				}else if (commandID == BITSLIPCMDID){
 //
@@ -3687,304 +3738,326 @@ int main() {
 
 #ifdef DIGITEST
 
-				}else if (commandID == AUTOBITSLIPCMDID){
-				    //reset the ADCs first, at this point, clock better be stable
-				    //digiRW(1,4+i,0x08,3)
-				    for (int i=0;i<12;i++){
-				        uint16_t adc_mask = (0x1 << i);
-				        adc_write(0x08, 3, adc_mask);
-				    }
+                } else if (commandID == AUTOBITSLIPCMDID) {
+                    //reset the ADCs first, at this point, clock better be stable
+                    //digiRW(1,4+i,0x08,3)
+                    for (int i = 0; i < 12; i++) {
+                        uint16_t adc_mask = (0x1 << i);
+                        adc_write(0x08, 3, adc_mask);
+                    }
 
-                    for (int i=0;i<12;i++){
+                    for (int i = 0; i < 12; i++) {
                         uint16_t adc_mask = (0x1 << i);
                         adc_write(0x08, 0, adc_mask);
                     }
 
-					autobitslip();
+                    autobitslip();
 
-				}else if (commandID == READRATESCMDID){
-					uint16_t num_lookback = readU16fromBytes(&buffer[4]);
-					uint16_t num_samples = readU16fromBytes(&buffer[6]);
-					channel_mask[0] = readU32fromBytes(&buffer[8]);
-					channel_mask[1] = readU32fromBytes(&buffer[12]);
-					channel_mask[2] = readU32fromBytes(&buffer[16]);
+                } else if (commandID == READRATESCMDID) {
+                    uint16_t num_lookback = readU16fromBytes(&buffer[4]);
+                    uint16_t num_samples = readU16fromBytes(&buffer[6]);
+                    channel_mask[0] = readU32fromBytes(&buffer[8]);
+                    channel_mask[1] = readU32fromBytes(&buffer[12]);
+                    channel_mask[2] = readU32fromBytes(&buffer[16]);
 
-					outBuffer[bufcount++] = READRATESCMDID;
-					bufcount_place_holder = bufcount;
-					bufWrite(outBuffer, &bufcount, 0, 2);
+                    outBuffer[bufcount++] = READRATESCMDID;
+                    bufcount_place_holder = bufcount;
+                    bufWrite(outBuffer, &bufcount, 0, 2);
 
-					get_rates(num_lookback,num_samples,255,NULL);
+                    get_rates(num_lookback, num_samples, 255, NULL);
 
-					bufWrite(outBuffer, &bufcount_place_holder, (bufcount-3), 2);
-					outBufSend(g_uart, outBuffer, bufcount);
+                    bufWrite(outBuffer, &bufcount_place_holder, (bufcount - 3),
+                            2);
+                    outBufSend(g_uart, outBuffer, bufcount);
 
-				} else if (commandID == READDATACMDID){
-					*(registers_0_addr + 0xEE) = 0x1;
-					delayUs(1);
-					*(registers_0_addr + 0xEE) = 0x0;
+                } else if (commandID == READDATACMDID) {
+                    *(registers_0_addr + 0xEE) = 0x1;
+                    delayUs(1);
+                    *(registers_0_addr + 0xEE) = 0x0;
 
-					uint16_t adc_mode = (uint16_t) ((uint8_t) buffer[4]);
-					uint16_t tdc_mode = (uint16_t) ((uint8_t) buffer[5]);
-					uint16_t num_lookback = readU16fromBytes(&buffer[6]);
-					uint16_t num_samples = readU16fromBytes(&buffer[8]);
-					uint32_t num_triggers = readU32fromBytes(&buffer[10]);
-					channel_mask[0] = readU32fromBytes(&buffer[14]);
-					channel_mask[1] = readU32fromBytes(&buffer[18]);
-					channel_mask[2] = readU32fromBytes(&buffer[22]);
-					uint8_t clock = (uint8_t) buffer[26];  // ???? hard-coded in python
-					uint8_t enable_pulser = (uint8_t) buffer[27];
-					uint16_t max_total_delay = readU16fromBytes(&buffer[28]);
-					//uint8_t mode = buffer[30];
-					uint8_t mode = 0;
-					uint8_t marker_clock = buffer[30];
+                    uint16_t adc_mode = (uint16_t) ((uint8_t) buffer[4]);
+                    uint16_t tdc_mode = (uint16_t) ((uint8_t) buffer[5]);
+                    uint16_t num_lookback = readU16fromBytes(&buffer[6]);
+                    uint16_t num_samples = readU16fromBytes(&buffer[8]);
+                    uint32_t num_triggers = readU32fromBytes(&buffer[10]);
+                    channel_mask[0] = readU32fromBytes(&buffer[14]);
+                    channel_mask[1] = readU32fromBytes(&buffer[18]);
+                    channel_mask[2] = readU32fromBytes(&buffer[22]);
+                    uint8_t clock = (uint8_t) buffer[26]; // ???? hard-coded in python
+                    uint8_t enable_pulser = (uint8_t) buffer[27];
+                    uint16_t max_total_delay = readU16fromBytes(&buffer[28]);
+                    //uint8_t mode = buffer[30];
+                    uint8_t mode = 0;
+                    uint8_t marker_clock = buffer[30];
 
-					if (marker_clock & 0x1)
-					  *(registers_0_addr + REG_ROC_ENABLE_FIBER_CLOCK) = 1;
-					else
-					  *(registers_0_addr + REG_ROC_ENABLE_FIBER_CLOCK) = 0;
+                    if (marker_clock & 0x1)
+                        *(registers_0_addr + REG_ROC_ENABLE_FIBER_CLOCK) = 1;
+                    else
+                        *(registers_0_addr + REG_ROC_ENABLE_FIBER_CLOCK) = 0;
 
-					if (marker_clock & 0x2)
-					  *(registers_0_addr + REG_ROC_ENABLE_FIBER_MARKER) = 1;
-					else
-					  *(registers_0_addr + REG_ROC_ENABLE_FIBER_MARKER) = 0;
+                    if (marker_clock & 0x2)
+                        *(registers_0_addr + REG_ROC_ENABLE_FIBER_MARKER) = 1;
+                    else
+                        *(registers_0_addr + REG_ROC_ENABLE_FIBER_MARKER) = 0;
 
+                    digi_write(DG_ADDR_ENABLE_PULSER, enable_pulser, 0);
+                    if ((mode & 0x1) == 0x0) {
+                        get_mapped_channels();
+                        uint32_t used_adcs = 0x0;
+                        for (int i = 0; i < 12; i++) {
+                            uint32_t test_mask = (0xFF << (8 * (i % 4)));
+                            if (mapped_channel_mask[i / 4] & test_mask)
+                                used_adcs |= (0x1 << i);
+                        }
+                        //used_adcs = 0x800;
+                        for (uint8_t i = 0; i < 12; i++) {
+                            if ((0x1 << i) & ENABLED_ADCS) {
+                                if (clock < 99) {
+                                    //if ((0x1<<i) & used_adcs)
+                                    adc_write(ADC_ADDR_PHASE, clock,
+                                            (0x1 << i));
+                                    adc_write(ADC_ADDR_TESTIO, adc_mode,
+                                            (0x1 << i));
+                                } else {
+                                    adc_write(ADC_ADDR_PHASE, adc_phases[i],
+                                            (0x1 << i));
+                                    adc_write(ADC_ADDR_TESTIO, adc_mode,
+                                            (0x1 << i));
+                                }
+                                //uint8_t readbackphase = adc_read(ADC_ADDR_PHASE,i);
+                                //uint8_t readbackphase2 = adc_read(ADC_ADDR_PHASE,i);
+                            }
 
-					digi_write(DG_ADDR_ENABLE_PULSER,enable_pulser,0);
-					if ((mode & 0x1) == 0x0){
-						get_mapped_channels();
-						uint32_t used_adcs = 0x0;
-						for (int i=0;i<12;i++){
-							uint32_t test_mask = (0xFF<<(8*(i%4)));
-							if (mapped_channel_mask[i/4] & test_mask)
-								used_adcs |= (0x1<<i);
-						}
-						//used_adcs = 0x800;
-						for (uint8_t i=0;i<12;i++){
-							if ((0x1<<i) & ENABLED_ADCS){
-								if (clock < 99){
-									//if ((0x1<<i) & used_adcs)
-									adc_write(ADC_ADDR_PHASE,clock,(0x1<<i));
-									adc_write(ADC_ADDR_TESTIO,adc_mode,(0x1<<i));
-								}else{
-									adc_write(ADC_ADDR_PHASE,adc_phases[i],(0x1<<i));
-									adc_write(ADC_ADDR_TESTIO,adc_mode,(0x1<<i));
-								}
-								//uint8_t readbackphase = adc_read(ADC_ADDR_PHASE,i);
-								//uint8_t readbackphase2 = adc_read(ADC_ADDR_PHASE,i);
-							}
+                        }
+                        //adc_write(ADC_ADDR_TESTIO,2,(0x1<<10));
+                        //adc_write(ADC_ADDR_TESTIO,9,(0x1<<11));
+                        //uint8_t phase[12];
+                        //phase[0] = adc_read(ADC_ADDR_PHASE,0);
+                        //phase[1] = adc_read(ADC_ADDR_PHASE,1);
+                        //phase[2] = adc_read(ADC_ADDR_PHASE,2);
+                        //phase[3] = adc_read(ADC_ADDR_PHASE,3);
+                        //phase[4] = adc_read(ADC_ADDR_PHASE,4);
+                        //phase[5] = adc_read(ADC_ADDR_PHASE,5);
+                        //phase[6] = adc_read(ADC_ADDR_PHASE,6);
+                        //phase[7] = adc_read(ADC_ADDR_PHASE,7);
+                        //phase[8] = adc_read(ADC_ADDR_PHASE,8);
+                        //phase[9] = adc_read(ADC_ADDR_PHASE,9);
+                        //phase[10] = adc_read(ADC_ADDR_PHASE,10);
+                        //phase[11] = adc_read(ADC_ADDR_PHASE,11);
 
-						}
-						//adc_write(ADC_ADDR_TESTIO,2,(0x1<<10));
-						//adc_write(ADC_ADDR_TESTIO,9,(0x1<<11));
-						//uint8_t phase[12];
-						//phase[0] = adc_read(ADC_ADDR_PHASE,0);
-						//phase[1] = adc_read(ADC_ADDR_PHASE,1);
-						//phase[2] = adc_read(ADC_ADDR_PHASE,2);
-						//phase[3] = adc_read(ADC_ADDR_PHASE,3);
-						//phase[4] = adc_read(ADC_ADDR_PHASE,4);
-						//phase[5] = adc_read(ADC_ADDR_PHASE,5);
-						//phase[6] = adc_read(ADC_ADDR_PHASE,6);
-						//phase[7] = adc_read(ADC_ADDR_PHASE,7);
-						//phase[8] = adc_read(ADC_ADDR_PHASE,8);
-						//phase[9] = adc_read(ADC_ADDR_PHASE,9);
-						//phase[10] = adc_read(ADC_ADDR_PHASE,10);
-						//phase[11] = adc_read(ADC_ADDR_PHASE,11);
+                        hvcal = 1;
+                        get_mapped_channels();
 
-						hvcal = 1;
-						get_mapped_channels();
+                        // DISABLE CALIBRATION BEFORE ANY CHANGES TO SETTINGS
+                        digi_write(0x0F, 0, 0); // disable calibration
 
-						// DISABLE CALIBRATION BEFORE ANY CHANGES TO SETTINGS
-						digi_write(0x0F,0,0); // disable calibration
+                        digi_write(DG_ADDR_SAMPLE, num_samples, 0);
+                        digi_write(DG_ADDR_LOOKBACK, num_lookback, 0);
+                        digi_write(DG_ADDR_MASK1,
+                                (uint16_t) (mapped_channel_mask[0] & 0xFFFF),
+                                1);
+                        digi_write(DG_ADDR_MASK2,
+                                (uint16_t) ((mapped_channel_mask[0] & 0xFFFF0000)
+                                        >> 16), 1);
+                        digi_write(DG_ADDR_MASK3,
+                                (uint16_t) (mapped_channel_mask[1] & 0xFFFF),
+                                1);
+                        digi_write(DG_ADDR_MASK1,
+                                (uint16_t) ((mapped_channel_mask[1] & 0xFFFF0000)
+                                        >> 16), 2);
+                        digi_write(DG_ADDR_MASK2,
+                                (uint16_t) (mapped_channel_mask[2] & 0xFFFF),
+                                2);
+                        digi_write(DG_ADDR_MASK3,
+                                (uint16_t) ((mapped_channel_mask[2] & 0xFFFF0000)
+                                        >> 16), 2);
+                        digi_write(DG_ADDR_TRIGGER_MODE, tdc_mode, 0);
+                        digi_write(DG_ADDR_ENABLE_PULSER, enable_pulser, 0);
 
-						digi_write(DG_ADDR_SAMPLE,num_samples,0);
-						digi_write(DG_ADDR_LOOKBACK,num_lookback,0);
-						digi_write(DG_ADDR_MASK1,(uint16_t) (mapped_channel_mask[0] & 0xFFFF), 1);
-						digi_write(DG_ADDR_MASK2,(uint16_t) ((mapped_channel_mask[0] & 0xFFFF0000)>>16), 1);
-						digi_write(DG_ADDR_MASK3,(uint16_t) (mapped_channel_mask[1] & 0xFFFF), 1);
-						digi_write(DG_ADDR_MASK1,(uint16_t) ((mapped_channel_mask[1] & 0xFFFF0000)>>16), 2);
-						digi_write(DG_ADDR_MASK2,(uint16_t) (mapped_channel_mask[2] & 0xFFFF), 2);
-						digi_write(DG_ADDR_MASK3,(uint16_t) ((mapped_channel_mask[2] & 0xFFFF0000)>>16), 2);
-						digi_write(DG_ADDR_TRIGGER_MODE,tdc_mode,0);
-						digi_write(DG_ADDR_ENABLE_PULSER,enable_pulser,0);
+                        *(registers_0_addr + REG_ROC_EWW_PULSER) = 0;
+                        //*(registers_0_addr + REG_ROC_EWM_T) = max_total_delay;
+                        //*(registers_0_addr + REG_ROC_EWM_T) = 0x0FFF;
 
-						*(registers_0_addr + REG_ROC_EWW_PULSER) = 0;
-						//*(registers_0_addr + REG_ROC_EWM_T) = max_total_delay;
-						//*(registers_0_addr + REG_ROC_EWM_T) = 0x0FFF;
+                        //					max_total_delay = 1;
 
-	//					max_total_delay = 1;
+                        *(registers_0_addr + REG_ROC_FIFO_HOWMANY) =
+                                num_samples;
 
-						*(registers_0_addr + REG_ROC_FIFO_HOWMANY) = num_samples;
+                        if ((mapped_channel_mask[2] != 0)
+                                || ((mapped_channel_mask[1] >> 16) != 0))
+                            hvcal = 2;
 
-						if ((mapped_channel_mask[2]!=0)||((mapped_channel_mask[1]>>16)!=0))
-							hvcal = 2;
+                        num_samples = digi_read(DG_ADDR_SAMPLE, hvcal);
+                        enable_pulser = digi_read(DG_ADDR_ENABLE_PULSER, hvcal);
+                    }
 
-						num_samples = digi_read(DG_ADDR_SAMPLE, hvcal);
-						enable_pulser = digi_read(DG_ADDR_ENABLE_PULSER, hvcal);
-					}
+                    char tdc_string[8];
+                    if (enable_pulser == 0) {
+                        //	strncpy(tdc_string, "REAL  \0", 7);
+                        tdc_string[0] = 'R';
+                        tdc_string[1] = 'E';
+                        tdc_string[2] = 'A';
+                        tdc_string[3] = 'L';
+                        tdc_string[4] = ' ';
+                        tdc_string[5] = ' ';
+                        tdc_string[6] = '\0';
+                    } else {
+                        //	strncpy(tdc_string, "PULSER\0", 7);
+                        tdc_string[0] = 'P';
+                        tdc_string[1] = 'U';
+                        tdc_string[2] = 'L';
+                        tdc_string[3] = 'S';
+                        tdc_string[4] = 'E';
+                        tdc_string[5] = 'R';
+                        tdc_string[6] = '\0';
+                    }
+                    //sprintf(outBuffer,"Setup complete:\nSamples: %d\nLookback: %d\nChannel Mask: %08x\nADC Mode: %d\nTDC Mode: %d\nTrigger on: %s\nClock Mode: %d\nTriggers: %d\n",num_samples,num_lookback,channel_mask1,adc_mode,tdc_mode,tdc_string,clock,num_triggers);
+                    //UART_polled_tx_string( &g_uart, outBuffer );
+                    //sprintf(outBuffer,"CM: %08x %08x %08x, ep: %d\n",digi_read(0xb),digi_read(0xe),digi_read(0xd),digi_read(0xc));
+                    //UART_polled_tx_string( &g_uart, outBuffer );
 
-					char tdc_string[8];
-					if (enable_pulser == 0){
-					//	strncpy(tdc_string, "REAL  \0", 7);
-						tdc_string[0]='R';
-						tdc_string[1]='E';
-						tdc_string[2]='A';
-						tdc_string[3]='L';
-						tdc_string[4]=' ';
-						tdc_string[5]=' ';
-						tdc_string[6]='\0';
-					}
-					else{
-					//	strncpy(tdc_string, "PULSER\0", 7);
-						tdc_string[0]='P';
-						tdc_string[1]='U';
-						tdc_string[2]='L';
-						tdc_string[3]='S';
-						tdc_string[4]='E';
-						tdc_string[5]='R';
-						tdc_string[6]='\0';
-					}
-					//sprintf(outBuffer,"Setup complete:\nSamples: %d\nLookback: %d\nChannel Mask: %08x\nADC Mode: %d\nTDC Mode: %d\nTrigger on: %s\nClock Mode: %d\nTriggers: %d\n",num_samples,num_lookback,channel_mask1,adc_mode,tdc_mode,tdc_string,clock,num_triggers);
-					//UART_polled_tx_string( &g_uart, outBuffer );
-					//sprintf(outBuffer,"CM: %08x %08x %08x, ep: %d\n",digi_read(0xb),digi_read(0xe),digi_read(0xd),digi_read(0xc));
-					//UART_polled_tx_string( &g_uart, outBuffer );
+                    outBuffer[bufcount++] = READDATACMDID;
+                    //outBuffer[bufcount++] = 33;
+                    bufWrite(outBuffer, &bufcount, 35, 2);
+                    outBuffer[bufcount++] = enable_pulser;
+                    bufWrite(outBuffer, &bufcount, num_samples, 2);
+                    bufWrite(outBuffer, &bufcount, num_lookback, 2);
+                    bufWrite(outBuffer, &bufcount, channel_mask[0], 4);
+                    bufWrite(outBuffer, &bufcount, adc_mode, 2);
+                    bufWrite(outBuffer, &bufcount, tdc_mode, 2);
+                    for (uint8_t i = 0; i < 8; i++)
+                        outBuffer[bufcount++] = (uint8_t) tdc_string[i];
+                    outBuffer[bufcount++] = clock;
+                    bufWrite(outBuffer, &bufcount, num_triggers, 4);
+                    bufWrite(outBuffer, &bufcount,
+                            digi_read(DG_ADDR_MASK1, hvcal), 2);
+                    bufWrite(outBuffer, &bufcount,
+                            digi_read(DG_ADDR_MASK2, hvcal), 2);
+                    bufWrite(outBuffer, &bufcount,
+                            digi_read(DG_ADDR_MASK3, hvcal), 2);
+                    bufWrite(outBuffer, &bufcount,
+                            digi_read(DG_ADDR_ENABLE_PULSER, hvcal), 2);
 
+                    outBuffer[bufcount++] = mode;
+                    outBufSend(g_uart, outBuffer, bufcount);
 
-					outBuffer[bufcount++] = READDATACMDID;
-					//outBuffer[bufcount++] = 33;
-					bufWrite(outBuffer, &bufcount, 35, 2);
-					outBuffer[bufcount++] = enable_pulser;
-					bufWrite(outBuffer, &bufcount, num_samples, 2);
-					bufWrite(outBuffer, &bufcount, num_lookback, 2);
-					bufWrite(outBuffer, &bufcount, channel_mask[0], 4);
-					bufWrite(outBuffer, &bufcount, adc_mode, 2);
-					bufWrite(outBuffer, &bufcount, tdc_mode, 2);
-					for (uint8_t i=0; i<8; i++)
-						outBuffer[bufcount++] = (uint8_t) tdc_string[i];
-					outBuffer[bufcount++] = clock;
-					bufWrite(outBuffer, &bufcount, num_triggers, 4);
-					bufWrite(outBuffer, &bufcount, digi_read(DG_ADDR_MASK1,hvcal), 2);
-					bufWrite(outBuffer, &bufcount, digi_read(DG_ADDR_MASK2,hvcal), 2);
-					bufWrite(outBuffer, &bufcount, digi_read(DG_ADDR_MASK3,hvcal), 2);
-					bufWrite(outBuffer, &bufcount, digi_read(DG_ADDR_ENABLE_PULSER,hvcal), 2);
+                    delayUs(10000);
 
-					outBuffer[bufcount++] = mode;
-					outBufSend(g_uart, outBuffer, bufcount);
-
-					delayUs(10000);
-
-					if ((mode & 0x1) == 0x0){
-						// reset fifo
+                    if ((mode & 0x1) == 0x0) {
+                        // reset fifo
 //						*(registers_0_addr + REG_ROC_USE_LANE) = 0xF;
-						resetFIFO();
-						resetFIFO();
-						delayUs(10000);
-						*(registers_0_addr + REG_ROC_EWW_PULSER) = 1;
+                        resetFIFO();
+                        resetFIFO();
+                        delayUs(10000);
+                        *(registers_0_addr + REG_ROC_EWW_PULSER) = 1;
 
+                        digi_write(0x0F, enable_pulser, 0); // enable calibration IF running internal pulser
 
+                        //readout_obloc = 6;
+                        readout_obloc = 0;
+                        //sprintf(dataBuffer,"start\n");
+                        readout_maxDelay = max_total_delay * 50;
+                        readout_mode = mode;
+                        readout_wordsPerTrigger = 8; //NUMTDCWORDS + 4*num_samples;
+                        readout_numTriggers = num_triggers;
+                        readout_totalTriggers = 0;
 
-						digi_write(0x0F,enable_pulser,0); // enable calibration IF running internal pulser
+                        readout_noUARTflag = 0;
+                    }
+                    readout_numTriggers = num_triggers;
 
-						//readout_obloc = 6;
-						readout_obloc = 0;
-						//sprintf(dataBuffer,"start\n");
-						readout_maxDelay = max_total_delay*50;
-						readout_mode = mode;
-						readout_wordsPerTrigger = 8;//NUMTDCWORDS + 4*num_samples;
-						readout_numTriggers = num_triggers;
-						readout_totalTriggers = 0;
+                    // During this mode, readout is disabled while triggers are enabled
+                    // readout occurs
+                    if ((mode & 0x2) != 0x0)
+                        readout_noUARTflag = 1;
 
-						readout_noUARTflag = 0;
-					}
-					readout_numTriggers = num_triggers;
+                    if ((mode & 0x1) == 0x0) {
+                        int delay_count = 0;
+                        int trigger_count = 0;
 
-					// During this mode, readout is disabled while triggers are enabled
-					// readout occurs
-					if ((mode & 0x2) != 0x0)
-						readout_noUARTflag = 1;
+                        readout_requestedTriggers = num_triggers;
 
-					if ((mode & 0x1) == 0x0){
-						int delay_count = 0;
-						int trigger_count = 0;
-
-						readout_requestedTriggers = num_triggers;
-
-						if (num_triggers == 0){
+                        if (num_triggers == 0) {
 
                             readout_obloc = 0;
                             bufWrite(dataBuffer, &readout_obloc, ENDOFDATA, 2);
-                            UART_send(&g_uart, dataBuffer ,2);
-			                //sprintf(&dataBuffer[readout_obloc],"\nend\n");
-			                //UART_polled_tx_string( &g_uart, dataBuffer );
-			                bufcount = 0;
-			                outBuffer[bufcount++] = READDATACMDID;
-			                bufWrite(outBuffer, &bufcount, 5, 2);
-			                outBuffer[bufcount++] = (uint8_t)(readout_totalTriggers == readout_requestedTriggers);
+                            UART_send(&g_uart, dataBuffer, 2);
+                            //sprintf(&dataBuffer[readout_obloc],"\nend\n");
+                            //UART_polled_tx_string( &g_uart, dataBuffer );
+                            bufcount = 0;
+                            outBuffer[bufcount++] = READDATACMDID;
+                            bufWrite(outBuffer, &bufcount, 5, 2);
+                            outBuffer[bufcount++] =
+                                    (uint8_t) (readout_totalTriggers
+                                            == readout_requestedTriggers);
                             //sprintf(outBuffer,"SUCCESS! Delayed %d times\n",delay_count);
-                            bufWrite(outBuffer, &bufcount, (uint32_t)readout_totalDelays, 4);
+                            bufWrite(outBuffer, &bufcount,
+                                    (uint32_t) readout_totalDelays, 4);
 
-			                UART_send(&g_uart, outBuffer ,bufcount );
-			                readout_requestedTriggers = 0;
-			                readout_totalTriggers = 0;
-						}
+                            UART_send(&g_uart, outBuffer, bufcount);
+                            readout_requestedTriggers = 0;
+                            readout_totalTriggers = 0;
+                        }
 
-						/*
-						read_data(&delay_count,&trigger_count);
+                        /*
+                         read_data(&delay_count,&trigger_count);
 
-						//sprintf(&dataBuffer[readout_obloc],"\nend\n");
-						//UART_polled_tx_string( &g_uart, dataBuffer );
-						bufcount = 0;
-						outBuffer[bufcount++] = READDATACMDID;
-						bufWrite(outBuffer, &bufcount, 5, 2);
-						outBuffer[bufcount++] = (uint8_t)(trigger_count == num_triggers);
+                         //sprintf(&dataBuffer[readout_obloc],"\nend\n");
+                         //UART_polled_tx_string( &g_uart, dataBuffer );
+                         bufcount = 0;
+                         outBuffer[bufcount++] = READDATACMDID;
+                         bufWrite(outBuffer, &bufcount, 5, 2);
+                         outBuffer[bufcount++] = (uint8_t)(trigger_count == num_triggers);
 
-						if (trigger_count == num_triggers){
-							//sprintf(outBuffer,"SUCCESS! Delayed %d times\n",delay_count);
-							bufWrite(outBuffer, &bufcount, (uint32_t)delay_count, 4);
-						}else{
-							//sprintf(outBuffer,"FAILED! Read %d triggers\n",trigger_count);
-							bufWrite(outBuffer, &bufcount, (uint32_t)trigger_count, 4);
-						}
+                         if (trigger_count == num_triggers){
+                         //sprintf(outBuffer,"SUCCESS! Delayed %d times\n",delay_count);
+                         bufWrite(outBuffer, &bufcount, (uint32_t)delay_count, 4);
+                         }else{
+                         //sprintf(outBuffer,"FAILED! Read %d triggers\n",trigger_count);
+                         bufWrite(outBuffer, &bufcount, (uint32_t)trigger_count, 4);
+                         }
 
-						UART_send(&g_uart, outBuffer ,bufcount );
-						*/
+                         UART_send(&g_uart, outBuffer ,bufcount );
+                         */
 
-						//UART_polled_tx_string( &g_uart, outBuffer );
+                        //UART_polled_tx_string( &g_uart, outBuffer );
+                        //get_rates(0,10);
+                    } else {
 
-						//get_rates(0,10);
-					}else{
+                        readout_obloc = 0;
 
-						readout_obloc = 0;
+                        int delay_count = 0;
+                        int trigger_count = 0;
 
-						int delay_count = 0;
-						int trigger_count = 0;
+                        read_data(&delay_count, &trigger_count);
 
-						read_data(&delay_count,&trigger_count);
+                        //sprintf(&dataBuffer[readout_obloc],"\nend\n");
+                        //UART_polled_tx_string( &g_uart, dataBuffer );
+                        bufcount = 0;
+                        outBuffer[bufcount++] = READDATACMDID;
+                        bufWrite(outBuffer, &bufcount, 5, 2);
+                        outBuffer[bufcount++] = (uint8_t) (trigger_count
+                                == num_triggers);
 
-						//sprintf(&dataBuffer[readout_obloc],"\nend\n");
-						//UART_polled_tx_string( &g_uart, dataBuffer );
-						bufcount = 0;
-						outBuffer[bufcount++] = READDATACMDID;
-						bufWrite(outBuffer, &bufcount, 5, 2);
-						outBuffer[bufcount++] = (uint8_t)(trigger_count == num_triggers);
+                        if (trigger_count == num_triggers) {
+                            //sprintf(outBuffer,"SUCCESS! Delayed %d times\n",delay_count);
+                            bufWrite(outBuffer, &bufcount,
+                                    (uint32_t) delay_count, 4);
+                        } else {
+                            //sprintf(outBuffer,"FAILED! Read %d triggers\n",trigger_count);
+                            bufWrite(outBuffer, &bufcount,
+                                    (uint32_t) trigger_count, 4);
+                        }
 
-						if (trigger_count == num_triggers){
-							//sprintf(outBuffer,"SUCCESS! Delayed %d times\n",delay_count);
-							bufWrite(outBuffer, &bufcount, (uint32_t)delay_count, 4);
-						}else{
-							//sprintf(outBuffer,"FAILED! Read %d triggers\n",trigger_count);
-							bufWrite(outBuffer, &bufcount, (uint32_t)trigger_count, 4);
-						}
+                        UART_send(&g_uart, outBuffer, bufcount);
 
-						UART_send(&g_uart, outBuffer ,bufcount );
+                        //readout_mode = 1;
+                        //sprintf(outBuffer,"Run started\n");
+                        //UART_polled_tx_string( &g_uart, outBuffer );
+                        //outBuffer[0] = RUN_STARTED;
+                        //UART_send(&g_uart, outBuffer ,1);
 
-
-						//readout_mode = 1;
-						//sprintf(outBuffer,"Run started\n");
-						//UART_polled_tx_string( &g_uart, outBuffer );
-						//outBuffer[0] = RUN_STARTED;
-						//UART_send(&g_uart, outBuffer ,1);
-
-					}
+                    }
 
 //				}else if (commandID == STOPRUNCMDID){
 //
@@ -4037,7 +4110,7 @@ int main() {
 //					for (uint16_t i=0; i<458; i++)
 //						outBuffer[bufcount++] = i%256;
 //					outBufSend(g_uart, outBuffer, bufcount);
-							
+
 //				}else if (commandID == FINDTHRESHOLDSCMDID){
 //					uint16_t num_lookback = readU16fromBytes(&buffer[4]);
 //					uint16_t num_samples = readU16fromBytes(&buffer[6]);
@@ -4080,59 +4153,79 @@ int main() {
 //					bufWrite(outBuffer, &bufcount_place_holder, (bufcount-3), 2);
 //					outBufSend(g_uart, outBuffer, bufcount);
 
-				}else if (commandID == MEASURETHRESHOLDCMDID){
-					channel_mask[0] = readU32fromBytes(&buffer[4]);
-					channel_mask[1] = readU32fromBytes(&buffer[8]);
-					channel_mask[2] = readU32fromBytes(&buffer[12]);
-					get_mapped_channels();
+                } else if (commandID == MEASURETHRESHOLDCMDID) {
+                    channel_mask[0] = readU32fromBytes(&buffer[4]);
+                    channel_mask[1] = readU32fromBytes(&buffer[8]);
+                    channel_mask[2] = readU32fromBytes(&buffer[12]);
+                    get_mapped_channels();
 
-					outBuffer[bufcount++] = MEASURETHRESHOLDCMDID;
-					bufcount_place_holder = bufcount;
-					bufWrite(outBuffer, &bufcount, 0, 2);
+                    outBuffer[bufcount++] = MEASURETHRESHOLDCMDID;
+                    bufcount_place_holder = bufcount;
+                    bufWrite(outBuffer, &bufcount, 0, 2);
 
-					//enable pulser as readstrawcmd does
-					digi_write(DG_ADDR_ENABLE_PULSER,1,0);
+                    //enable pulser as readstrawcmd does
+                    digi_write(DG_ADDR_ENABLE_PULSER, 1, 0);
 
-					uint16_t threshold_array[288];
-					for (uint16_t i=0; i<288; i++) threshold_array[i] = 0xFFFF;
+                    uint16_t threshold_array[288];
+                    for (uint16_t i = 0; i < 288; i++)
+                        threshold_array[i] = 0xFFFF;
 
-					for (uint8_t ihvcal=1; ihvcal<3; ihvcal++){
-						for (uint8_t k=(48*(ihvcal-1));k<48*ihvcal;k++){
-							uint8_t condition = 0;
-							uint8_t straw_num = channel_map[k];
-							if (ihvcal == 1)
-								condition =((k<32 && ((0x1<<k) & mapped_channel_mask[0])) || (k>=32 && ((0x1<<(k-32)) & mapped_channel_mask[1])));
-							else if (ihvcal == 2)
-								condition =((k<64 && ((0x1<<(k-32)) & mapped_channel_mask[1])) || (k>=64 && ((0x1<<(k-64)) & mapped_channel_mask[2])));
+                    for (uint8_t ihvcal = 1; ihvcal < 3; ihvcal++) {
+                        for (uint8_t k = (48 * (ihvcal - 1)); k < 48 * ihvcal;
+                                k++) {
+                            uint8_t condition = 0;
+                            uint8_t straw_num = channel_map[k];
+                            if (ihvcal == 1)
+                                condition =
+                                        ((k < 32
+                                                && ((0x1 << k)
+                                                        & mapped_channel_mask[0]))
+                                                || (k >= 32
+                                                        && ((0x1 << (k - 32))
+                                                                & mapped_channel_mask[1])));
+                            else if (ihvcal == 2)
+                                condition =
+                                        ((k < 64
+                                                && ((0x1 << (k - 32))
+                                                        & mapped_channel_mask[1]))
+                                                || (k >= 64
+                                                        && ((0x1 << (k - 64))
+                                                                & mapped_channel_mask[2])));
 
-							if (condition){
-								uint16_t gain_cal[3] = {0, default_gains_cal[straw_num], default_gains_cal[straw_num]};
-								uint16_t gain_hv[3] = {default_gains_hv[straw_num], 0, default_gains_hv[straw_num]};
-								//first zero cal, then hv, then both to default
+                            if (condition) {
+                                uint16_t gain_cal[3] = { 0,
+                                        default_gains_cal[straw_num],
+                                        default_gains_cal[straw_num] };
+                                uint16_t gain_hv[3] = {
+                                        default_gains_hv[straw_num], 0,
+                                        default_gains_hv[straw_num] };
+                                //first zero cal, then hv, then both to default
 
-								digi_write(DG_ADDR_SELECTSMA, k%48, ihvcal);
-								//select channel
-								for (uint8_t i=0; i<3; i++){
-									setPreampGain(straw_num, gain_cal[i]);
-									setPreampGain(straw_num+96, gain_hv[i]);
-									hwdelay(500000);//wait for 10ms gain to reach written value and for SMA to settle
+                                digi_write(DG_ADDR_SELECTSMA, k % 48, ihvcal);
+                                //select channel
+                                for (uint8_t i = 0; i < 3; i++) {
+                                    setPreampGain(straw_num, gain_cal[i]);
+                                    setPreampGain(straw_num + 96, gain_hv[i]);
+                                    hwdelay(500000);//wait for 10ms gain to reach written value and for SMA to settle
 
-									digi_write(DG_ADDR_SMARDREQ, 1, ihvcal);
-									delayUs(5);//write READREQ to 1 and freeze SMA module
+                                    digi_write(DG_ADDR_SMARDREQ, 1, ihvcal);
+                                    delayUs(5);	//write READREQ to 1 and freeze SMA module
 
-									threshold_array[96*i+straw_num] = digi_read(DG_ADDR_SMADATA,ihvcal);
-									digi_write(DG_ADDR_SMARDREQ, 0, ihvcal); //unfreeze SMA module
-								}
-							}
-						}
-					}
+                                    threshold_array[96 * i + straw_num] =
+                                            digi_read(DG_ADDR_SMADATA, ihvcal);
+                                    digi_write(DG_ADDR_SMARDREQ, 0, ihvcal); //unfreeze SMA module
+                                }
+                            }
+                        }
+                    }
 
-					for (uint16_t i=0; i<288; i++)
-						bufWrite(outBuffer, &bufcount, threshold_array[i], 2);
+                    for (uint16_t i = 0; i < 288; i++)
+                        bufWrite(outBuffer, &bufcount, threshold_array[i], 2);
 
-					bufWrite(outBuffer, &bufcount_place_holder, (bufcount-3), 2);
-					outBufSend(g_uart, outBuffer, bufcount);
-	 
+                    bufWrite(outBuffer, &bufcount_place_holder, (bufcount - 3),
+                            2);
+                    outBufSend(g_uart, outBuffer, bufcount);
+
 #endif
                 } // end of commands if
 
