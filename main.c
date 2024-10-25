@@ -3582,6 +3582,8 @@ int main() {
 
                     uint8_t indata = (uint8_t) buffer[4];
                     uint8_t action = indata & 0xF;
+                    uint32_t index =  readU32fromBytes(&buffer[5]); //this can have multiple meanings, look below
+                    uint32_t length = readU32fromBytes(&buffer[9]);
 
                     outBuffer[bufcount++] = IAPROC;
                     bufWrite(outBuffer, &bufcount, 0, 2);
@@ -3602,10 +3604,13 @@ int main() {
                     case 4:
                     case 5:
                     case 6:
-                        execute_iap(action);
+                        execute_iap(action, index);
                         break;
                     case 7:
-                        //execute_digest_check();
+                        list_flash_dir(index, length);
+                        break;
+                    case 8:
+                        load_spi_flash_with_images_thruough_uart_intf(index, length);
                         break;
                     default:
 //                        display_user_options();
