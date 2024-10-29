@@ -60,19 +60,22 @@ void display_output
 );
 
 void delay1(volatile uint32_t n);
-void write_flash_directory();
+void write_flash_directory(uint16_t nImages,uint32_t* addresses);
+
 void clear_iap_data_buffer(void);
 
-void copy_to_flash(uint8_t * g_buffer,uint8_t* g_readbackbuffer,uint32_t length);
-static uint32_t read_page_from_host_through_uart(uint8_t * g_buffer,uint32_t length);
+void copy_to_flash(uint8_t * g_buffer);
+static uint32_t read_page_from_host_through_uart(uint8_t * g_buffer);
 uint32_t number_size(uint8_t *ptr);
-void load_spi_flash_with_images_thruough_uart_intf();
 void execute_usercode_service(void);
 void execute_designinfo_service(void);
 void execute_iap(uint8_t option, uint32_t index);
-void execute_bitstream_authenticate(void);
-void execute_iap_image_authenticate(void);
+void execute_bitstream_authenticate(uint32_t img_index);
+void execute_iap_image_authenticate(uint32_t img_index);
 void list_flash_dir(uint32_t start, uint32_t length);
+void load_spi_flash_at_address(uint32_t index_address);
+void programming_done(void);
+
 
 
 

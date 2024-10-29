@@ -187,6 +187,39 @@ void FLASH_erase_64k_block
 
 }
 
+void FLASH_erase_4k_block
+(
+    uint32_t address
+)
+{
+
+     uint8_t cmd_buffer[5];
+        /* Send Write Enable command */
+
+       write_enable();
+       enter_4byte_address_mode();
+       write_enable();
+
+
+       SPI_set_slave_select(SPI_INSTANCE, SPI_SLAVE);
+        /* Send Chip Erase command */
+
+            cmd_buffer[0] = ERASE_4K_BLOCK_OPCODE;
+
+        cmd_buffer[1] = (uint8_t)((address >> 24) & 0xFF);
+        cmd_buffer[2] = (uint8_t)((address >> 16) & 0xFF);
+        cmd_buffer[3] = (uint8_t)((address >> 8) & 0xFF);
+        cmd_buffer[4] = (uint8_t)(address & 0xFF);
+        //wait_ready();
+         SPI_transfer_block(SPI_INSTANCE, cmd_buffer,5, 0, 0 );
+        //wait_ready();
+        wait_program_or_erase_controller_ready();
+        SPI_clear_slave_select(SPI_INSTANCE, SPI_SLAVE);
+
+
+
+}
+
 
 /*******************************************************************************
  *

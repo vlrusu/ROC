@@ -1,2 +1,2 @@
 //#define LAST_GIT_REV "7c9d7e245443034a1c02ed22d56fba421ddfb334"
-#define LAST_GIT_REV "7c9d7e245443034a1c02ed22d56fba421ddfbeef"
+#define LAST_GIT_REV "7c9d7e245443034a1c02ed22d56fba421ddfdead"

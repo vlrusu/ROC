@@ -15,23 +15,21 @@
 
 
 #define MAX_FILES 3
+#define MAXFAIL  100000
 
 #define BUFFER_SIZE 4096
 
-#define IMAGE_IDX                               2u
-#define GOLDEN_IMAGE_SPI_ADDRESS 0x400
-#define UPDATE_IMAGE_SPI_ADDRESS 0x2000000
-//#define IAP_IMAGE_SPI_ADDRESS    0x4000000
-#define IAP_IMAGE_SPI_ADDRESS    0x521f000
+
 //extern void delay(volatile int i);
 //*&************************************************************
 uint8_t g_write_buffer[BUFFER_SIZE];
 uint8_t no_of_files =0;
-uint32_t flash_address[3] = {GOLDEN_IMAGE_SPI_ADDRESS,UPDATE_IMAGE_SPI_ADDRESS,IAP_IMAGE_SPI_ADDRESS};
 uint8_t g_read_buf[BUFFER_SIZE];
 uint32_t g_src_image_target_address =0;
-uint32_t g_file_size = 0;
 uint32_t g_flash_address = 0;
+uint32_t g_file_size = 0;
+uint32_t g_fail = 0;
+
 
 uint8_t iap_data_buffer [1024];
 
@@ -334,70 +332,86 @@ void list_flash_dir(uint32_t start, uint32_t length){
     for(uint8_t i=0;i<length;i++){
         dp_display_value(g_read_buf[i],HEX);
     }
-    UART_polled_tx_string (&g_uart, "ProgDone\n");
+    programming_done();
+
 }
 
-void write_flash_directory()
+void write_flash_directory(uint16_t nImages,uint32_t* addresses)
 {
-    uint32_t address1 = 0x400,address2 = 0xA00000,address3 = 0x1400000;
-    uint8_t buf[4];
-    buf[3] = (uint8_t)((address1 >> 24) & 0xFF);
-    buf[2] = (uint8_t)((address1 >> 16) & 0xFF);
-    buf[1] = (uint8_t)((address1 >> 8) & 0xFF);
-    buf[0] = (uint8_t)(address1 & 0xFF);
-    FLASH_program(0 , buf, 4);
-    FLASH_read(0,g_read_buf,4);
-    buf[3] = (uint8_t)((address2 >> 24) & 0xFF);
-    buf[2] = (uint8_t)((address2 >> 16) & 0xFF);
-    buf[1] = (uint8_t)((address2 >> 8) & 0xFF);
-    buf[0] = (uint8_t)(address2 & 0xFF);
-    FLASH_program(4 , buf, 4);
-    FLASH_read(4,g_read_buf,4);
-    buf[3] = (uint8_t)((address3 >> 24) & 0xFF);
-    buf[2] = (uint8_t)((address3 >> 16) & 0xFF);
-    buf[1] = (uint8_t)((address3 >> 8) & 0xFF);
-    buf[0] = (uint8_t)(address3 & 0xFF);
-    FLASH_program(8 , buf, 4);
-    FLASH_read(8,g_read_buf,4);
+
+    g_fail = 0;
+
+    FLASH_init();
+
+        FLASH_global_unprotect();
+
+    FLASH_erase_64k_block(0);
+    delay1(500);
+
+    for (uint8_t i_image = 0 ; i_image < nImages;){
+        uint32_t address1 = addresses[i_image];
+        uint8_t buf[4];
+           buf[3] = (uint8_t)((address1 >> 24) & 0xFF);
+           buf[2] = (uint8_t)((address1 >> 16) & 0xFF);
+           buf[1] = (uint8_t)((address1 >> 8) & 0xFF);
+           buf[0] = (uint8_t)(address1 & 0xFF);
+           FLASH_program(4*i_image , buf, 4);
+           delay1(5000);
+           FLASH_read(4*i_image,g_read_buf,4);
+           if (memcmp(buf,g_read_buf,4)) {
+               FLASH_erase_64k_block(address1);
+               delay1(100000);
+               g_fail++;
+               if (g_fail < MAXFAIL)
+                   continue; //this will get stuck here until MAXFAIL reached
+           }
+
+           i_image++;
+
+
+    }
+    programming_done();
+
 }
-void copy_to_flash(uint8_t * g_buffer,uint8_t* g_readbackbuffer, uint32_t length)
+void copy_to_flash(uint8_t * g_buffer)
 {
     uint32_t i=0;
     uint32_t readback_address = g_flash_address;
     uint16_t BLOCK = 64;
     uint8_t success = 1;
-    for(i=0;i<length/BLOCK;i++) //this  assumes BLOCK write blocks, need to try random FIXME
+    for(i=0;i<BUFFER_SIZE/BLOCK;) //this  assumes BLOCK write blocks, need to try random FIXME
     {
-        while(success){// have to do repeated writes, otherwise it does not work. No clue why
-            success = 0;
-            FLASH_program(g_flash_address+i*BLOCK , &g_buffer[i*BLOCK], BLOCK);
-            //readback what I just wrote
-            delay1(500);
-            FLASH_read(readback_address+i*BLOCK,&g_readbackbuffer[i*BLOCK],BLOCK);
-            for (uint16_t j = 0; j < BLOCK; j++){
-                if (g_buffer[j] != g_readbackbuffer[j]) {
-                    success = 1;
-                    FLASH_erase_64k_block(g_flash_address+i*BLOCK);
-                    delay1(500);
-                    break;
-                }
-            }
+
+        FLASH_program(g_flash_address+i*BLOCK , &g_buffer[i*BLOCK], BLOCK);
+        //readback what I just wrote
+        delay1(5000);
+        FLASH_read(readback_address+i*BLOCK,&g_read_buf[i*BLOCK],BLOCK);
+
+        if (memcmp(&g_buffer[i*BLOCK],&g_read_buf[i*BLOCK],BLOCK)) {  //this will get stuck here until MAXFAIL reached
+            FLASH_erase_64k_block(g_flash_address+i*BLOCK);
+            dp_display_value(g_flash_address+i*BLOCK, HEX);
+            g_fail ++;
+            delay1(100000);
+            if (g_fail < MAXFAIL)
+                continue;
+
         }
-        success = 1;
-//        memcpy(&g_readbackbuffer[i*BLOCK],&g_buffer[i*BLOCK], BLOCK);
+        i++;
     }
+
+    //        memcpy(&g_readbackbuffer[i*BLOCK],&g_buffer[i*BLOCK], BLOCK);
+
     g_flash_address = g_flash_address + BUFFER_SIZE;
 }
 
 static uint32_t read_page_from_host_through_uart
 (
-        uint8_t * g_buffer,
-        uint32_t length
+        uint8_t * g_buffer
 )
 {
     uint32_t num_bytes,factor,temp;
     volatile uint32_t i = 0;
-    num_bytes = length;
+    num_bytes = BUFFER_SIZE;
     char crc;
     size_t rx_size = 0;
 
@@ -409,7 +423,7 @@ static uint32_t read_page_from_host_through_uart
     uint8_t rx_buff[1];
     //Write Ack "b" to indicate beginning of the transaction from the target
 
-    if(g_src_image_target_address + length > g_file_size )
+    if(g_src_image_target_address + BUFFER_SIZE > g_file_size )
     {
         num_bytes = g_file_size - g_src_image_target_address;
     }
@@ -595,7 +609,23 @@ uint32_t number_size(uint8_t *ptr)
     }
     return temp;
 }
-void load_spi_flash_with_images_thruough_uart_intf()
+
+
+void programming_done(){
+    uint8_t failures[4];
+
+    failures[0]= g_fail & 0xFF;
+    failures[1] = (g_fail >> 8 ) & 0xFF;
+    failures[2] = (g_fail >> 16 ) & 0xFF;
+    failures[3] = (g_fail >> 24 ) & 0xFF;
+    UART_polled_tx_string (&g_uart, "ProgDone\n");
+    UART_send (&g_uart, failures, 4);
+
+}
+
+
+
+void load_spi_flash_at_address(uint32_t index_address)
 {
     volatile uint32_t erase_address = 0;
     volatile uint32_t erase_count=0;
@@ -605,57 +635,9 @@ void load_spi_flash_with_images_thruough_uart_intf()
 
     uint8_t rx_buff[8],num[9];
     uint8_t  manufacturer_id;
-    uint8_t  device_id,led_state = 0;
+    uint8_t  device_id;
 
-    uint8_t g_read_buffer[BUFFER_SIZE];
-
-
-
-    //   while(!(UART_get_rx ( &g_uart, rx_buff, 1 )))
-    ;
-    //   if(rx_buff[0] == 's') //signal from host PC to proceed to erase the flash.
-    //       UART_send(&g_uart, (const uint8_t * )"a",1);
-
-    FLASH_init();
-
-    FLASH_global_unprotect();
-    FLASH_read_device_id
-    (
-            &manufacturer_id,
-            &device_id
-    );
-    //UART_init( &g_uart, UART_BASE_ADDRESS, 59, (DATA_8_BITS | NO_PARITY) );
-
-
-    erase_address = IAP_IMAGE_SPI_ADDRESS; //only erase starting at IAP address
-    for(erase_count = 0;erase_count<=288;erase_count++)  //640 erases 40MB, so this is more. Not the entire flash memoery though (VR)
-    {
-
-        FLASH_erase_64k_block(erase_address);
-        delay1(500);
-        FLASH_read(erase_address,g_read_buf,32);
-        erase_address+=0x10000;
-        if(g_read_buf[0] != 0xFF)
-        {
-
-            break;
-        }
-        led_state = led_state ^ 1;
-    }
-    //    if(erase_count == 641)
-    //    {
-    //        GPIO_set_output( &g_gpio_out, GPIO_0,1); //erase successful
-    //    }
-    //    else
-    //    {
-    //        GPIO_set_output( &g_gpio_out, GPIO_0,0); //erase failed
-    //    }
-
-    //this redoes the flash directory, since we are doing a single image, don't do this, will keep the same memory map
-    //    write_flash_directory();
-
-    g_flash_address = IAP_IMAGE_SPI_ADDRESS;
-    g_src_image_target_address = 0;
+    g_fail = 0;
 
     //get the files size
 
@@ -672,139 +654,64 @@ void load_spi_flash_with_images_thruough_uart_intf()
     g_file_size |= (numBytes[2] << 16);
     g_file_size |= (numBytes[3] << 24);
 
-#if 0
-    i=0;
-    while(i<9)
-    {
-        while(!(UART_get_rx ( &g_uart, rx_buff, 1 )))
-            ;
 
-        num[i] = rx_buff[0];
-        i++;
+    FLASH_init();
+
+    FLASH_global_unprotect();
+    FLASH_read_device_id
+    (
+            &manufacturer_id,
+            &device_id
+    );
+
+    uint32_t file_size_in_blocks = 1 + g_file_size / 65536;
+    erase_address = index_address; //only erase starting at  address
+    for(erase_count = 0;erase_count<=file_size_in_blocks;erase_count++)
+    {
+
+        FLASH_erase_64k_block(erase_address);
+        delay1(500);
+//        FLASH_read(erase_address,g_read_buf,32);
+        erase_address+=0x10000;
+//        erase_address+=0x1000;
+/*        if(g_read_buf[0] != 0xFF)
+        {
+
+            break;
+        }*/
+
     }
-    g_file_size = number_size(num);//;atoi((const char*)rx_buff);
-#endif
+
+
+    //this redoes the flash directory, since we are doing a single image, don't do this, will keep the same memory map
+    //    write_flash_directory();
+
+    g_flash_address = index_address;
+    g_src_image_target_address = 0;
+
+
+
 
     do
     {
-        length = read_page_from_host_through_uart(g_write_buffer, BUFFER_SIZE);
+        length = read_page_from_host_through_uart(g_write_buffer);
         if(length>0)
         {
-            copy_to_flash(g_write_buffer,g_read_buffer, BUFFER_SIZE);
+            copy_to_flash(g_write_buffer);
  //           for (uint16_t i = 0 ; i < BUFFER_SIZE; i++){
  //               UART_send (&g_uart, g_read_buffer, BUFFER_SIZE);
  //           }
             //memcpy(ddr_add1,g_page_buffer,length);
             //ddr_add1 +=  length;
         }
-        led_state = led_state ^ 1;
 
     }while(length!=0);
 
-    UART_polled_tx_string (&g_uart, "ProgDone\n");
-
-#if DOALL
-    while(no_of_files<MAX_FILES)
-    {
-
-        g_flash_address = flash_address[no_of_files];
-        g_src_image_target_address = 0;
-        /* start the handshake with the host */
-        while(!(UART_get_rx ( &g_uart, rx_buff, 1 )))
-            ;
-        if(rx_buff[0] == 'h')
-            UART_send(&g_uart, (const uint8_t * )"a",1);
-        while(!(UART_get_rx ( &g_uart, rx_buff, 1 )))
-            ;
-        if(rx_buff[0] == 'n')
-            UART_send(&g_uart, (const uint8_t * )"d", 1 );
-        while(!(UART_get_rx ( &g_uart, rx_buff, 1 )))
-            ;
-        if(rx_buff[0] == 's')
-            UART_send(&g_uart, (const uint8_t * )"h", 1 );
-        while(!(UART_get_rx ( &g_uart, rx_buff, 1 )))
-            ;
-        if(rx_buff[0] == 'a')
-            UART_send(&g_uart, (const uint8_t * )"k", 1 );
-        while(!(UART_get_rx ( &g_uart, rx_buff, 1 )))
-            ;
-        if(rx_buff[0] == 'e')
-        {
-            UART_send(&g_uart, (const uint8_t * )"r", 1 );
-        }
-        /* poll for starting Ack message from the host as an acknowledgment
-                           that the host is ready to send file size */
-
-        while(!(UART_get_rx ( &g_uart, rx_buff, 1 )))
-            ;
-        UART_send(&g_uart, (const uint8_t * )"a",1);
-
-
-        /*poll for file size*/
-        UART_send(&g_uart, (const uint8_t * )"z",1);
-        i=0;
-        while(i<9)
-        {
-            while(!(UART_get_rx ( &g_uart, rx_buff, 1 )))
-                ;
-
-            num[i] = rx_buff[0];
-            i++;
-        }
-        g_file_size = number_size(num);//;atoi((const char*)rx_buff);
-
-        UART_send(&g_uart, (const uint8_t * )"a",1);
-
-        do
-        {
-            length = read_page_from_host_through_uart(g_write_buffer, BUFFER_SIZE);
-            if(length>0)
-            {
-                copy_to_flash(g_write_buffer,length);
-                //memcpy(ddr_add1,g_page_buffer,length);
-                //ddr_add1 +=  length;
-            }
-            led_state = led_state ^ 1;
-
-        }while(length!=0);
-        //ddr_add += 0x30000;
-
-        no_of_files++;
-    }
-    //    if(no_of_files==MAX_FILES)
-    //    {
-    //        GPIO_set_output( &g_gpio_out, GPIO_1,1);
-    //    }
-#endif
+    programming_done();
 }
 
-#if 0 //will be supported  Rev E silicon onwards
-void execute_digest_check(void)
-{
-    uint32_t options = 0x4;
-    uint32_t mb_offset = 0;
-    uint8_t uart_input[8]={0};
-    uint16_t ret_val = 0;
-    uint32_t* ptr = 0;
-    uint32_t count=0;
 
-    UART_polled_tx_string(&g_uart,(const uint8_t*)"\r\nDigest check for sNVM is in progress...");
-
-    ret_val = SYS_digest_check_service(options, mb_offset);
-
-    if(0 == ret_val)
-    {
-        UART_polled_tx_string(&g_uart,(const uint8_t*)"\r\nDigest check Success.");
-    }
-    else
-    {
-        UART_polled_tx_string(&g_uart,(const uint8_t*)"\r\nDigest check return value: ");
-        display_output((uint8_t*)&ret_val, 1);
-    }
-    UART_polled_tx_string(&g_uart,(const uint8_t*)"\r\n\r\n");
-}
-#endif
-
+uint8_t iap_data_buffer [1024];
 
 void execute_usercode_service(void)
 {
@@ -852,7 +759,6 @@ void execute_designinfo_service(void)
 
 
 
-uint8_t iap_data_buffer [1024];
 
 /*==============================================================================
   Display greeting message when application is started.
@@ -860,7 +766,7 @@ uint8_t iap_data_buffer [1024];
 
 
 
-void execute_iap(uint8_t option, uint32_t index)
+void execute_iap(uint8_t option, uint32_t img_index)
 {
 
     //index here can be either image index or spi address
@@ -870,15 +776,15 @@ void execute_iap(uint8_t option, uint32_t index)
     switch(option)
     {
     case 4:
-        UART_polled_tx_string(&g_uart, (const uint8_t*)"\r\nIAP PROGRAM for image at index 2 is in progress...\n\rIt takes approximately 28 seconds\n\r");
+        UART_polled_tx_string(&g_uart, (const uint8_t*)"\r\nIAP PROGRAM for image at index  is in progress...\n\rIt takes approximately 28 seconds\n\r");
 
         cmd = IAP_PROGRAM_BY_SPIIDX_CMD;
-        spiaddr_or_idx = index;
+        spiaddr_or_idx = img_index;
         break;
     case 5:
-        UART_polled_tx_string(&g_uart, (const uint8_t*)"\r\nIAP PROGRAM for image at address 0x1400000 is in progress...\n\rIt takes approximately 28 seconds\n\r");
+        UART_polled_tx_string(&g_uart, (const uint8_t*)"\r\nIAP PROGRAM for image at address  is in progress...\n\rIt takes approximately 28 seconds\n\r");
         cmd = IAP_PROGRAM_BY_SPIADDR_CMD;
-        spiaddr_or_idx = IAP_IMAGE_SPI_ADDRESS;
+        spiaddr_or_idx = img_index;
         break;
     case 6:
         UART_polled_tx_string(&g_uart, (const uint8_t*)"\r\nAuto update is in progress...\r\nIt takes approximately 28 seconds\n\r");
@@ -897,13 +803,13 @@ void execute_iap(uint8_t option, uint32_t index)
     UART_polled_tx_string(&g_uart, (const uint8_t*)"\r\n");
 }
 
-void execute_bitstream_authenticate(void)
+void execute_bitstream_authenticate(uint32_t img_index)
 {
 
     uint32_t mb_offset = 0;
     uint8_t status = 0xFF;
-    UART_polled_tx_string(&g_uart, (const uint8_t*)"\r\nBitstream authentication for image at address 0x1400000 is in progress...\n\r");
-    status = SYS_bitstream_authenticate_service(IAP_IMAGE_SPI_ADDRESS, mb_offset);
+    UART_polled_tx_string(&g_uart, (const uint8_t*)"\r\nBitstream authentication for image at address  is in progress...\n\r");
+    status = SYS_bitstream_authenticate_service(img_index, mb_offset);
     UART_polled_tx_string(&g_uart, (const uint8_t*)"Authentication status: ");
     if(SYS_SUCCESS == status)
     {
@@ -913,17 +819,17 @@ void execute_bitstream_authenticate(void)
     {
         display_output(&status, 1);
     }
-    UART_polled_tx_string(&g_uart, (const uint8_t*)"\r\n");
+    programming_done();
 }
 
-void execute_iap_image_authenticate(void)
+void execute_iap_image_authenticate(uint32_t img_index)
 {
 
     uint8_t status = 0xFF;
 
 
-    UART_polled_tx_string(&g_uart, "\r\nIAP image authentication for image at index 2 is in progress...\n\r");
-    status = SYS_IAP_image_authenticate_service(IMAGE_IDX);
+    UART_polled_tx_string(&g_uart, "\r\nIAP image authentication for image at index is in progress...\n\r");
+    status = SYS_IAP_image_authenticate_service(img_index);
     UART_polled_tx_string(&g_uart, "Authentication status: ");
     if(SYS_SUCCESS == status)
     {
@@ -933,6 +839,8 @@ void execute_iap_image_authenticate(void)
     {
         display_output(&status, 1);
     }
-    UART_polled_tx_string(&g_uart, "\r\nProgDone\n");
+
+    programming_done();
+
 
 }

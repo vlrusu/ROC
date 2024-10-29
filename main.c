@@ -51,7 +51,6 @@ const uint16_t default_caldac[8] = { 1000, 1000, 1000, 1000, 1000, 1000, 1000,
         1000 };
 
 const uint8_t calpulse_chanmap[8] = { 1, 9, 2, 10, 3, 11, 4, 12 };
-
 const uint8_t default_delay = 200;
 
 const uint8_t MCPCALIBCHAN[8] = { 1, 2, 3, 4, 9, 10, 11, 12 };
@@ -3579,22 +3578,31 @@ int main() {
                 } else if (commandID == IAPROC) {
 
                     clear_iap_data_buffer();
+                    uint32_t fd_buffer[16];
+                    uint16_t num_image = 0;
 
                     uint8_t indata = (uint8_t) buffer[4];
                     uint8_t action = indata & 0xF;
-                    uint32_t index =  readU32fromBytes(&buffer[5]); //this can have multiple meanings, look below
+                    uint32_t rindex =  readU32fromBytes(&buffer[5]); //this can have multiple meanings, look below in execute_iap
                     uint32_t length = readU32fromBytes(&buffer[9]);
 
+
+                    if (action==9){
+                        num_image = (uint16_t) rindex;
+                         for (uint16_t i = 0; i < num_image; i++){
+                             fd_buffer[i] = readU32fromBytes(&buffer[13+4*i]);
+                         }
+                    }
                     outBuffer[bufcount++] = IAPROC;
                     bufWrite(outBuffer, &bufcount, 0, 2);
                     outBufSend(g_uart, outBuffer, bufcount);
 
                     switch (action) {
                     case 1:
-                        execute_bitstream_authenticate();
+                        execute_bitstream_authenticate(rindex);
                         break;
                     case 2:
-                        execute_iap_image_authenticate();
+                        execute_iap_image_authenticate(rindex);
                         break;
                     case 3:
                         UART_polled_tx_string(&g_uart,
@@ -3604,13 +3612,21 @@ int main() {
                     case 4:
                     case 5:
                     case 6:
-                        execute_iap(action, index);
+                        execute_iap(action, rindex);
                         break;
                     case 7:
-                        list_flash_dir(index, length);
+                        list_flash_dir(rindex, length);
                         break;
                     case 8:
-                        load_spi_flash_with_images_thruough_uart_intf(index, length);
+                        load_spi_flash_at_address(rindex); //this loads a single image at address index
+                        break;
+
+
+                    case 9:
+
+
+                        write_flash_directory(rindex, fd_buffer);
+
                         break;
                     default:
 //                        display_user_options();
