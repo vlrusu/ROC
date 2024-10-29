@@ -14,6 +14,9 @@
 // Comment this in SoftConsole_variablesize if code does not fit in uSVM
 //#define FIXEDSIZETEST  // if commented, skips all code inside    #ifdef	FIXEDSIZETEST ... #endif
 
+//END ALWAYS COMMENT
+
+
 // Used to reduce size after adding DIGI programming
 #define DIGITEST
 

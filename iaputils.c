@@ -384,9 +384,9 @@ void copy_to_flash(uint8_t * g_buffer)
 
         FLASH_program(g_flash_address+i*BLOCK , &g_buffer[i*BLOCK], BLOCK);
         //readback what I just wrote
-        delay1(5000);
+        delay1(5000); //increase the delay
         FLASH_read(readback_address+i*BLOCK,&g_read_buf[i*BLOCK],BLOCK);
-
+//add another delay here
         if (memcmp(&g_buffer[i*BLOCK],&g_read_buf[i*BLOCK],BLOCK)) {  //this will get stuck here until MAXFAIL reached
             FLASH_erase_64k_block(g_flash_address+i*BLOCK);
             dp_display_value(g_flash_address+i*BLOCK, HEX);
@@ -670,7 +670,7 @@ void load_spi_flash_at_address(uint32_t index_address)
     {
 
         FLASH_erase_64k_block(erase_address);
-        delay1(500);
+        delay1(50000);
 //        FLASH_read(erase_address,g_read_buf,32);
         erase_address+=0x10000;
 //        erase_address+=0x1000;
