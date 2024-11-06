@@ -659,17 +659,20 @@ void read_data(int *delay_count, int *trigger_count)
 //	}
 //}
 
-uint32_t get_rates(int num_delays, int num_samples, uint8_t channel, uint32_t* timecounts){
-	mapped_channel_mask[0] = 0x0;
-	mapped_channel_mask[1] = 0x0;
-	mapped_channel_mask[2] = 0x0;
-	get_mapped_channels();
+// 10/24/2024  MT adds TOTAL_HV, TOTAL_CAL, TOTAL_COINC and TOTAL_TIME_COUNTS outputs for fiber READRATES function
+//uint32_t get_rates(int num_delays, int num_samples, uint8_t channel, uint32_t* timecounts){
+uint32_t get_rates(int num_delays, int num_samples, uint8_t channel, uint32_t* timecounts,
+        uint32_t* total_hv, uint32_t* total_cal, uint32_t* total_coinc, uint32_t* total_time_counts){
+    mapped_channel_mask[0] = 0x0;
+    mapped_channel_mask[1] = 0x0;
+    mapped_channel_mask[2] = 0x0;
+    get_mapped_channels();
 
-	//double total_global_time = 0;
-	uint32_t total_time_counts[2] = {0};
-	uint32_t total_hv[96] = {0};
-	uint32_t total_cal[96] = {0};
-	uint32_t total_coinc[96] = {0};
+    //double total_global_time = 0;
+    //uint32_t total_time_counts[2] = {0};
+    //uint32_t total_hv[96] = {0};
+    //uint32_t total_cal[96] = {0};
+    //uint32_t total_coinc[96] = {0};
 	uint8_t ishv[96]={0};
 
 	uint64_t start_global_time = 0;
@@ -767,7 +770,7 @@ void mask_channels(uint8_t channel){
         channel_mask[2] = 0x0;
         if      (channel<32)    channel_mask[0] |= (0x1 << channel);
         else if (channel<64)    channel_mask[1] |= (0x1 << (channel-32));
-        else                    channel_mask[1] |= (0x1 << (channel-64));
+        else                    channel_mask[2] |= (0x1 << (channel-64));
     }
     else {
         channel_mask[0] = 0xFFFFFFFF;

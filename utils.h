@@ -162,7 +162,8 @@
 #define PREAMPTHRESH  267 // 0x10B - fiber version of SETPREAMPTHRESHOLD with parameters passed via BLOCK_WRITE
 #define PULSERON    268 // 0x10C - fiber version of SETPULSERON with parameters passed via BLOCK_WRITE
 #define PULSEROFF   269 // 0x10D - fiber version of SETPULSEROFF with parameters passed via  DCS WRITE
-#define MEASURETHRESH 270 // 0x10E - fiber version of MEASURETHRESHOLDCMDID with parameters passed via BLOCK_WRIT
+#define MEASURETHRESH 270 // 0x10E - fiber version of MEASURETHRESHOLDCMDID with parameters passed via BLOCK_WRITE
+#define READRATES   271 // 0x10F - fiber version of READRATESCMDID with parameters passed via BLOCK_WRITE
 #define DIAGDATA    511 // 0x1FF - Block RD of assorted diagnostics, started by a single WR of any value
 
 //******************************************************************************
@@ -534,7 +535,9 @@ void DCS_sim_packet_send();
 
 void read_data(int *delay_count, int *trigger_count);
 //void read_data2(int *delay_count, int *trigger_count, uint16_t *lasthit);
-uint32_t get_rates(int num_delays, int num_samples, uint8_t channel, uint32_t* timecounts);
+// 1/24/2024 MT changed to used rates outputs for fiber READRATES function
+//uint32_t get_rates(int num_delays, int num_samples, uint8_t channel, uint32_t* timecounts);
+uint32_t get_rates(int num_delays, int num_samples, uint8_t channel, uint32_t* timecounts, uint32_t* total_hv, uint32_t* total_cal, uint32_t* total_coinc, uint32_t* total_time_counts);
 void get_mapped_channels();
 void read_histogram(uint8_t channel, uint8_t hv_or_cal, uint16_t *output);
 
