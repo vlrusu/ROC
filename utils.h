@@ -164,6 +164,9 @@
 #define PULSEROFF   269 // 0x10D - fiber version of SETPULSEROFF with parameters passed via  DCS WRITE
 #define MEASURETHRESH 270 // 0x10E - fiber version of MEASURETHRESHOLDCMDID with parameters passed via BLOCK_WRITE
 #define READRATES   271 // 0x10F - fiber version of READRATESCMDID with parameters passed via BLOCK_WRITE
+#define READGITREV  272 // 0x110 - fiber version of GETGITREV: execute with Single DCS_WRITE of any value (ignored) followed by DCS_BLOCK_READ of size returned by reg 129
+#define READILP     273 // 0x111 - fiber version of GETILP: execute with Single DCS_WRITE of any value (ignored) followed by DCS_BLOCK_READ of 4 values
+#define GETKEY      274 // 0x112 - fiber version of READKEY: execute with Single DCS_WRITE of any value (ignored) followed by DCS_BLOCK_READ of of 4 values
 #define DIAGDATA    511 // 0x1FF - Block RD of assorted diagnostics, started by a single WR of any value
 
 //******************************************************************************

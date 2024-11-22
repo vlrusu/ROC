@@ -681,7 +681,7 @@ int main() {
             // update CMD_STATUS
             *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
 
-            // writing only LBS 16-bit of 32 bits APB bus
+            // using only LBS 16-bit of 32 bits APB bus
             *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
             *(registers_1_addr + CRDCS_WRITE_TX) = cmd_rx_size;
             *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
@@ -720,135 +720,57 @@ int main() {
             // update CMD_STATUS
             *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
 
-            /*  old working version
-             // writing only LBS 16-bit of 32 bits APB bus
+             // write header
              *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
-             // not until we can deal with DIGI_WRITE while fiber is in control of DIGI registers
              *(registers_1_addr + CRDCS_WRITE_TX) = 36;
              *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
 
-             // fill up payload with 16-bit words
+             // fill up payload with 16-bit words. NB: use only LBS 16-bit of 32 bits APB bus
              uint32_t spi32;
              for (uint8_t i = 0 ; i < 2; i++) {
-             for (uint8_t j = 0 ; j < 12; j++) {
-             SPI_set_slave_select( &g_spi[i] , ((j>=8)?SPI_SLAVE_2:(j<4?SPI_SLAVE_0:SPI_SLAVE_1)));
+                 for (uint8_t j = 0 ; j < 12; j++) {
+                     SPI_set_slave_select( &g_spi[i] , ((j>=8)?SPI_SLAVE_2:(j<4?SPI_SLAVE_0:SPI_SLAVE_1)));
 
-             uint16_t addr = (j%4 <<11 );
-             SPI_transfer_frame( &g_spi[i], addr);
-             SPI_transfer_frame( &g_spi[i], addr);
-             spi32 = SPI_transfer_frame( &g_spi[i], addr);
+                     uint16_t addr = (j%4 <<11 );
+                     SPI_transfer_frame( &g_spi[i], addr);
+                     SPI_transfer_frame( &g_spi[i], addr);
+                     spi32 = SPI_transfer_frame( &g_spi[i], addr);
 
-             SPI_clear_slave_select( &g_spi[i] , ((j>=8)?SPI_SLAVE_2:(j<4?SPI_SLAVE_0:SPI_SLAVE_1)));
+                     SPI_clear_slave_select( &g_spi[i] , ((j>=8)?SPI_SLAVE_2:(j<4?SPI_SLAVE_0:SPI_SLAVE_1)));
 
-             *(registers_1_addr + CRDCS_WRITE_TX) = (0x0000FFFF & spi32);
-             }
+                     *(registers_1_addr + CRDCS_WRITE_TX) = (0x0000FFFF & spi32);
+                 }
              }
 
              uint16_t tvs_val[4] = {0};
              for (uint8_t i =0; i<4; i++){
-             *(registers_0_addr+REG_ROC_TVS_ADDR) = i;
-             delayUs(1);
-             tvs_val[i] = *(registers_0_addr + REG_ROC_TVS_VAL);
+                 *(registers_0_addr+REG_ROC_TVS_ADDR) = i;
+                 delayUs(1);
+                 tvs_val[i] = *(registers_0_addr + REG_ROC_TVS_VAL);
 
-             *(registers_1_addr + CRDCS_WRITE_TX) = tvs_val[i];
-             delayUs(1);
+                 *(registers_1_addr + CRDCS_WRITE_TX) = tvs_val[i];
+                 delayUs(1);
              }
 
              // give TWI control to uProc before calling DIGI_READ/WRITE
              *(registers_0_addr + REG_DIGIRW_SEL) = 1;
 
              for (uint8_t ihvcal=1; ihvcal<3; ihvcal++){
-             for (uint8_t i =0; i<4; i++){
-             digi_write(DG_ADDR_TVS_ADDR, i, ihvcal);
+                 for (uint8_t i =0; i<4; i++){
+                         digi_write(DG_ADDR_TVS_ADDR, i, ihvcal);
 
-             delayUs(1);
-             tvs_val[i] = digi_read(DG_ADDR_TVS_VAL, ihvcal);
+                         delayUs(1);
+                         tvs_val[i] = digi_read(DG_ADDR_TVS_VAL, ihvcal);
 
-             *(registers_1_addr + CRDCS_WRITE_TX) = tvs_val[i];
-             delayUs(1);
-             }
+                         *(registers_1_addr + CRDCS_WRITE_TX) = tvs_val[i];
+                         delayUs(1);
+                 }
              }
              // return TWI control to fiber
              *(registers_0_addr + REG_DIGIRW_SEL) = 0;
-
+             // write trailer
              *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
 
-             */
-            /*   new version with variable size buffer  */
-
-            fibercount = 0;
-//                bufWrite(fiberBuffer, &fibercount, CMDHEADER, 2);
-//                fibercount += 2;
-
-            fiberBuffer[fibercount++] = CMDHEADER;
-
-            // save index to overwrite and fill payload size with temporary value
-            fibercount_place_holder = fibercount;
-            fiberBuffer[fibercount++] = fibercount;
-
-            fiberBuffer[fibercount++] = 0xC000 + proc_commandID;
-
-            // fill up payload with 16-bit words
-            uint32_t spi32;
-            for (uint8_t i = 0; i < 2; i++) {
-                for (uint8_t j = 0; j < 12; j++) {
-                    SPI_set_slave_select(&g_spi[i],
-                            ((j >= 8) ?
-                                    SPI_SLAVE_2 :
-                                    (j < 4 ? SPI_SLAVE_0 : SPI_SLAVE_1)));
-
-                    uint16_t addr = (j % 4 << 11);
-                    SPI_transfer_frame(&g_spi[i], addr);
-                    SPI_transfer_frame(&g_spi[i], addr);
-                    spi32 = SPI_transfer_frame(&g_spi[i], addr);
-
-                    SPI_clear_slave_select(&g_spi[i],
-                            ((j >= 8) ?
-                                    SPI_SLAVE_2 :
-                                    (j < 4 ? SPI_SLAVE_0 : SPI_SLAVE_1)));
-
-                    fiberBuffer[fibercount++] = (0x0000FFFF & spi32);
-                }
-            }
-
-            uint16_t tvs_val[4] = { 0 };
-            for (uint8_t i = 0; i < 4; i++) {
-                *(registers_0_addr + REG_ROC_TVS_ADDR) = i;
-                delayUs(1);
-                tvs_val[i] = *(registers_0_addr + REG_ROC_TVS_VAL);
-
-                fiberBuffer[fibercount++] = tvs_val[i];
-                delayUs(1);
-            }
-
-            // give TWI control to uProc before calling DIGI_READ/WRITE
-            *(registers_0_addr + REG_DIGIRW_SEL) = 1;
-
-            for (uint8_t ihvcal = 1; ihvcal < 3; ihvcal++) {
-                for (uint8_t i = 0; i < 4; i++) {
-                    digi_write(DG_ADDR_TVS_ADDR, i, ihvcal);
-
-                    delayUs(1);
-                    tvs_val[i] = digi_read(DG_ADDR_TVS_VAL, ihvcal);
-
-                    fiberBuffer[fibercount++] = tvs_val[i];
-                    delayUs(1);
-                }
-            }
-            // return TWI control to fiber
-            *(registers_0_addr + REG_DIGIRW_SEL) = 0;
-            fiberBuffer[fibercount++] = CMDTRAILER;
-
-            // fill final payload size value
-            if (fibercount > 4) {
-                fiberBuffer[fibercount_place_holder] = fibercount - 4;
-            } else {
-                fiberBuffer[fibercount_place_holder] = 1;
-            }
-
-            for (uint8_t ib = 0; ib < fibercount; ib++) {
-                *(registers_1_addr + CRDCS_WRITE_TX) = fiberBuffer[ib];
-            }
             // update CMD_STATUS
             *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
 
@@ -1873,6 +1795,113 @@ int main() {
              *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
 
              break;
+
+        
+		case READGITREV:
+
+            // update CMD_STATUS
+            *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
+
+            fibercount = 0;
+            fiberBuffer[fibercount++] = CMDHEADER;
+
+            // save index to overwrite and fill payload size with temporary value
+            fibercount_place_holder = fibercount;
+            fiberBuffer[fibercount++] = fibercount;
+
+            fiberBuffer[fibercount++] = 0xC000 + proc_commandID;
+
+
+            for (uint8_t i = 0; i < sizeof(LAST_GIT_REV)-1; i++){
+                fiberBuffer[fibercount++] = LAST_GIT_REV[i];
+            }
+
+            fiberBuffer[fibercount++] = CMDTRAILER;
+
+            // overwrite final payload size value
+            if (fibercount > 4) {
+                fiberBuffer[fibercount_place_holder] =  fibercount - 4;
+            } else {
+                fiberBuffer[fibercount_place_holder] = 1;
+            }
+
+            // pass FIBERBUFFER to output FIFO
+            for (uint8_t ib = 0; ib < fibercount; ib++) {
+                *(registers_1_addr + CRDCS_WRITE_TX) = fiberBuffer[ib];
+            }
+
+           // update CMD_STATUS
+            *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
+
+            break;
+
+
+		case READILP:
+
+            // update CMD_STATUS
+            *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
+
+            *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
+            // payload word
+            *(registers_1_addr + CRDCS_WRITE_TX) = 4;
+            // CMD ID
+            *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
+
+            // payload
+            ilp22qs_init();
+            uint8_t ret = ilps22qs_id_get();
+            *(registers_1_addr + CRDCS_WRITE_TX) = ret;
+
+            ilps22qs_all_sources_t all_sources;
+            ilps22qs_all_sources_get(&all_sources);
+            ilps22qs_md_t md;
+            md.odr = ILPS22QS_4Hz;
+            md.avg = ILPS22QS_16_AVG;
+            md.lpf = ILPS22QS_LPF_ODR_DIV_4;
+            md.fs = ILPS22QS_4060hPa;
+            ilps22qs_data_t data;
+            ilps22qs_data_get(&md, &data);
+            *(registers_1_addr + CRDCS_WRITE_TX) = data.heat.raw;
+            *(registers_1_addr + CRDCS_WRITE_TX) = (data.pressure.raw & 0xFFFF);
+            *(registers_1_addr + CRDCS_WRITE_TX) = (data.pressure.raw & 0xFFFF0000)>>16;
+
+            //trailer
+            *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
+
+            // update CMD_STATUS
+            *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
+
+            break;
+
+        case GETKEY:
+            // update CMD_STATUS
+            *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
+
+            // header
+            *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
+            // payload word
+            *(registers_1_addr + CRDCS_WRITE_TX) = 4;
+            // CMD ID
+            *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
+            // payload of diagnostic data
+
+            uint16_t key_temp = ADC124S051_read(&g_spi[4], 0, 1);
+            uint16_t v2p5 = ADC124S051_read(&g_spi[4], 0, 3);
+            uint16_t v5p1 = ADC124S051_read(&g_spi[4], 0, 0);
+            uint16_t dcdctemp = ADC124S051_read(&g_spi[4], 0, 2);
+
+            *(registers_1_addr + CRDCS_WRITE_TX) = key_temp;
+            *(registers_1_addr + CRDCS_WRITE_TX) = v2p5;
+            *(registers_1_addr + CRDCS_WRITE_TX) = v5p1;
+            *(registers_1_addr + CRDCS_WRITE_TX) = dcdctemp;
+
+            //trailer
+            *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
+
+            // update CMD_STATUS
+            *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
+
+            break;
 
 
         // read assorted diagnostic registers
