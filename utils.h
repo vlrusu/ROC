@@ -390,7 +390,7 @@
 #define REG_ROC_DDRTEST_EN       0xE8
 
 #define REG_ROC_USE_UART    0xF1
-#define REG_DIGIRW_SEL      0xF2   // WO   select between fiber (0) or serial (1) to drive some DIGI signals
+#define REG_DIGIRW_SEL      0xF2   // WO   select between fiber (0) or serial (1) to drive CLK and MARKERS to DIGIs
 
 //LEAK SENSOR REGS
 #define REG_ROC_LEAK_MUX    0xF3
