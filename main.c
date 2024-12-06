@@ -2427,7 +2427,7 @@ int main() {
 
                 }else if (commandID == GETGITREV){
                     outBuffer[bufcount++] = GETGITREV;
-                    bufWrite(outBuffer, &bufcount, sizeof(LAST_GIT_REV) , 2);
+                    bufWrite(outBuffer, &bufcount, sizeof(LAST_GIT_REV)-1 , 2);
                     for (uint8_t i = 0; i < sizeof(LAST_GIT_REV)-1; i++){
                         outBuffer[bufcount++] = LAST_GIT_REV[i];
                     }
