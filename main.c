@@ -2097,6 +2097,53 @@ int main() {
 //					outBuffer[bufcount++] = RESETROC;
 //					bufWrite(outBuffer, &bufcount, 0, 2);
 //				 	outBufSend(g_uart, outBuffer, bufcount);
+				} else if (commandID == INITDIGIS) {
+				    uint16_t calerr = 0;
+				    uint16_t hverr = 0;
+
+
+				    // make sure DIGIs are powered up
+				    digi_write(DG_ADDR_EWS, 0xDEAD, 1);
+				    uint32_t read_value = digi_read(DG_ADDR_EWS, 1);
+				    if (read_value != 0xDEAD) {
+				        calerr |= 0x1;
+				    }
+				    digi_write(DG_ADDR_EWS, 0xDEAD, 2);
+				    read_value = digi_read(DG_ADDR_EWS, 2);
+				    if (read_value != 0xDEAD) {
+				        hverr |= 0x1;
+				    }
+
+				    adc_write(ADC_ADDR_PWR, 0x01, 0xFFF);
+				    adc_write(ADC_ADDR_PWR, 0x00, ENABLED_ADCS);
+
+				    uint8_t errors = init_adc(ENABLED_ADCS, 0x02, 0x03);
+
+				    //adc_write(ADC_ADDR_PWR,0x01,0x8FF);
+
+				    adc_write(0x100, 0x71, 0xFFF); // set to 10 bit, 40 MSPS
+				    adc_write(0xFF, 0x01, 0xFFF); // latch the above change
+				    adc_write(0x14, 0x00, 0xFFF); // set to offset binary
+
+
+				    digi_write(DG_ADDR_RESET, 1, 0);
+
+				    digi_write(DG_ADDR_EWS, 0x0000, HVANDCAL);
+				    digi_write(DG_ADDR_EWE, 0xFFFB, HVANDCAL);
+				//  digi_write(DG_ADDR_EWE,0x4FFB,HVANDCAL);
+				    *(registers_0_addr + REG_ROC_EWMSTART_PMT) = 0x0001;
+				    *(registers_0_addr + REG_ROC_EWMSTOP_PMT) = 0x0FFF;
+				    digi_write(DG_ADDR_DIGINUMBER, 0, CALONLY);
+				    digi_write(DG_ADDR_DIGINUMBER, 1, HVONLY);
+
+				    init_DIGIs();
+
+	                bufcount = 0;
+                    outBuffer[bufcount++] = INITDIGIS;
+                    bufWrite(outBuffer, &bufcount, 4, 2);
+                    bufWrite(outBuffer, &bufcount, calerr, 2);
+                    bufWrite(outBuffer, &bufcount, hverr, 2);
+                    outBufSend(g_uart, outBuffer, bufcount);
 
                 } else if (commandID == RESETDEVICE) {
 
