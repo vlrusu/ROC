@@ -146,6 +146,9 @@ extern "C" {
 #define SYS_BUSY_AMBA                                   1u
 #define SYS_BUSY_NON_AMBA                               2u
 #define SYS_PARAM_ERR                                   0xFFu
+#define SS_USER_BUSY_TIMEOUT                            0xFAu
+#define SS_USER_RDVLD_TIMEOUT                           0xFBu
+#define SS_TIMEOUT_COUNT                                40000u
 
 /*
   SYS_DCF_DEVICE_MISMATCH

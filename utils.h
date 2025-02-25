@@ -67,6 +67,7 @@
 #define READKEY 21
 #define GETILP 22
 #define GETGITREV 23
+#define NVMWRITE 24
 
 //DDR command ID
 #define DDRSETUP 50

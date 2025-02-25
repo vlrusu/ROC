@@ -608,57 +608,62 @@ static uint8_t execute_ss_command
 )
 {
    /* Pointer used during Writing to Mailbox memory. */
-    uint8_t status = 0;
-    uint32_t idx;
-    uint16_t ss_command = 0;
+    uint32_t status = 0u;
+    uint16_t idx = 0u;
+    uint16_t ss_command = 0u;
     uint32_t* word_buf;
+    uint16_t timeout_count = SS_TIMEOUT_COUNT;
 
-    if(HAL_get_32bit_reg_field(g_css_pf_base_addr, SS_REQ_NABUSY))
+    /* making sure that the system controller is not executing any service i.e.
+       SS_USER_BUSY is gone 0 */
+
+    while (1u == HAL_get_32bit_reg_field(g_css_pf_base_addr, SS_USER_BUSY))
     {
-        return SYS_BUSY_NON_AMBA;
-    }
-    else if(HAL_get_32bit_reg_field(g_css_pf_base_addr, SS_REQ_ABUSY))
-    {
-        return SYS_BUSY_AMBA;
+        --timeout_count;
+
+        if (timeout_count == 0)
+        {
+            return SS_USER_BUSY_TIMEOUT;
+        }
     }
 
-    /*Form the SS command: bit 0to6 is the opcode, bit 7to15 is the Mailbox offset
+    /* Form the SS command: bit 0to6 is the opcode, bit 7to15 is the Mailbox offset
      For some services this field has another meaning
-    (e.g. for IAP bitstream auth. it means spi_idx)*/
-    ss_command = ((mb_offset <<7) |  (cmd_opcode & 0x7F));
+    (e.g. for IAP bitstream auth. it means spi_idx) */
+    ss_command = ((mb_offset << 7u) |  (cmd_opcode & 0x7Fu));
 
     /* Load the command register with the SS request command code*/
     HAL_set_32bit_reg(g_css_pf_base_addr, SS_CMD, ss_command);
 
-    if(cmd_data_size > 0)
+    if (cmd_data_size > 0u)
     {
         HAL_ASSERT(!(NULL_BUFFER == cmd_data));
-        HAL_ASSERT(!(cmd_data_size%4));
+        HAL_ASSERT(!(cmd_data_size % 4u));
 
         /* Load the MBX_WCNT register with number of words */
-        HAL_set_32bit_reg( g_css_pf_base_addr, MBX_WCNT, (cmd_data_size/4));
+        HAL_set_32bit_reg( g_css_pf_base_addr, MBX_WCNT, (cmd_data_size/4u));
 
         /* Load the MBX_WADDR register with offset of input data (write to Mailbox)
            For all the services this offset remains either 0 or Not applicable
            for the services in which no Mailbox write is required.*/
-        HAL_set_32bit_reg( g_css_pf_base_addr, MBX_WADDR, (0x00 + mb_offset));
+        HAL_set_32bit_reg( g_css_pf_base_addr, MBX_WADDR, (0x00u + mb_offset));
 
     }
 
-    if(response_size > 0)
+    if (response_size > 0u)
     {
         HAL_ASSERT(!(NULL_BUFFER == p_response));
-        HAL_ASSERT(!(response_size%4));
+        HAL_ASSERT(!(response_size % 4u));
 
         /*
          Load the MBX_RWCNT register with number of words to be read from Mailbox
         */
-        HAL_set_32bit_reg( g_css_pf_base_addr, MBX_RCNT, (response_size/4));
+        HAL_set_32bit_reg( g_css_pf_base_addr, MBX_RCNT, (response_size/4u));
 
         /*
          Load the MBX_RADRDESC register with offset address within the mailbox
          format for that particular service.
-         It will be 0 for the services where there is no output data from G%CONTROL
+         It will be 0 for the services where there is no output data from G5CONTROL
          is expected.
          This function assumes that this value is pre-calculated by service specific
          functions as this value is fixed for each service.
@@ -667,40 +672,57 @@ static uint8_t execute_ss_command
     }
 
     /*Set the request bit in SYS_SERV_REQ register to start the service*/
-    HAL_set_32bit_reg_field(g_css_pf_base_addr, SS_REQ_REQ, 0x01);
+    HAL_set_32bit_reg_field(g_css_pf_base_addr, SS_REQ_REQ, 0x01u);
 
-    if(cmd_data_size > 0)
+    if (cmd_data_size > 0u)
     {
         word_buf = (uint32_t*)cmd_data;
 
         /* Write the user data into mail box. */
-        for(idx = 0u; idx < (cmd_data_size/4); idx++)
+        for (idx = 0u; idx < (cmd_data_size/4u); idx++)
         {
             HAL_set_32bit_reg( g_css_pf_base_addr, MBX_WDATA, word_buf[idx]);
         }
     }
 
-    if(response_size > 0)
+    timeout_count = SS_TIMEOUT_COUNT;
+    if (response_size > 0u)
     {
         word_buf = (uint32_t*)p_response;
 
-        for(idx = 0u; idx < (response_size/4); idx++)
+        for (idx = 0u; idx < (response_size/4u); idx++)
         {
-            while(0 == HAL_get_32bit_reg_field(g_css_pf_base_addr, SS_USER_RDVLD));
+            while (0u == HAL_get_32bit_reg_field(g_css_pf_base_addr,
+            SS_USER_RDVLD))
+            {
+                --timeout_count;
+
+                if (timeout_count == 0)
+                {
+                    return SS_USER_RDVLD_TIMEOUT;
+                }
+            }
             word_buf[idx] = HAL_get_32bit_reg(g_css_pf_base_addr, MBX_RDATA);
         }
     }
 
-    /*make sure that service is complete i.e. SS_USER_BUSY is gone 0*/
-    //FIXME VR - this should have a timeout
-    while(1 == HAL_get_32bit_reg_field(g_css_pf_base_addr, SS_USER_BUSY));
+    timeout_count = SS_TIMEOUT_COUNT;
+    /* make sure that service is complete i.e. SS_USER_BUSY is gone 0 */
+    while (1u == HAL_get_32bit_reg_field(g_css_pf_base_addr, SS_USER_BUSY))
+    {
+        --timeout_count;
 
-    /*Read the status returned by System Controller*/
+        if (timeout_count == 0)
+        {
+            return SS_USER_RDVLD_TIMEOUT;
+        }
+    }
+
+    /* Read the status returned by System Controller */
     status = HAL_get_32bit_reg(g_css_pf_base_addr, SS_STAT);
 
-    return status;
+    return (uint8_t)status;
 }
-
 #ifdef __cplusplus
 }
 #endif

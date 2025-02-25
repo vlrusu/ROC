@@ -2390,6 +2390,36 @@ int main() {
                     bufWrite(outBuffer, &bufcount, rx0, 2);
 
                     outBufSend(g_uart, outBuffer, bufcount);
+                } else if (commandID == NVMWRITE) {
+                    uint8_t rw = (uint8_t) buffer[4];
+
+                    uint8_t user_key[24] = {0x00};
+                    uint8_t cmd = SNVM_NON_AUTHEN_TEXT_REQUEST_CMD;
+                    uint16_t addr = readU16fromBytes(&buffer[5]); //no need to pass more than 2 bytes. the writable part of the nvm starts at 0
+                    uint16_t data = readU16fromBytes(&buffer[7]);
+                    uint8_t admin[4] = {0x00};
+
+                    uint8_t text[280] = {0x0};
+                    text[0] = data & 0xFF;
+                    text[1] = (data >> 8) & 0xFF;
+                    uint8_t status = 0;
+
+                    outBuffer[bufcount++] = NVMWRITE;
+                    bufWrite(outBuffer, &bufcount, 5, 2);
+
+                    if (rw >0 ) {
+
+                        status = SYS_secure_nvm_write(cmd, addr, &text[0], user_key, 0);
+                    }
+                    else{
+                        status = SYS_secure_nvm_read(addr, 0, &admin[0], text, 252u, 0);
+                    }
+                    uint16_t reply = (text[1] << 8) | text[0];
+                    bufWrite(outBuffer, &bufcount, rw, 1);
+                    bufWrite(outBuffer, &bufcount, status, 2);
+                    bufWrite(outBuffer, &bufcount, reply, 2);
+
+                    outBufSend(g_uart, outBuffer, bufcount);
 
                 } else if (commandID == DIGIRW) {
                     uint8_t rw = (uint8_t) buffer[4];
