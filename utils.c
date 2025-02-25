@@ -916,6 +916,12 @@ void init_DIGIs(){
 
 	*(registers_0_addr + REG_ROC_EWW_PULSER) = 1;
 
+	uint8_t nvmadmin[4] = {0x00};
+	 uint8_t text[280] = {0x0};
+	SYS_secure_nvm_read(PANELNVMADDRESS, 0, &nvmadmin[0], text, 252u, 0);
+	uint16_t reply = (text[1] << 8) | text[0];
+	digi_write(DG_ADDR_DIGINUMBER,reply,0);
+
 }
 
 

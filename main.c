@@ -2397,7 +2397,7 @@ int main() {
                     uint8_t cmd = SNVM_NON_AUTHEN_TEXT_REQUEST_CMD;
                     uint16_t addr = readU16fromBytes(&buffer[5]); //no need to pass more than 2 bytes. the writable part of the nvm starts at 0
                     uint16_t data = readU16fromBytes(&buffer[7]);
-                    uint8_t admin[4] = {0x00};
+                    uint8_t nvmadmin[4] = {0x00};
 
                     uint8_t text[280] = {0x0};
                     text[0] = data & 0xFF;
@@ -2412,7 +2412,7 @@ int main() {
                         status = SYS_secure_nvm_write(cmd, addr, &text[0], user_key, 0);
                     }
                     else{
-                        status = SYS_secure_nvm_read(addr, 0, &admin[0], text, 252u, 0);
+                        status = SYS_secure_nvm_read(addr, 0, &nvmadmin[0], text, 252u, 0);
                     }
                     uint16_t reply = (text[1] << 8) | text[0];
                     bufWrite(outBuffer, &bufcount, rw, 1);

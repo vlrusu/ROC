@@ -346,7 +346,7 @@
 #define REG_ROC_READ_ALIGNED 0xB6
 #define REG_ROC_READ_ALIGNMENT 0xB7
 
-
+#define PANELNVMADDRESS 0x0
 
 
 //#define REG_ROC_DDR_TRUEL	0xC0 	//R  LSB 32-bit of DDR read data when error seen
