@@ -23,6 +23,9 @@
 // Used for commands to uProc from DTC
 #define DTCPROGRAM
 
+// Used for commands to uProc from DTC
+#define RS485PROGRAM
+
 // Used for code need in DRAC Standalone Tests
 #define DRACTEST
 
@@ -85,6 +88,10 @@ int main() {
 #ifdef DTCPROGRAM
     // MT added  register address for DTC commands
     registers_1_addr = (volatile uint32_t*) DTC_BASE_ADDR;
+#endif
+
+#ifdef RS485PROGRAM
+    registers_2_addr = (volatile uint32_t*) RS485_BASE_ADDR;
 #endif
 
     // give TWI control to microprocessor before calling DIGI_READ/WRITE or ADC_READ/WRITE
@@ -558,16 +565,176 @@ int main() {
         delayUs(1);
         loopCount++;
 
-        // this is an example of a DCS WR/RD of addr 64 for a "static" register
-        // via DTCInterface/DRACRegister
-        /*
-         volatile uint16_t example_prev_rd = 0;
-         volatile uint16_t example_rd = *(registers_1_addr + CRDCS_EXAMPLE_RD);
-         if (example_rd != example_prev_rd) {
-         *(registers_1_addr + CRDCS_EXAMPLE_WR) = example_rd;
-         }
-         example_prev_rd = example_rd;
-         */
+
+#ifdef RS485PROGRAM
+
+        volatile uint16_t rs485_rx_ready = *(registers_2_addr + CRRS485_RX_READY);
+
+        uint16_t rs485_rx_cmd = 0;
+        while (rs485_rx_ready == 1) {   // if put first, it will have priority over "dtc_cmd_ready"??
+
+            // this is the third byte of RS485 RX which encodes the command
+            rs485_rx_cmd = *(registers_2_addr + CRRS485_RX_READ);
+
+            // reset RX_READY and send RX acknowledge
+            rs485_rx_ready = 0;
+            *(registers_2_addr + CRRS485_RX_ACK) = 1;
+        }
+        *(registers_2_addr + CRRS485_RX_ACK) = 0;
+
+        delayUs(1);
+
+
+        // fill up 32-bit SPI bus. Firmware will take care of sending out 8-bit at the time
+        uint32_t rs485_spi32;
+        uint16_t rs485_addr;
+        uint16_t rs485_tvs_val[4] = {0};
+        uint8_t rs485_j;
+        uint8_t rs485_hvcal;
+        uint8_t rs485_i;
+
+        volatile uint16_t rs485_tx_busy = 1;
+
+        switch (rs485_rx_cmd) {
+
+        //
+        // READSPI:
+        //  First 24 value are returned by nested loop
+        //          for (uint8_t i = 0 ; i < 2; i++) { -- "i" selecting g_spi[i]
+        //              for (uint8_t j = 0 ; j < 12; j++) {
+        //                 -- "j" selecting SPI_SLAVE_0 if <4; SPI_SLAVE_2 if >=8;  SPI_SLAVE1 others
+        //                  SPI_set_slave_select( &g_spi[i] , SPI_SLAVE(j));
+        //                  uint16_t addr = (j%4 <<11 );
+        //                  SPI_transfer_frame( &g_spi[i], addr);
+        //                  SPI_transfer_frame( &g_spi[i], addr);
+        //                  spi32 = SPI_transfer_frame( &g_spi[i], addr);
+        //                  SPI_clear_slave_select( &g_spi[i] , SPI_SLAVE(j));
+        //              }
+        //          }
+        // Variables read are:
+        //  I3.3 =>    (j=0,i=0);  I2.5 =>   (j=1,i=0);  I1.8HV =>  (j=2,i=0);   IH5.0 => (j=3,i=0);
+        //  VDMBHV5 => (j=4,i=0);  V1.8HV => (j=5,i=0);  V3.3HV =>  (j=6,i=0);   V2.5 =>  (j=7,i=0);
+        //  A0 =>      (j=8,i=0);  A1 =>     (j=9,i=0);  A2 =>      (j=10,i=0);  A3 =>    (j11,i=0);
+        //  I1.8CAL => (j=0,i=1);  I1.2 =>   (j=1,i=1);  ICAL5.0 => (j=2,i=1);   SPARE => (j=3,i=1);
+        //  V3.3 =>    (j=4,i=1);  VCAL5.0 =>(j=5,i=1);  V1.8CAL => (j=6,i=1);   V1.0 =>  (j=7,i=1);
+        //  ROCPCBT => (j=8,i=1);  HVPCBT => (j=9,i=1);  CALPCBT => (j=10,i=1);  RTD =>   (j11,i=1);
+        //
+        //  Next 4 values are from loop over TVS registers
+        //    for (uint8_t i =0; i<4; i++){
+        //      *(registers_0_addr+REG_ROC_TVS_ADDR) = i;
+        //      delayUs(1);
+        //      tvs_val[i] = *(registers_0_addr + REG_ROC_TVS_VAL);
+        //    }
+        // ROC_RAIL_1V(mV) => i=0    ROC_RAIL_1.8V(mV) => i=1;   ROC_RAIL_2.5V(mV) => i=2;  ROC_TEMP(C) => i=3;
+        //
+        // Final 8 values are from nested loop over ADC digitizers chips:
+        //      for (uint8_t hvcal=1; hvcal<3; hvcal++){ -- "ihval" selects CAL vs HV
+        //        for (uint8_t i =0; i<4; i++){  -- "i" selects: 1V vs 1.8V vs 2.5V vs TEMP
+        //            digi_write(DG_ADDR_TVS_ADDR, i, ihvcal);
+        //
+        //            delayUs(1);
+        //            tvs_val[i] = digi_read(DG_ADDR_TVS_VAL, ihvcal);
+        //        }
+        //      }
+        // CAL_RAIL_1V(mV) => (j=1,i=0);  CAL_RAIL_1.8V => (j=1,i=1);  CAL_RAIL_2.5V => (j=1,i=2);  CAL_TEMP(C) => (j=1,i=3);
+        // HV_RAIL_1V(mV)  => (j=2,i=0);  HV_RAIL_1.8V  => (j=2,i=1);  HV_RAIL_2.5V  => (j=2,i=2);  HV_TEMP(C)  => (j=2,i=3);
+
+        case TEST:
+            *(registers_2_addr + CRRS485_TX_WRITE) = 0x1234;
+            //delay_ms(1000);  // 1s delay to wait for "set_rs485_receive()". Now moved to firmware
+            *(registers_2_addr + CRRS485_TX_START) = 1;
+            // old implementation which holds microprocessor
+            // check TX_BUSY before releasing TX_START
+            //while (rs485_tx_busy == 1) {
+            //    rs485_tx_busy = *(registers_2_addr + CRRS485_TX_BUSY);
+            //}
+            *(registers_2_addr + CRRS485_TX_START) = 0;
+            break;
+
+
+        case READSPI_I33:
+
+            rs485_j = 0;
+            SPI_set_slave_select( &g_spi[0] , SPI_SLAVE_0);
+
+            rs485_addr = (rs485_j%4 <<11 );
+            SPI_transfer_frame( &g_spi[0], rs485_addr);
+            SPI_transfer_frame( &g_spi[0], rs485_addr);
+            rs485_spi32 = SPI_transfer_frame( &g_spi[0], rs485_addr);
+
+            SPI_clear_slave_select( &g_spi[0] , SPI_SLAVE_0);
+
+            *(registers_2_addr + CRRS485_TX_WRITE) = (0x0000FFFF & rs485_spi32);
+            *(registers_2_addr + CRRS485_TX_START) = 1;
+            *(registers_2_addr + CRRS485_TX_START) = 0;
+            break;
+
+
+        case READSPI_I25:
+
+            rs485_j = 1;
+            SPI_set_slave_select( &g_spi[0] , SPI_SLAVE_0);
+
+            rs485_addr = (rs485_j%4 <<11 );
+            SPI_transfer_frame( &g_spi[0], rs485_addr);
+            SPI_transfer_frame( &g_spi[0], rs485_addr);
+            rs485_spi32 = SPI_transfer_frame( &g_spi[0], rs485_addr);
+
+
+            SPI_clear_slave_select( &g_spi[0] , SPI_SLAVE_0);
+
+            *(registers_2_addr + CRRS485_TX_WRITE) = (0x0000FFFF & rs485_spi32);
+            *(registers_2_addr + CRRS485_TX_START) = 1;
+            *(registers_2_addr + CRRS485_TX_START) = 0;
+            break;
+
+
+        case READSPI_ROCRAIL_1V:
+
+            rs485_i = 0;
+            *(registers_0_addr+REG_ROC_TVS_ADDR) = 0;
+            delayUs(1);
+            rs485_tvs_val[rs485_i] = *(registers_0_addr + REG_ROC_TVS_VAL);
+
+            *(registers_2_addr + CRRS485_TX_WRITE) = rs485_tvs_val[rs485_i];
+            *(registers_2_addr + CRRS485_TX_START) = 1;
+            *(registers_2_addr + CRRS485_TX_START) = 0;
+
+            break;
+
+        case READSPI_CALRAIL_1V:
+
+            rs485_hvcal = 1;
+            rs485_i = 0;
+            digi_write(DG_ADDR_TVS_ADDR, rs485_i, rs485_hvcal);
+
+            delayUs(1);
+            rs485_tvs_val[rs485_i] = digi_read(DG_ADDR_TVS_VAL, rs485_hvcal);
+
+            *(registers_2_addr + CRRS485_TX_WRITE) = rs485_tvs_val[rs485_i];
+            *(registers_2_addr + CRRS485_TX_START) = 1;
+            *(registers_2_addr + CRRS485_TX_START) = 0;
+
+            break;
+
+        default:
+            break;
+        }
+
+        delayUs(1);
+
+#endif  //RS485PROGRAM
+
+// this is an example of a DCS WR/RD of addr 64 for a "static" register
+// via DTCInterface/DRACRegister
+/*
+ volatile uint16_t example_prev_rd = 0;
+ volatile uint16_t example_rd = *(registers_1_addr + CRDCS_EXAMPLE_RD);
+ if (example_rd != example_prev_rd) {
+ *(registers_1_addr + CRDCS_EXAMPLE_WR) = example_rd;
+ }
+ example_prev_rd = example_rd;
+ */
 
 #ifdef DTCPROGRAM
         //
@@ -605,9 +772,9 @@ int main() {
             get_cmd_rx = *(registers_1_addr + CRDCS_READ_RX);
 
             if (cmd_rx_cnt == 0) {
-                // upon starting WHILE loop for procesor with CMD_READY seen,
+                // upon starting WHILE loop for processor with CMD_READY seen,
                 // clear status register and written words register
-                *(registers_1_addr + CRDCS_CMD_STATUS) = 0x1000;
+                *(registers_1_addr + CRDCS_CMD_STATUS) = 0;
                 *(registers_1_addr + CRDCS_DIAG_DATA) = 0;
                 cmd_fail = 0;
                 data_zero = get_cmd_rx;
@@ -667,11 +834,11 @@ int main() {
         }
         delayUs(1);
 
-        uint8_t  rw = 0;        // 0 for read, 1 for write
+        uint8_t  fiber_rw = 0;        // 0 for read, 1 for write
         uint8_t  adc_num = 0;
         uint8_t  chan_num = 0;
-        uint16_t value = 0;
-        uint16_t preamptype = 0;
+        uint16_t fiber_value = 0;
+        uint16_t preamp_type = 0;
 
         switch (proc_commandID) {
 
@@ -913,13 +1080,13 @@ int main() {
             // ADC_ADDR_CONFIG = 0x00 should return result=0x18 for either ADCs
             // ADC_ADDR_CID1   = 0x01 should return result=0x08 for (old) ADC9212 and 0x93 for ADC9637
             /*
-            rw = 0;                       // 0 for read, 1 for write
+            fiber_rw = 0;                       // 0 for read, 1 for write
             adc_num = 0;
             //adcaddr =  ADC_ADDR_CID1;   // DOES NOT WORK, RETURNS 0???
             adcaddr =  ADC_ADDR_CONFIG;   // THIS WORKS
             */
 
-            rw = (uint8_t) dtcbuffer[0];   // -w
+            fiber_rw= (uint8_t) dtcbuffer[0];   // -w
             adc_num = (uint8_t) dtcbuffer[1];   // -A
             adcaddr = dtcbuffer[2];             // -a
             adcdata = dtcbuffer[3];             // -d
@@ -927,7 +1094,7 @@ int main() {
             // give TWI control to uProc before calling DIGI_READ/WRITE (called by ADC_READ/WRITE)
             //*(registers_0_addr + REG_DIGIRW_SEL) = 1;
 
-            if (rw == 0) { // for READ, report result from SPI ADC_READ
+            if (fiber_rw == 0) { // for READ, report result from SPI ADC_READ
                 result = adc_read(adcaddr, adc_num);
             } else {  // for WRITE, pass
                 adc_write(adcaddr, (uint8_t) adcdata, (0x1 << adc_num));
@@ -955,12 +1122,13 @@ int main() {
             *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
 
             // defaults from Python
-            rw = 0;                // (0 for RD, 1 for WR)
-            uint8_t thishvcal = 0; // for DIGI selection: 0 -> both CAL and HV, 1-> CAL only, 2 -> HV only)
-                                   // 3 for specific register RW
-                                   // 4-15 for ADC R/W to ADC channel 0-11
-            uint16_t digiaddr = 16;
-            uint32_t digidata = 16;
+            fiber_rw = 0;                // (0 for RD, 1 for WR)
+            uint8_t digi_hvcal = 0; // for DIGI selection:
+                                    //  0 -> both CAL and HV, 1-> CAL only, 2 -> HV only)
+                                    //  3 for specific register RW
+                                    //  4-15 for ADC R/W to ADC channel 0-11
+            uint16_t digi_addr = 16;
+            uint32_t digi_data = 16;
             uint16_t data_low = 0;
             uint16_t data_high = 0;
             uint16_t adc_mask = 0;
@@ -968,46 +1136,49 @@ int main() {
             // used for testing read of addr=0 (read-only CHIP_configuration) of adc=1
             // Should return 0x18;
             /*
-             rw = 0;
-             thishvcal = 5;
-             digiaddr =  ADC_ADDR_CONFIG;
+             fiber_rw = 0;
+             digi_hvcal = 5;
+             digi_addr =  ADC_ADDR_CONFIG;
              */
 
-            rw = (uint8_t) dtcbuffer[0];            // -w
-            thishvcal = (uint8_t) buffer[1];        // -h
-            digiaddr = dtcbuffer[2];                // -a
-            data_low = dtcbuffer[3];                // -d  (16 LSB)
-            data_high = dtcbuffer[4];               // -d  (16 MSB)
+            fiber_rw    = (uint8_t) dtcbuffer[0];           // -w
+            digi_hvcal  = (uint8_t) dtcbuffer[1];           // -h
+            digi_addr   = dtcbuffer[2];                   // -a
+            data_low    = dtcbuffer[3];                    // -d  (16 LSB)
+            data_high   = dtcbuffer[4];                   // -d  (16 MSB)
 
-            digidata = ((data_high << 16) & 0XFFFF0000) + (data_low & 0x0000FFFF);
+            digi_data = ((data_high << 16) & 0XFFFF0000) + (data_low & 0x0000FFFF);
 
             // give TWI control to uProc before calling DIGI_READ/WRITE or ADC/READ_WRITE
             //*(registers_0_addr + REG_DIGIRW_SEL) = 1;
 
-            if (rw & 0x2) {
-                digiaddr |= 0x100;
-                rw &= 0x1;
+            // Fixed 02/24/2024: was overridingdigi_addrR!!!
+            uint16_t adc_addr = digi_addr;
+             if (fiber_rw & 0x2) {
+                 adc_addr |= 0x100;
+                 //digi_addr |= 0x100;
+                 fiber_rw &= 0x1;
             }
-            if (thishvcal < 3) {
-                if (rw == 0) {                  //read
-                    digidata = digi_read(digiaddr, thishvcal);
+            if (digi_hvcal < 3) {
+                if (fiber_rw == 0) {                  //read
+                    digi_data = digi_read(digi_addr, digi_hvcal);
                 } else {
-                    digi_write(digiaddr, digidata, thishvcal);
+                    digi_write(digi_addr, digi_data, digi_hvcal);
                 }
             } else {
-                if (thishvcal == 3) {
-                    if (rw == 0) {                //read
-                        digidata = *(registers_0_addr + digiaddr);
+                if (digi_hvcal == 3) {
+                    if (fiber_rw == 0) {                //read
+                        digi_data = *(registers_0_addr + digi_addr);
                     } else {
-                        *(registers_0_addr + digiaddr) = digidata;
+                        *(registers_0_addr + digi_addr) = digi_data;
                     }
                 } else {
-                    adc_num = thishvcal - 4;
-                    if (rw == 0) {
-                        digidata = adc_read(digiaddr, adc_num);
+                    adc_num = digi_hvcal - 4;
+                    if (fiber_rw == 0) {
+                        digi_data = adc_read(adc_addr, adc_num);
                     } else {
                         adc_mask = (0x1 << adc_num);
-                        adc_write(digiaddr, digidata, adc_mask);
+                        adc_write(adc_addr, digi_data, adc_mask);
                     }
                 }
             }
@@ -1019,11 +1190,11 @@ int main() {
             *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
             *(registers_1_addr + CRDCS_WRITE_TX) = 7;
             *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
-            *(registers_1_addr + CRDCS_WRITE_TX) = rw;
-            *(registers_1_addr + CRDCS_WRITE_TX) = thishvcal;
-            *(registers_1_addr + CRDCS_WRITE_TX) = digiaddr;
-            *(registers_1_addr + CRDCS_WRITE_TX) = digidata & 0xFFFF;
-            *(registers_1_addr + CRDCS_WRITE_TX) = (digidata >> 16);
+            *(registers_1_addr + CRDCS_WRITE_TX) = fiber_rw;
+            *(registers_1_addr + CRDCS_WRITE_TX) = digi_hvcal;
+            *(registers_1_addr + CRDCS_WRITE_TX) = digi_addr;
+            *(registers_1_addr + CRDCS_WRITE_TX) = digi_data & 0xFFFF;
+            *(registers_1_addr + CRDCS_WRITE_TX) = (digi_data >> 16);
             *(registers_1_addr + CRDCS_WRITE_TX) = adc_num;
             *(registers_1_addr + CRDCS_WRITE_TX) = adc_mask;
             *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
@@ -1059,14 +1230,14 @@ int main() {
             uint16_t ifcheck = 1;
 
             // load parameters from DCS Block Write
-            eye_monitor_width = dtcbuffer[0];         // -w
-            init_adc_phase = dtcbuffer[1];            // -p
-            ifcheck =  dtcbuffer[2];                  // -ck
-            chan_num = (uint8_t) dtcbuffer[3];        // -c
-            adc_num = (uint8_t) dtcbuffer[4];         // -a
-            channel_mask[0] = (dtcbuffer[6]<<16)   +  dtcbuffer[5];   // -C
-            channel_mask[1] = (dtcbuffer[8]<<16)  +  dtcbuffer[7];   // -D
-            channel_mask[2] = (dtcbuffer[10]<<16) +  dtcbuffer[9];  // -E
+            eye_monitor_width   = dtcbuffer[0];             // -w
+            init_adc_phase      = dtcbuffer[1];             // -p
+            ifcheck             =  dtcbuffer[2];            // -ck
+            chan_num    = (uint8_t) dtcbuffer[3];           // -c
+            adc_num     = (uint8_t) dtcbuffer[4];           // -a
+            channel_mask[0]     = (dtcbuffer[6]<<16)  +  dtcbuffer[5];     // -C
+            channel_mask[1]     = (dtcbuffer[8]<<16)  +  dtcbuffer[7];      // -D
+            channel_mask[2]     = (dtcbuffer[10]<<16) +  dtcbuffer[9];      // -E
 
             // correct for parameters out of allowed values
             if (eye_monitor_width > 7) eye_monitor_width = 7;
@@ -1349,18 +1520,18 @@ int main() {
 
              // load parameters - Vadim says to ignore "message" (-M) and "chan_num" (-c)
              // also "max_total_delay" (-d) is not used
-             adc_mode = dtcbuffer[0];                                  // -a
-             tdc_mode = dtcbuffer[1];                                  // -t
-             num_lookback = dtcbuffer[2];                              // -l
-             num_samples = dtcbuffer[3];                               // -s
-             num_triggers = (dtcbuffer[5]<<16) + dtcbuffer[4];         // -T
-             channel_mask[0] = (dtcbuffer[7]<<16)  +  dtcbuffer[6];    // -C
-             channel_mask[1] = (dtcbuffer[9]<<16)  +  dtcbuffer[8];    // -D
-             channel_mask[2] = (dtcbuffer[11]<<16) +  dtcbuffer[10];   // -E
-             enable_pulser = (uint8_t) dtcbuffer[12];                  // -p
-             marker_clock = (uint8_t) dtcbuffer[13];                   // -m
-             mode = (uint8_t) dtcbuffer[14];
-             clock = (uint8_t) dtcbuffer[15];
+             adc_mode       = dtcbuffer[0];                             // -a
+             tdc_mode       = dtcbuffer[1];                             // -t
+             num_lookback   = dtcbuffer[2];                             // -l
+             num_samples    = dtcbuffer[3];                             // -s
+             num_triggers   = (dtcbuffer[5]<<16)  +  dtcbuffer[4];      // -T
+             channel_mask[0]= (dtcbuffer[7]<<16)  +  dtcbuffer[6];      // -C
+             channel_mask[1]= (dtcbuffer[9]<<16)  +  dtcbuffer[8];      // -D
+             channel_mask[2]= (dtcbuffer[11]<<16) +  dtcbuffer[10];     // -E
+             enable_pulser  = (uint8_t) dtcbuffer[12];                  // -p
+             marker_clock   = (uint8_t) dtcbuffer[13];                  // -m
+             mode           = (uint8_t) dtcbuffer[14];
+             clock          = (uint8_t) dtcbuffer[15];
 
              if (marker_clock & 0x1)
                *(registers_0_addr + REG_ROC_ENABLE_FIBER_CLOCK) = 1;
@@ -1454,28 +1625,28 @@ int main() {
               /*
                       } else if (commandID == SETPREAMPGAIN){
                           uint16_t channel = readU16fromBytes(&buffer[4]);
-                          uint16_t value = readU16fromBytes(&buffer[6]);
+                          uint16_t fiber_value = readU16fromBytes(&buffer[6]);
 
-                          setPreampGain(channel, value);
+                          setPreampGain(channel, fiber_value);
 
                           outBuffer[bufcount++] = SETPREAMPGAIN;
                           bufWrite(outBuffer, &bufcount, 4, 2);
                           bufWrite(outBuffer, &bufcount, channel, 2);
-                          bufWrite(outBuffer, &bufcount, value, 2);
+                          bufWrite(outBuffer, &bufcount, fiber_value, 2);
                           outBufSend(g_uart, outBuffer, bufcount);
 
                           // Set preamp threshold
                       }else if (commandID == SETPREAMPTHRESHOLD){
                           uint16_t channel = readU16fromBytes(&buffer[4]);
 
-                          uint16_t value = readU16fromBytes(&buffer[6]);
+                          uint16_t fiber_value = readU16fromBytes(&buffer[6]);
 
-                          setPreampThreshold(channel, value);
+                          setPreampThreshold(channel, fiber_value);
 
                           outBuffer[bufcount++] = SETPREAMPTHRESHOLD;
                           bufWrite(outBuffer, &bufcount, 4, 2);
                           bufWrite(outBuffer, &bufcount, channel, 2);
-                          bufWrite(outBuffer, &bufcount, value, 2);
+                          bufWrite(outBuffer, &bufcount, fiber_value, 2);
                           outBufSend(g_uart, outBuffer, bufcount);
               */
              // return TWI control to fiber
@@ -1521,25 +1692,25 @@ int main() {
             /*
              // for testing by hand
              chan_num  = 1;
-             value = 370;   // N.B. Expect that float to integer conversion has already happened!
-             preamptype = 1;
+             fiber_value = 370;   // N.B. Expect that float to integer conversion has already happened!
+             preamp_type = 1;
              */
 
-            chan_num = dtcbuffer[0];     // -c
-            value = dtcbuffer[1];     // -d
-            preamptype = dtcbuffer[2];     // -hv
+            chan_num    = dtcbuffer[0];     // -c
+            fiber_value = dtcbuffer[1];     // -d
+            preamp_type = dtcbuffer[2];     // -hv
 
-            if (preamptype == 1)
+            if (preamp_type == 1)
                 chan_num = chan_num + 96;
 
-            setPreampGain(chan_num, value);
+            setPreampGain(chan_num, fiber_value);
 
             *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
             *(registers_1_addr + CRDCS_WRITE_TX) = 3;
             *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
             *(registers_1_addr + CRDCS_WRITE_TX) = chan_num;
-            *(registers_1_addr + CRDCS_WRITE_TX) = value;
-            *(registers_1_addr + CRDCS_WRITE_TX) = preamptype;
+            *(registers_1_addr + CRDCS_WRITE_TX) = fiber_value;
+            *(registers_1_addr + CRDCS_WRITE_TX) = preamp_type;
             *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
 
             // update CMD_STATUS
@@ -1556,25 +1727,25 @@ int main() {
             // for testing by hand
             /*
              chan_num  = 1;
-             value = 450;   // N.B. Expect that float to integer conversion has already happened!
-             preamptype = 1;
+             fiber_value = 450;   // N.B. Expect that float to integer conversion has already happened!
+             preamp_type = 1;
              */
 
-            chan_num = dtcbuffer[0];     // -c
-            value = dtcbuffer[1];     // -d
-            preamptype = dtcbuffer[2];     // -hv
+            chan_num    = dtcbuffer[0];     // -c
+            fiber_value = dtcbuffer[1];     // -d
+            preamp_type = dtcbuffer[2];     // -hv
 
-            if (preamptype == 1)
+            if (preamp_type == 1)
                 chan_num = chan_num + 96;
 
-            setPreampThreshold(chan_num, value);
+            setPreampThreshold(chan_num, fiber_value);
 
             *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
             *(registers_1_addr + CRDCS_WRITE_TX) = 3;
             *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
             *(registers_1_addr + CRDCS_WRITE_TX) = chan_num;
-            *(registers_1_addr + CRDCS_WRITE_TX) = value;
-            *(registers_1_addr + CRDCS_WRITE_TX) = preamptype;
+            *(registers_1_addr + CRDCS_WRITE_TX) = fiber_value;
+            *(registers_1_addr + CRDCS_WRITE_TX) = preamp_type;
             *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
 
             // update CMD_STATUS
@@ -1595,8 +1766,8 @@ int main() {
             uint16_t dutyCycle = 10;
             uint32_t pulserDelay = 1000;
 
-            chan_mask   = (uint8_t)dtcbuffer[0];   // -C
-            dutyCycle   = dtcbuffer[1];   // -y
+            chan_mask   = (uint8_t) dtcbuffer[0];   // -C
+            dutyCycle   =           dtcbuffer[1];   // -y
             pulserDelay = (dtcbuffer[3]<<16)  +  dtcbuffer[2];   // -d  or  integer
 
             for (uint8_t i = 0; i < 16; i++) {
@@ -3742,32 +3913,32 @@ int main() {
 
                 } else if (commandID == ADCRWCMDID) {
                     // adc read/write
-                    uint8_t adc_num = (uint8_t) buffer[4];
-                    uint8_t rw = (uint8_t) buffer[5];
+                    uint8_t adcnum  = (uint8_t) buffer[4];
+                    uint8_t adcrw   = (uint8_t) buffer[5];
                     uint16_t address = readU16fromBytes(&buffer[6]);
                     uint16_t data = readU16fromBytes(&buffer[8]);
 
                     outBuffer[bufcount++] = ADCRWCMDID;
                     bufWrite(outBuffer, &bufcount, 6, 2);
 
-                    if (rw == 1) {
-                        uint8_t result = adc_read(address, adc_num);
-                        //                      sprintf(outBuffer,"Read adc %d address %02x: %02x\n",adc_num,address,result);
+                    if (adcrw == 1) {
+                        uint8_t result = adc_read(address, adcnum);
+                        //                      sprintf(outBuffer,"Read adc %d address %02x: %02x\n",adcnum,address,result);
                         //                      UART_polled_tx_string( &g_uart, outBuffer );
 
-                        outBuffer[bufcount++] = rw;
-                        outBuffer[bufcount++] = adc_num;
+                        outBuffer[bufcount++] = adcrw;
+                        outBuffer[bufcount++] = adcnum;
                         bufWrite(outBuffer, &bufcount, address, 2);
                         outBuffer[bufcount++] = result;
                         outBuffer[bufcount++] = 0;
                         outBufSend(g_uart, outBuffer, bufcount);
                     } else {
-                        adc_write(address, (uint8_t) data, (0x1 << adc_num));
+                        adc_write(address, (uint8_t) data, (0x1 << adcnum));
                         //                      sprintf(outBuffer,"Wrote adc %d address %02x: %02x\n",adc_num,address,data);
                         //                      UART_polled_tx_string( &g_uart, outBuffer );
 
-                        outBuffer[bufcount++] = rw;
-                        outBuffer[bufcount++] = adc_num;
+                        outBuffer[bufcount++] = adcrw;
+                        outBuffer[bufcount++] = adcnum;
                         bufWrite(outBuffer, &bufcount, address, 2);
                         bufWrite(outBuffer, &bufcount, data, 2);
                         outBufSend(g_uart, outBuffer, bufcount);

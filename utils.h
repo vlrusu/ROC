@@ -171,9 +171,23 @@
 #define GETKEY      274 // 0x112 - fiber version of READKEY: execute with Single DCS_WRITE of any value (ignored) followed by DCS_BLOCK_READ of of 4 values
 #define DIAGDATA    511 // 0x1FF - Block RD of assorted diagnostics, started by a single WR of any value
 
+// RS485 commands: can be from 0 to 255
+#define TEST                255
+#define READSPI_I33         1
+#define READSPI_I25         2
+#define READSPI_ROCRAIL_1V  25  //(0x19)
+#define READSPI_CALRAIL_1V  29  //(0x1D)
 //******************************************************************************
 //                             Registers & Addresses
 //******************************************************************************
+
+// MT: RS485 specific
+#define CRRS485_RX_READY    0x1   // RS485 has received data
+#define CRRS485_RX_READ     0x2   // uProc reads data from RS485 logic
+#define CRRS485_TX_WRITE    0x3   // uProc writes data to RS485 logic
+#define CRRS485_RX_ACK      0x5   // uProc has seen data from RS485
+#define CRRS485_TX_BUSY     0x6   // RS485 is busy sending data out
+#define CRRS485_TX_START    0x7   // RS485 can start sending one 32-bit word
 
 // MT DTC
 //*********************** CR_DTC* are the address offsets for DTC commands
@@ -496,6 +510,8 @@ extern uint32_t writePtr;
 volatile uint32_t * registers_0_addr;
 // MT added for DCS commands
 volatile uint32_t * registers_1_addr;
+// MT added for RS485 commands
+volatile uint32_t * registers_2_addr;
 
 extern int readout_maxDelay;
 extern int readout_mode;
