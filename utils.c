@@ -922,6 +922,7 @@ void init_DIGIs(){
 	uint16_t reply = (text[1] << 8) | text[0];
 	digi_write(DG_ADDR_DIGINUMBER,reply,0);
 
+	*(registers_0_addr + CRRS485_ADDRESS) = reply;
 }
 
 

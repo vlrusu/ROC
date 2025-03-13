@@ -132,7 +132,9 @@ int main() {
 
     //adc_write(ADC_ADDR_PWR,0x01,0x8FF);
 
+
     adc_write(0x100, 0x71, 0xFFF); // set to 10 bit, 40 MSPS
+    adc_write(ADC_ADDR_SRCTRL, 0xC3, 0xFFF); //set to LSB first
     adc_write(0xFF, 0x01, 0xFFF); // latch the above change
     adc_write(0x14, 0x00, 0xFFF); // set to offset binary
 
@@ -1223,6 +1225,8 @@ int main() {
                 uint16_t adc_mask = (0x1 << i);
                 adc_write(0x08, 0, adc_mask);
             }
+
+            adc_write(ADC_ADDR_SRCTRL, 0xC3, 0xFFF); //set to LSB first
 
             // defaults from Python
             uint16_t eye_monitor_width = 4;
@@ -4009,6 +4013,8 @@ int main() {
                         uint16_t adc_mask = (0x1 << i);
                         adc_write(0x08, 0, adc_mask);
                     }
+
+                    adc_write(ADC_ADDR_SRCTRL, 0xC3, 0xFFF); //set to LSB first
 
                     autobitslip();
 

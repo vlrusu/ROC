@@ -188,6 +188,7 @@
 #define CRRS485_RX_ACK      0x5   // uProc has seen data from RS485
 #define CRRS485_TX_BUSY     0x6   // RS485 is busy sending data out
 #define CRRS485_TX_START    0x7   // RS485 can start sending one 32-bit word
+#define CRRS485_ADDRESS     0xC3
 
 // MT DTC
 //*********************** CR_DTC* are the address offsets for DTC commands
@@ -431,7 +432,7 @@
 //#define ADC_ADDR_PTN1_MSB 0x1A			// x1A: user pattern1 msb
 //#define ADC_ADDR_PTN2_LSB 0x1B			// x1B: user pattern2 lsb
 //#define ADC_ADDR_PTN2_MSB 0x1C			// x1C: user pattern2 msb
-//#define ADC_ADDR_SRCTRL 0x21			// x21: serial control: LSBFIRST | X | X | X | SPEED | NBITS[2:0]
+#define ADC_ADDR_SRCTRL 0x21			// x21: serial control: LSBFIRST | X | X | X | SPEED | NBITS[2:0]
 //#define ADC_ADDR_SRPWRWN 0x22			// x22: serial pwrdwn: XXXXXX | CH OUTPUT RESET | CH OUTPUT PWRDWN
 //#define ADC_ADDR_LATCH 0x22				// xFF: latch settings by setting bit 0 high
 
