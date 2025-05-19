@@ -170,6 +170,8 @@
 #define READILP     273 // 0x111 - fiber version of GETILP: execute with Single DCS_WRITE of any value (ignored) followed by DCS_BLOCK_READ of 4 values
 #define GETKEY      274 // 0x112 - fiber version of READKEY: execute with Single DCS_WRITE of any value (ignored) followed by DCS_BLOCK_READ of of 4 values
 #define DIAGDATA    511 // 0x1FF - Block RD of assorted diagnostics, started by a single WR of any value
+#define WRITEPREAMP 275 // 0x113 - write all gain&thresh via BLOCK_WRITE of 96x4 parameters (96xGain CAL, 96xGain HV, 96xThresh CAL, 96xThres HV)
+#define WRITECALDAC 276 // 0x114 - fiber version of SETCALDAC with passed via BLOCK_WRITE
 
 // RS485 commands: can be from 0 to 255
 #define TEST                255
@@ -349,6 +351,11 @@
 #define REG_ROC_EWM_T 0x82 // (ewm period in 40MHz clock ticks) 
 #define REG_ROC_EWMSTART_PMT 0x84 // (event window start  for PMT)
 #define REG_ROC_EWMSTOP_PMT 0x85 // (event window stop for PMT)
+
+#define PULSER_SPEED 0x85
+#define CALIBTDC 0x0F
+
+#define ADCWVFDELAY 0xF5
 
 #define REG_ROC_TVS_VAL 0x90
 #define REG_ROC_TVS_ADDR 0x91

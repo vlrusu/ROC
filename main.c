@@ -125,6 +125,15 @@ int main() {
         }
     }
 
+
+
+    //calibrate the TDCs
+    digi_write(PULSER_SPEED, 0x1, 0);
+    digi_write(CALIBTDC, 0x1, 0);
+
+
+    digi_write(ADCWVFDELAY, 1, 0);
+
     adc_write(ADC_ADDR_PWR, 0x01, 0xFFF);
     adc_write(ADC_ADDR_PWR, 0x00, ENABLED_ADCS);
 
@@ -2062,6 +2071,62 @@ int main() {
             *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
 
             break;
+
+            // set gains and thresholds for all 96 CAL&HV channels
+            // expected order is: 96xgain CAL, 96xgain HV, 96xthres CAL, 96xthres HV
+            case WRITEPREAMP:
+
+                // update CMD_STATUS
+                *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
+
+                for (uint8_t i=0;i<96;i++) {
+                    setPreampGain(i, dtcbuffer[i]);
+                    setPreampGain(i+96,dtcbuffer[i+96]);
+                    setPreampThreshold(i,dtcbuffer[i+2*96]);
+                    setPreampThreshold(i+96,dtcbuffer[i+3*96]);
+                }
+
+                // returns only 0x8000 from reg=128 and 0x1000 from reg=129
+
+                // update CMD_STATUS
+                *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
+
+                break;
+
+
+             case WRITECALDAC:
+
+                 // update CMD_STATUS
+                 *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
+
+                 // assume that CHAN_MASK and FIBER_VALUE parameters are derived from other Python command parameters as:
+                 // 1) if (channel >=0) chan_mask |= (0x1 << channel); where "channel" is passed by -c option
+                 // 2) if (fvalue >=0)  fiber_value = fvalue/3.3 * 1023; where "fvalue" is passed by  -v option
+                 chan_mask      = (uint8_t) dtcbuffer[0];   // -C
+                 fiber_value    =           dtcbuffer[1];   // -d
+
+                 for (uint8_t i = 0; i < 8; i++) {
+                     if (chan_mask & (0x1 << i)) {
+                         if (i < 4)
+                             LTC2634_write(&caldac0, i, fiber_value);
+                         else
+                             LTC2634_write(&caldac1, i - 4, fiber_value);
+                     }
+                 }
+
+                 // write copy of inputs as output for BLOCK_READ
+                 *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
+                 *(registers_1_addr + CRDCS_WRITE_TX) = 2;
+                 *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
+                 *(registers_1_addr + CRDCS_WRITE_TX) = chan_mask;
+                 *(registers_1_addr + CRDCS_WRITE_TX) = fiber_value;
+                 *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
+
+                 // update CMD_STATUS
+                 *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
+
+                 break;
+
 
 
         // read assorted diagnostic registers
