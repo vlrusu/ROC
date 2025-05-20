@@ -125,21 +125,16 @@ int main() {
         }
     }
 
+    /*Initialize the CoreSysService_PF driver*/
+    SYS_init(CSS_PF_BASE_ADDRESS);
 
 
-    //calibrate the TDCs
-    digi_write(PULSER_SPEED, 0x1, 0);
-    digi_write(CALIBTDC, 0x1, 0);
-
-
-    digi_write(ADCWVFDELAY, 1, 0);
+    //initialize the ADCs
 
     adc_write(ADC_ADDR_PWR, 0x01, 0xFFF);
     adc_write(ADC_ADDR_PWR, 0x00, ENABLED_ADCS);
 
     uint8_t errors = init_adc(ENABLED_ADCS, 0x02, 0x03);
-
-    //adc_write(ADC_ADDR_PWR,0x01,0x8FF);
 
 
     adc_write(0x100, 0x71, 0xFFF); // set to 10 bit, 40 MSPS
@@ -147,20 +142,9 @@ int main() {
     adc_write(0xFF, 0x01, 0xFFF); // latch the above change
     adc_write(0x14, 0x00, 0xFFF); // set to offset binary
 
-    /*Initialize the CoreSysService_PF driver*/
-    SYS_init(CSS_PF_BASE_ADDRESS);
 
-    uint16_t loopCount = 0;
-    uint8_t ledPattern = 0x1;
-    _Bool togglecal = 1;
 
-    //sPI initialization -- make sure the memory map in the smart design is contiguous and the mapping works
 
-    //	for (int ispi = 0; ispi<4; ispi++){
-    //		unsigned int addr = ispi * 0x00001000UL;
-    //		SPI_init( &g_spi[ispi], SPI0_BASE_ADDR + addr, 8 );
-    //		SPI_configure_master_mode( &g_spi[ispi] );
-    //	}
 
     SPI_init(&g_spi[0], SPI0_BASE_ADDR, 8);
     SPI_configure_master_mode(&g_spi[0]);
@@ -262,169 +246,40 @@ int main() {
                 default_threshs_hv[i]);
     }
 
-    //adc_write(0x08,0x00,0x3F);
-
-    //digi_write(DG_ADDR_BITSLIP0,0x0,0);
-    //digi_write(DG_ADDR_BITSLIP1,0x0,0);
-    //digi_write(DG_ADDR_BITSLIP2,0x0,0);
-    //digi_write(DG_ADDR_BITSLIP3,0x0,0);
-    //digi_write(DG_ADDR_BITSLIP4,0x0,0);
-    //digi_write(DG_ADDR_BITSLIP5,0x0,0);
-
-    digi_write(DG_ADDR_RESET, 1, 0);
-
-    digi_write(DG_ADDR_EWS, 0x0000, HVANDCAL);
-    digi_write(DG_ADDR_EWE, 0xFFFB, HVANDCAL);
-//	digi_write(DG_ADDR_EWE,0x4FFB,HVANDCAL);
-    *(registers_0_addr + REG_ROC_EWMSTART_PMT) = 0x0001;
-    *(registers_0_addr + REG_ROC_EWMSTOP_PMT) = 0x0FFF;
-    digi_write(DG_ADDR_DIGINUMBER, 0, CALONLY);
-    digi_write(DG_ADDR_DIGINUMBER, 1, HVONLY);
-
-    writePtr = 0;
-
-    //enable serdes resets
-    //digi_write(0xA1,0xF,HVANDCAL);
-    //digi_write(0xA2,0xF,HVANDCAL);
-    //*(registers_0_addr + 0xB2) = 0xF;
-    //*(registers_0_addr + 0xB3) = 0xF;
-    *(registers_0_addr + 0xB4) = 0xF;
-
-    // set defaults
-    //!!! I2C configuration for an older version of DRAC !!!
-    //!!! Newer version uses pin 9 and 10                !!!
-    //I2C_setup(&i2c_ptscal[0], &preampMCP[MCPCAL0],1,&preampMCP[MCPCAL0],2);
-    //I2C_setup(&i2c_ptshv[0], &preampMCP[MCPHV0],1,&preampMCP[MCPHV0],2);
-
-    //I2C_setup(&i2c_ptscal[1], &preampMCP[MCPCAL0],5,&preampMCP[MCPCAL0],6);
-    //I2C_setup(&i2c_ptshv[1], &preampMCP[MCPHV3],15,&preampMCP[MCPHV3],14);
-
-    //I2C bus for BME
-    //I2C_setup(&i2c_sensor[0], &sensorMCP, 2,&sensorMCP, 3);
-    //SPI_daisy bus for BME
-    SPI_daisy_setup(&spi_sensor, &sensorMCP, 3, &sensorMCP, 2, &sensorMCP, 4,
-            &sensorMCP, 1);
-    //unsigned int check2 = MCP_wordRead(&sensorMCP, OLAT09);
-    //unsigned int check3 = MCP_wordRead(&sensorMCP, GPIO09);
-    //I2C bus for HDC
-    I2C_setup(&i2c_sensor[1], &sensorMCP, 6, &sensorMCP, 7);
-    //SPI_daisy bus for AMB temperature, cal side
-    SPI_daisy_setup(&spi_ambtemp_cal, &preampMCP[MCPCAL1], 16,
-            &preampMCP[MCPCAL1], 14, &preampMCP[MCPCAL1], 15,
-            &preampMCP[MCPCAL1], 11);
-    //SPI_daisy bus for AMB temperature, hv side
-    SPI_daisy_setup(&spi_ambtemp_hv, &preampMCP[MCPHV1], 13, &preampMCP[MCPHV1],
-            15, &preampMCP[MCPHV1], 14, &preampMCP[MCPHV3], 16);
-
-    int8_t rslt = BME280_OK;
-    //uint8_t settings_sel;
-
-    //Old sensor codes with BME 280
-    /*
-     struct bme280_dev ptscal;
-     ptscal.dev_id = BME280_I2C_ADDR_PRIM;
-     ptscal.intf = BME280_I2C_INTF;
-     ptscal._i2c = &i2c_ptscal[0];
-
-     ptscal.delay_ms = delay_ms;
-
-     bme280_init(&ptscal);
-     uint8_t ptscalchipid = 0;
-     bme280_get_regs(BME280_CHIP_ID_ADDR,&ptscalchipid,1,&ptscal);
-
-     // Recommended mode of operation: Indoor navigation
-     ptscal.settings.osr_h = BME280_OVERSAMPLING_1X;
-     ptscal.settings.osr_p = BME280_OVERSAMPLING_16X;
-     ptscal.settings.osr_t = BME280_OVERSAMPLING_2X;
-     ptscal.settings.filter = BME280_FILTER_COEFF_16;
-
-     settings_sel = BME280_OSR_PRESS_SEL | BME280_OSR_TEMP_SEL | BME280_OSR_HUM_SEL | BME280_FILTER_SEL;
-
-     rslt = bme280_set_sensor_settings(settings_sel, &ptscal);
-
-     //set the HV sensor
-     struct bme280_dev ptshv;
-     ptshv.dev_id = BME280_I2C_ADDR_PRIM;
-     ptshv.intf = BME280_I2C_INTF;
-     ptshv._i2c = &i2c_ptshv[0];
-
-     ptshv.delay_ms = delay_ms;
-
-     bme280_init(&ptshv);
-     uint8_t ptshvchipid = 0;
-     bme280_get_regs(BME280_CHIP_ID_ADDR,&ptshvchipid,1,&ptshv);
-
-     // Recommended mode of operation: Indoor navigation
-     ptshv.settings.osr_h = BME280_OVERSAMPLING_1X;
-     ptshv.settings.osr_p = BME280_OVERSAMPLING_16X;
-     ptshv.settings.osr_t = BME280_OVERSAMPLING_2X;
-     ptshv.settings.filter = BME280_FILTER_COEFF_16;
-
-     settings_sel = BME280_OSR_PRESS_SEL | BME280_OSR_TEMP_SEL | BME280_OSR_HUM_SEL | BME280_FILTER_SEL;
-
-     rslt = bme280_set_sensor_settings(settings_sel, &ptshv);
-     */
-
-    /*
-     //sensor BME
-     struct bme280_dev ptbme;
-     ptbme.dev_id = BME280_I2C_ADDR_PRIM;
-     ptbme.intf = BME280_I2C_INTF;
-     ptbme._i2c = &i2c_sensor[0];
-
-     ptbme.delay_ms = delay_ms;
-
-     bme280_init(&ptbme);
-     uint8_t ptbmechipid = 0;
-     bme280_get_regs(BME280_CHIP_ID_ADDR,&ptbmechipid,1,&ptbme);
-
-     // Recommended mode of operation: Indoor navigation
-     ptbme.settings.osr_h = BME280_OVERSAMPLING_1X;
-     ptbme.settings.osr_p = BME280_OVERSAMPLING_16X;
-     ptbme.settings.osr_t = BME280_OVERSAMPLING_2X;
-     ptbme.settings.filter = BME280_FILTER_COEFF_16;
-
-     settings_sel = BME280_OSR_PRESS_SEL | BME280_OSR_TEMP_SEL | BME280_OSR_HUM_SEL | BME280_FILTER_SEL;
-
-     rslt = bme280_set_sensor_settings(settings_sel, &ptbme);
-     */
-
-    //Set up BME280 on SPI daisy
-    bme280_init_settings(&spi_sensor);
-
-    //Set up HDC2080 chips
-    /*
-     HDC2080 hdchv;
-     HDC2080 hdccal;
-     hdc2080_setup(&hdchv, HDC2080_I2C_ADDR_PRIM, &i2c_ptshv[1]);
-     hdc2080_setup(&hdccal, HDC2080_I2C_ADDR_PRIM, &i2c_ptscal[1]);
-     */
-    HDC2080 pthdc;
-    hdc2080_setup(&pthdc, HDC2080_I2C_ADDR_PRIM, &i2c_sensor[1]);
-
-    //		sprintf(outBuffer,"Data Sensor HV: %d %d %d\n",comp_data.temperature, comp_data.pressure, comp_data.humidity);
-    //		UART_polled_tx_string( &g_uart, outBuffer );
-    //
-//	*(registers_0_addr+12) = 1;
-//	for (uint8_t i=0;i<8;i++)
-//		AD5318_write(g_spi[3],1,i,default_caldac[i]);
-//	*(registers_0_addr+12) = 0;
-
+    //set default caldac
     for (uint8_t i = 0; i < 4; i++) {
         LTC2634_write(&caldac0, i, default_caldac[i]);
         LTC2634_write(&caldac1, i, default_caldac[i + 4]);
     }
 
+
+    //are we still using those?
+    *(registers_0_addr + REG_ROC_EWMSTART_PMT) = 0x0001;
+    *(registers_0_addr + REG_ROC_EWMSTOP_PMT) = 0x0FFF;
+
+    *(registers_0_addr + REG_ROC_EWM_T) = 0x13FD;
+
+
+    //enable serdes reset from DTC
+    *(registers_0_addr + 0xB4) = 0xF;
+
+
+
     init_DIGIs();
 
+    uint8_t digierror = 0;
     uint32_t read_value = digi_read(0xC0, 1);
-    if ((read_value & 0x3FF) != 0x047)
+    if ((read_value & 0x3FF) != 0x047){
+        digierror = 1;
         UART_polled_tx_string(&g_uart, "ROC->Cal X\n");
+    }
     else
         UART_polled_tx_string(&g_uart, "ROC->Cal\n");
     read_value = digi_read(0xC0, 2);
-    if ((read_value & 0x3FF) != 0x047)
+    if ((read_value & 0x3FF) != 0x047){
         UART_polled_tx_string(&g_uart, "ROC->HV X\n");
+        digierror = 1;
+    }
     else
         UART_polled_tx_string(&g_uart, "ROC->HV\n");
     read_value = *(registers_0_addr + 0xC2);
@@ -437,71 +292,14 @@ int main() {
     else
         UART_polled_tx_string(&g_uart, "HV->ROC\n");
 
-    *(registers_0_addr + REG_ROC_EWM_T) = 0x13FD;
+//try a single reset
+    if (digierror) {
+        digi_write(DG_DEVICE_RESET, 0, HVANDCAL);
+        digi_write(DG_DEVICE_RESET, 1, HVANDCAL);
+    }
 
-    /*
-     uint32_t read_value = digi_read(0xA5,1);
-     char hex_string[11];
-     for (int i=0;i<10;i++){
-     if ((0x1<<i) & read_value)
-     hex_string[9-i] = '1';
-     else
-     hex_string[9-i] = '0';
-     }
-     hex_string[10] = '\0';
-     UART_polled_tx_string( &g_uart, hex_string );
-     UART_polled_tx_string( &g_uart, " ROC->Cal " );
-     if (((read_value & 0x3) != 0x3))
-     UART_polled_tx_string( &g_uart, " unaligned " );
-     if (((read_value & 0x3C) != 0x04))
-     UART_polled_tx_string( &g_uart, " .L0. " );
-     if (((read_value & 0x3C0) != 0x040))
-     UART_polled_tx_string( &g_uart, " .L1. " );
+    init_DIGIs();
 
-     read_value = digi_read(0xA5,2);
-     for (int i=0;i<10;i++){
-     if ((0x1<<i) & read_value)
-     hex_string[9-i] = '1';
-     else
-     hex_string[9-i] = '0';
-     }
-     hex_string[10] = '\0';
-     UART_polled_tx_string( &g_uart, hex_string );
-     UART_polled_tx_string( &g_uart, " ROC->HV " );
-     if (((read_value & 0x3) != 0x3))
-     UART_polled_tx_string( &g_uart, " unaligned " );
-     if (((read_value & 0x3C) != 0x04))
-     UART_polled_tx_string( &g_uart, " .L0. " );
-     if (((read_value & 0x3C0) != 0x040))
-     UART_polled_tx_string( &g_uart, " .L1. " );
-
-     read_value = *(registers_0_addr+0xC2);
-     char hex_string2[9];
-     for (int i=0;i<8;i++){
-     if ((0x1<<i) & read_value)
-     hex_string2[7-i] = '1';
-     else
-     hex_string2[7-i] = '0';
-     }
-     hex_string2[8] = '\0';
-     UART_polled_tx_string( &g_uart, hex_string2 );
-     UART_polled_tx_string( &g_uart, " Cal->ROC " );
-     if ((read_value & 0xFF) != 0x11){
-     UART_polled_tx_string( &g_uart, " unaligned " );
-     }
-     for (int i=0;i<8;i++){
-     if ((0x1<<i) & read_value)
-     hex_string2[7-i] = '1';
-     else
-     hex_string2[7-i] = '0';
-     }
-     hex_string2[0] = '\0';
-     UART_polled_tx_string( &g_uart, hex_string2 );
-     UART_polled_tx_string( &g_uart, " HV->ROC " );
-     if ((read_value & 0xFF00) != 0x1100){
-     UART_polled_tx_string( &g_uart, " unaligned " );
-     }
-     */
 
     UART_polled_tx_string(&g_uart, "Initialization completed");
 
@@ -513,6 +311,13 @@ int main() {
 
     int readout_requestedTriggers = 0;
     int readout_totalDelays = 0;
+    uint16_t loopCount = 0;
+       uint8_t ledPattern = 0x1;
+       _Bool togglecal = 1;
+
+       writePtr = 0;
+
+
     readout_totalTriggers = 0;
     while (1) {
         //if (readout_enabled) {
@@ -1004,72 +809,6 @@ int main() {
                         (0x00FF & dinfo_buffer[i]);
             }
 
-            *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
-
-            // update CMD_STATUS
-            *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
-
-            break;
-
-        // write to DCS_TX Buffer data as in READBMES
-        case READSENSOR:
-
-            // update CMD_STATUS
-            *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
-
-            // writing only LBS 16-bit of 32 bits APB bus
-            *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
-            // not until we can deal with DIGI_WRITE while fiber is in control of DIGI registers
-            *(registers_1_addr + CRDCS_WRITE_TX) =
-                    BME280_TEMP_PRESS_CALIB_DATA_LEN
-                            + BME280_HUMIDITY_CALIB_DATA_LEN
-                            + BME280_P_T_H_DATA_LEN + 4 + 4 + 2;
-            *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
-
-            //read with BME 280
-            uint8_t calib_data_tp[BME280_TEMP_PRESS_CALIB_DATA_LEN];
-            uint8_t calib_data_h[BME280_HUMIDITY_CALIB_DATA_LEN];
-            uint8_t raw_bme_data[BME280_P_T_H_DATA_LEN];
-
-            bme280_get_calib(&spi_sensor, calib_data_tp, calib_data_h);
-            bme280_get_htp(&spi_sensor, raw_bme_data);
-
-            for (uint16_t i = 0; i < BME280_TEMP_PRESS_CALIB_DATA_LEN; i++)
-                *(registers_1_addr + CRDCS_WRITE_TX) = (0x00FF
-                        & calib_data_tp[i]);
-            for (uint16_t i = 0; i < BME280_HUMIDITY_CALIB_DATA_LEN; i++)
-                *(registers_1_addr + CRDCS_WRITE_TX) =
-                        (0x00FF & calib_data_h[i]);
-            for (uint16_t i = 0; i < BME280_P_T_H_DATA_LEN; i++)
-                *(registers_1_addr + CRDCS_WRITE_TX) =
-                        (0x00FF & raw_bme_data[i]);
-
-            //Also take measurements from HDC 2080 chips
-            uint16_t this_temp = 0;
-            uint16_t this_humidity = 0;
-
-            rslt = hdc2080_reset(&pthdc);
-            delay_ms(10);
-
-            rslt = hdc2080_trigger_measurement(&pthdc);
-            rslt = hdc2080_read_temp(&pthdc, &this_temp);
-            rslt = hdc2080_read_humidity(&pthdc, &this_humidity);
-            *(registers_1_addr + CRDCS_WRITE_TX) = this_temp;
-            *(registers_1_addr + CRDCS_WRITE_TX) = this_humidity;
-
-            //readout amb_temp
-            uint16_t amb_temp_cal = ADC124S051_daisy_read(&spi_ambtemp_cal, 1);
-            uint16_t amb_temp_hv = ADC124S051_daisy_read(&spi_ambtemp_hv, 0);
-            *(registers_1_addr + CRDCS_WRITE_TX) = amb_temp_cal;
-            *(registers_1_addr + CRDCS_WRITE_TX) = amb_temp_hv;
-
-            //read out A0 for new pressure sensor
-            SPI_set_slave_select(&g_spi[0], SPI_SLAVE_2);
-            uint16_t addr = (8 % 4 << 11);
-            SPI_transfer_frame(&g_spi[0], addr);
-            uint32_t sensor_spi = SPI_transfer_frame(&g_spi[0], addr);
-            SPI_clear_slave_select(&g_spi[0], SPI_SLAVE_2);
-            *(registers_1_addr + CRDCS_WRITE_TX) = sensor_spi;
             *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
 
             // update CMD_STATUS
@@ -2354,27 +2093,7 @@ int main() {
 				        hverr |= 0x1;
 				    }
 
-				    adc_write(ADC_ADDR_PWR, 0x01, 0xFFF);
-				    adc_write(ADC_ADDR_PWR, 0x00, ENABLED_ADCS);
 
-				    uint8_t errors = init_adc(ENABLED_ADCS, 0x02, 0x03);
-
-				    //adc_write(ADC_ADDR_PWR,0x01,0x8FF);
-
-				    adc_write(0x100, 0x71, 0xFFF); // set to 10 bit, 40 MSPS
-				    adc_write(0xFF, 0x01, 0xFFF); // latch the above change
-				    adc_write(0x14, 0x00, 0xFFF); // set to offset binary
-
-
-				    digi_write(DG_ADDR_RESET, 1, 0);
-
-				    digi_write(DG_ADDR_EWS, 0x0000, HVANDCAL);
-				    digi_write(DG_ADDR_EWE, 0xFFFB, HVANDCAL);
-				//  digi_write(DG_ADDR_EWE,0x4FFB,HVANDCAL);
-				    *(registers_0_addr + REG_ROC_EWMSTART_PMT) = 0x0001;
-				    *(registers_0_addr + REG_ROC_EWMSTOP_PMT) = 0x0FFF;
-				    digi_write(DG_ADDR_DIGINUMBER, 0, CALONLY);
-				    digi_write(DG_ADDR_DIGINUMBER, 1, HVONLY);
 
 				    init_DIGIs();
 
@@ -2511,125 +2230,7 @@ int main() {
                     }
                     outBufSend(g_uart, outBuffer, bufcount);
 
-                } else if (commandID == READBMES) {
-                    /*
-                     //Old sensor codes with BME 280
-                     uint8_t reg_data[BME280_P_T_H_DATA_LEN];
-                     uint8_t calib_data[BME280_TEMP_PRESS_CALIB_DATA_LEN];
-                     outBuffer[bufcount++] = READBMES;
-                     bufWrite(outBuffer, &bufcount, 2*(BME280_TEMP_PRESS_CALIB_DATA_LEN+BME280_P_T_H_DATA_LEN)+4, 2);
-                     rslt = bme280_set_sensor_mode(BME280_FORCED_MODE, &ptscal);
-                     ptscal.delay_ms(40);
-                     rslt = bme280_get_regs(BME280_TEMP_PRESS_CALIB_DATA_ADDR, calib_data, BME280_TEMP_PRESS_CALIB_DATA_LEN,&ptscal );
-                     rslt = bme280_get_regs(BME280_DATA_ADDR, &reg_data, BME280_P_T_H_DATA_LEN, &ptscal);
-                     for (uint8_t i =0; i<BME280_P_T_H_DATA_LEN; i++){
-                     bufWrite(outBuffer, &bufcount, reg_data[i], 1);
 
-                     }
-                     //					sprintf(outBuffer,"CAL %d %d %d\n",comp_data.temperature, comp_data.pressure, comp_data.humidity);
-                     //					MSS_UART_polled_tx( &g_mss_uart1, outBuffer, strlen(outBuffer) );
-                     rslt = bme280_set_sensor_mode(BME280_FORCED_MODE, &ptshv);
-                     ptshv.delay_ms(40);
-                     rslt = bme280_get_regs(BME280_TEMP_PRESS_CALIB_DATA_ADDR, calib_data, BME280_TEMP_PRESS_CALIB_DATA_LEN,&ptshv );
-                     rslt = bme280_get_regs(BME280_DATA_ADDR, &reg_data, BME280_P_T_H_DATA_LEN, &ptshv);
-                     for (uint8_t i =0; i<BME280_P_T_H_DATA_LEN; i++){
-                     bufWrite(outBuffer, &bufcount, reg_data[i], 1);
-
-                     }
-
-
-                     //					sprintf(outBuffer,"HV %d %d %d\n",comp_data.temperature, comp_data.pressure, comp_data.humidity);
-                     //					MSS_UART_polled_tx( &g_mss_uart1, outBuffer, strlen(outBuffer) );
-
-                     //Also take measurements from HDC 2080 chips
-                     uint16_t this_temp = 0;
-                     uint16_t this_humidity = 0;
-
-                     rslt = hdc2080_reset(&hdchv);
-                     //rslt = hdc2080_reset(&hdccal);
-                     delay_ms(10);
-
-                     //rslt = hdc2080_trigger_measurement(&hdccal);
-                     //rslt = hdc2080_read_temp(&hdccal, &this_temp);
-                     //rslt = hdc2080_read_humidity(&hdccal, &this_humidity);
-                     //bufWrite(outBuffer, &bufcount, this_temp, 2);
-                     //bufWrite(outBuffer, &bufcount, this_humidity, 2);
-
-                     rslt = hdc2080_trigger_measurement(&hdchv);
-                     rslt = hdc2080_read_temp(&hdchv, &this_temp);
-                     rslt = hdc2080_read_humidity(&hdchv, &this_humidity);
-                     bufWrite(outBuffer, &bufcount, this_temp, 2);
-                     bufWrite(outBuffer, &bufcount, this_humidity, 2);
-
-                     outBufSend(g_uart, outBuffer, bufcount);
-                     */
-
-                    outBuffer[bufcount++] = READBMES;
-                    bufWrite(outBuffer, &bufcount,
-                            BME280_TEMP_PRESS_CALIB_DATA_LEN
-                                    + BME280_HUMIDITY_CALIB_DATA_LEN
-                                    + BME280_P_T_H_DATA_LEN + 4 + 4 + 2, 2);
-
-                    //read with BME 280
-                    uint8_t calib_data_tp[BME280_TEMP_PRESS_CALIB_DATA_LEN];
-                    uint8_t calib_data_h[BME280_HUMIDITY_CALIB_DATA_LEN];
-                    uint8_t raw_bme_data[BME280_P_T_H_DATA_LEN];
-
-                    bme280_get_calib(&spi_sensor, calib_data_tp, calib_data_h);
-                    bme280_get_htp(&spi_sensor, raw_bme_data);
-
-                    for (uint8_t i = 0; i < BME280_TEMP_PRESS_CALIB_DATA_LEN;
-                            i++)
-                        bufWrite(outBuffer, &bufcount, calib_data_tp[i], 1);
-                    for (uint8_t i = 0; i < BME280_HUMIDITY_CALIB_DATA_LEN; i++)
-                        bufWrite(outBuffer, &bufcount, calib_data_h[i], 1);
-                    for (uint8_t i = 0; i < BME280_P_T_H_DATA_LEN; i++)
-                        bufWrite(outBuffer, &bufcount, raw_bme_data[i], 1);
-
-                    //Also take measurements from HDC 2080 chips
-                    uint16_t this_temp = 0;
-                    uint16_t this_humidity = 0;
-
-                    rslt = hdc2080_reset(&pthdc);
-                    //rslt = hdc2080_reset(&hdchv);
-                    //rslt = hdc2080_reset(&hdccal);
-                    delay_ms(10);
-
-                    //rslt = hdc2080_trigger_measurement(&hdccal);
-                    //rslt = hdc2080_read_temp(&hdccal, &this_temp);
-                    //rslt = hdc2080_read_humidity(&hdccal, &this_humidity);
-                    //bufWrite(outBuffer, &bufcount, this_temp, 2);
-                    //bufWrite(outBuffer, &bufcount, this_humidity, 2);
-
-                    //rslt = hdc2080_trigger_measurement(&hdchv);
-                    //rslt = hdc2080_read_temp(&hdchv, &this_temp);
-                    //rslt = hdc2080_read_humidity(&hdchv, &this_humidity);
-                    //bufWrite(outBuffer, &bufcount, this_temp, 2);
-                    //bufWrite(outBuffer, &bufcount, this_humidity, 2);
-
-                    rslt = hdc2080_trigger_measurement(&pthdc);
-                    rslt = hdc2080_read_temp(&pthdc, &this_temp);
-                    rslt = hdc2080_read_humidity(&pthdc, &this_humidity);
-                    bufWrite(outBuffer, &bufcount, this_temp, 2);
-                    bufWrite(outBuffer, &bufcount, this_humidity, 2);
-
-                    //readout amb_temp
-                    uint16_t amb_temp_cal = ADC124S051_daisy_read(
-                            &spi_ambtemp_cal, 1);
-                    uint16_t amb_temp_hv = ADC124S051_daisy_read(
-                            &spi_ambtemp_hv, 0);
-                    bufWrite(outBuffer, &bufcount, amb_temp_cal, 2);
-                    bufWrite(outBuffer, &bufcount, amb_temp_hv, 2);
-
-                    //read out A0 for new pressure sensor
-                    SPI_set_slave_select(&g_spi[0], SPI_SLAVE_2);
-                    uint16_t addr = (8 % 4 << 11);
-                    SPI_transfer_frame(&g_spi[0], addr);
-                    uint32_t rx0 = SPI_transfer_frame(&g_spi[0], addr);
-                    SPI_clear_slave_select(&g_spi[0], SPI_SLAVE_2);
-                    bufWrite(outBuffer, &bufcount, rx0, 2);
-
-                    outBufSend(g_uart, outBuffer, bufcount);
                 } else if (commandID == NVMWRITE) {
                     uint8_t rw = (uint8_t) buffer[4];
 

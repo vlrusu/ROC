@@ -884,6 +884,22 @@ void setPreampThreshold(uint16_t channel, uint16_t value){
 }
 
 void init_DIGIs(){
+
+    //calibrate the TDCs
+    digi_write(PULSER_SPEED, 0x1, 0);
+    digi_write(CALIBTDC, 0x1, 0);
+
+
+    digi_write(DG_ADDR_RESET, 1, 0);
+
+    digi_write(DG_ADDR_EWS, 0x0000, HVANDCAL);
+    digi_write(DG_ADDR_EWE, 0xFFFB, HVANDCAL);
+    digi_write(DG_ADDR_DIGINUMBER, 0, CALONLY);
+    digi_write(DG_ADDR_DIGINUMBER, 1, HVONLY);
+
+
+    digi_write(ADCWVFDELAY, 1, 0);
+
 	for (uint8_t i=0;i<12;i++){
 
 		adc_write(ADC_ADDR_PHASE,0,(0x1<<i));
