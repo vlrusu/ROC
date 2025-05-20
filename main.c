@@ -108,26 +108,138 @@ int main() {
      SYS_init(CSS_PF_BASE_ADDRESS);
 
 
+     SPI_init(&g_spi[0], SPI0_BASE_ADDR, 8);
+     SPI_configure_master_mode(&g_spi[0]);
+     SPI_init(&g_spi[1], SPI1_BASE_ADDR, 8);
+     SPI_configure_master_mode(&g_spi[1]);
+     SPI_init(&g_spi[2], HVSPI_BASE_ADDR, 8);
+     SPI_configure_master_mode(&g_spi[2]);
+     SPI_init(&g_spi[3], CALSPI_BASE_ADDR, 8);
+     SPI_configure_master_mode(&g_spi[3]);
+     SPI_init(&g_spi[4], SPI2_BASE_ADDR, 8);
+     SPI_configure_master_mode(&g_spi[4]);
+
+     SPI_init(&g_cal_pro_spi, SPI_CAL_PROG_BASE_ADDR, 8);
+     SPI_configure_master_mode(&g_cal_pro_spi);
+     SPI_init(&g_hv_pro_spi, SPI_HV_PROG_BASE_ADDR, 8);
+     SPI_configure_master_mode(&g_hv_pro_spi);
+
+     //setup MCPs
+     for (int imcp = MCPCAL0; imcp <= MCPFC2; imcp++) {
+         if (imcp < MCPHV0)
+             MCP_setup(&preampMCP[imcp], g_spi[3], 0, 0x20 + imcp, 0);
+         else if (imcp < MCPFC0)
+             MCP_setup(&preampMCP[imcp], g_spi[2], 0, 0x20 + imcp - MCPHV0, 0);
+         else
+             MCP_setup(&preampMCP[imcp], g_spi[2], 1, 0x20 + imcp - MCPFC0, 0);
+     }
+     MCP_setup(&sensorMCP, g_spi[2], 2, 0x20, 1);
+
+     // outputs for calpulse enable
+
+     for (uint8_t imcp = 0; imcp < 8; imcp++) {
+         MCP_pinMode(&preampMCP[MCPCALIB], MCPCALIBCHAN[imcp], MCP_OUTPUT);
+     }
+
+     // outputs for fuse control enable, initial all to 0
+
+     for (uint8_t i = 0; i < 48; i++) {
+         MCP_pinMode(&preampMCP[MCPFC0 + i / 16], i % 16 + 1, MCP_OUTPUT);
+     }
+
+     for (uint8_t i = 0; i < 48; i++) {
+         MCP_pinWrite(&preampMCP[MCPFC0 + i / 16], i % 16 + 1, 0);
+     }
+
+     //setup LTC2634, preamp DACs
+     for (uint8_t idac = 0; idac < 96; idac++) {
+         if (idac < 14)
+             LTC2634_setup(&dacs[idac], &preampMCP[MCPCAL0], idac + 3,
+                     &preampMCP[MCPCAL0], 2, &preampMCP[MCPCAL0], 1);
+         else if (idac < 24)
+             LTC2634_setup(&dacs[idac], &preampMCP[MCPCAL1], idac - 13,
+                     &preampMCP[MCPCAL0], 2, &preampMCP[MCPCAL0], 1);
+         else if (idac < 38)
+             LTC2634_setup(&dacs[idac], &preampMCP[MCPCAL2], idac - 21,
+                     &preampMCP[MCPCAL2], 2, &preampMCP[MCPCAL2], 1);
+         else if (idac < 48)
+             LTC2634_setup(&dacs[idac], &preampMCP[MCPCAL3], idac - 37,
+                     &preampMCP[MCPCAL2], 2, &preampMCP[MCPCAL2], 1);
+         else if (idac < 62)
+             LTC2634_setup(&dacs[idac], &preampMCP[MCPHV0], idac - 45,
+                     &preampMCP[MCPHV0], 2, &preampMCP[MCPHV0], 1);
+         else if (idac < 72)
+             LTC2634_setup(&dacs[idac], &preampMCP[MCPHV1], idac - 61,
+                     &preampMCP[MCPHV0], 2, &preampMCP[MCPHV0], 1);
+         else if (idac < 86)
+             LTC2634_setup(&dacs[idac], &preampMCP[MCPHV2], idac - 69,
+                     &preampMCP[MCPHV2], 2, &preampMCP[MCPHV2], 1);
+         else
+             LTC2634_setup(&dacs[idac], &preampMCP[MCPHV3], idac - 85,
+                     &preampMCP[MCPHV2], 2, &preampMCP[MCPHV2], 1);
+     }
+
+     LTC2634_setup(&caldac0, &preampMCP[MCPCAL1], 12, &preampMCP[MCPCAL0], 2,
+             &preampMCP[MCPCAL0], 1);
+     LTC2634_setup(&caldac1, &preampMCP[MCPCAL1], 13, &preampMCP[MCPCAL0], 2,
+             &preampMCP[MCPCAL0], 1);
+
+     // Set default thresholds and gains
+     for (uint8_t i = 0; i < 96; i++) {
+         strawsCal[i]._ltc = &dacs[i / 2];
+         strawsHV[i]._ltc = &dacs[48 + i / 2];
+         if (i % 2 == 1) {
+             strawsCal[i]._thresh = 1;
+             strawsCal[i]._gain = 2;
+             strawsHV[i]._thresh = 0;
+             strawsHV[i]._gain = 2;
+         } else {
+             strawsCal[i]._thresh = 0;
+             strawsCal[i]._gain = 3;
+             strawsHV[i]._thresh = 1;
+             strawsHV[i]._gain = 3;
+         }
+         LTC2634_write(strawsCal[i]._ltc, strawsCal[i]._gain,
+                 default_gains_cal[i]);
+         LTC2634_write(strawsCal[i]._ltc, strawsCal[i]._thresh,
+                 default_threshs_cal[i]);
+         LTC2634_write(strawsHV[i]._ltc, strawsHV[i]._gain, default_gains_hv[i]);
+         LTC2634_write(strawsHV[i]._ltc, strawsHV[i]._thresh,
+                 default_threshs_hv[i]);
+     }
+
+     //set default caldac
+     for (uint8_t i = 0; i < 4; i++) {
+         LTC2634_write(&caldac0, i, default_caldac[i]);
+         LTC2634_write(&caldac1, i, default_caldac[i + 4]);
+     }
+
+
+
     // make sure DIGIs are powered up
-    for (int i = 0; i < 1000; i++) {
+    for (int i = 0; i < 4; i++) {
         digi_write(DG_ADDR_EWS, 0xDEAD, 1);
         uint32_t read_value = digi_read(DG_ADDR_EWS, 1);
         if (read_value != 0xDEAD) {
-            delayUs(1000);
-            digi_write(DG_DEVICE_RESET, 0, 1);
-                   digi_write(DG_DEVICE_RESET, 1, 1);
+            *(registers_0_addr + DG_DEVICE_RESET) = 0;
+
+            delayUs(100);
+            *(registers_0_addr + DG_DEVICE_RESET) = 1;
+
+                   delayUs(1000000);
         } else {
             UART_polled_tx_string(&g_uart, "CAL OK\n");
             break;
         }
     }
-    for (int i = 0; i < 1000; i++) {
+    for (int i = 0; i < 4; i++) {
         digi_write(DG_ADDR_EWS, 0xDEAD, 2);
         uint32_t read_value = digi_read(DG_ADDR_EWS, 2);
         if (read_value != 0xDEAD) {
-            digi_write(DG_DEVICE_RESET, 0, 2);
-                              digi_write(DG_DEVICE_RESET, 1, 2);
-            delayUs(1000);
+            *(registers_0_addr + DG_DEVICE_RESET) = 0;
+            delayUs(100);
+            *(registers_0_addr + DG_DEVICE_RESET) = 1;
+            delayUs(1000000);
         } else {
             UART_polled_tx_string(&g_uart, "HV OK\n");
             break;
@@ -152,112 +264,6 @@ int main() {
 
 
 
-
-    SPI_init(&g_spi[0], SPI0_BASE_ADDR, 8);
-    SPI_configure_master_mode(&g_spi[0]);
-    SPI_init(&g_spi[1], SPI1_BASE_ADDR, 8);
-    SPI_configure_master_mode(&g_spi[1]);
-    SPI_init(&g_spi[2], HVSPI_BASE_ADDR, 8);
-    SPI_configure_master_mode(&g_spi[2]);
-    SPI_init(&g_spi[3], CALSPI_BASE_ADDR, 8);
-    SPI_configure_master_mode(&g_spi[3]);
-    SPI_init(&g_spi[4], SPI2_BASE_ADDR, 8);
-    SPI_configure_master_mode(&g_spi[4]);
-
-    SPI_init(&g_cal_pro_spi, SPI_CAL_PROG_BASE_ADDR, 8);
-    SPI_configure_master_mode(&g_cal_pro_spi);
-    SPI_init(&g_hv_pro_spi, SPI_HV_PROG_BASE_ADDR, 8);
-    SPI_configure_master_mode(&g_hv_pro_spi);
-
-    //setup MCPs
-    for (int imcp = MCPCAL0; imcp <= MCPFC2; imcp++) {
-        if (imcp < MCPHV0)
-            MCP_setup(&preampMCP[imcp], g_spi[3], 0, 0x20 + imcp, 0);
-        else if (imcp < MCPFC0)
-            MCP_setup(&preampMCP[imcp], g_spi[2], 0, 0x20 + imcp - MCPHV0, 0);
-        else
-            MCP_setup(&preampMCP[imcp], g_spi[2], 1, 0x20 + imcp - MCPFC0, 0);
-    }
-    MCP_setup(&sensorMCP, g_spi[2], 2, 0x20, 1);
-
-    // outputs for calpulse enable
-
-    for (uint8_t imcp = 0; imcp < 8; imcp++) {
-        MCP_pinMode(&preampMCP[MCPCALIB], MCPCALIBCHAN[imcp], MCP_OUTPUT);
-    }
-
-    // outputs for fuse control enable, initial all to 0
-
-    for (uint8_t i = 0; i < 48; i++) {
-        MCP_pinMode(&preampMCP[MCPFC0 + i / 16], i % 16 + 1, MCP_OUTPUT);
-    }
-
-    for (uint8_t i = 0; i < 48; i++) {
-        MCP_pinWrite(&preampMCP[MCPFC0 + i / 16], i % 16 + 1, 0);
-    }
-
-    //setup LTC2634, preamp DACs
-    for (uint8_t idac = 0; idac < 96; idac++) {
-        if (idac < 14)
-            LTC2634_setup(&dacs[idac], &preampMCP[MCPCAL0], idac + 3,
-                    &preampMCP[MCPCAL0], 2, &preampMCP[MCPCAL0], 1);
-        else if (idac < 24)
-            LTC2634_setup(&dacs[idac], &preampMCP[MCPCAL1], idac - 13,
-                    &preampMCP[MCPCAL0], 2, &preampMCP[MCPCAL0], 1);
-        else if (idac < 38)
-            LTC2634_setup(&dacs[idac], &preampMCP[MCPCAL2], idac - 21,
-                    &preampMCP[MCPCAL2], 2, &preampMCP[MCPCAL2], 1);
-        else if (idac < 48)
-            LTC2634_setup(&dacs[idac], &preampMCP[MCPCAL3], idac - 37,
-                    &preampMCP[MCPCAL2], 2, &preampMCP[MCPCAL2], 1);
-        else if (idac < 62)
-            LTC2634_setup(&dacs[idac], &preampMCP[MCPHV0], idac - 45,
-                    &preampMCP[MCPHV0], 2, &preampMCP[MCPHV0], 1);
-        else if (idac < 72)
-            LTC2634_setup(&dacs[idac], &preampMCP[MCPHV1], idac - 61,
-                    &preampMCP[MCPHV0], 2, &preampMCP[MCPHV0], 1);
-        else if (idac < 86)
-            LTC2634_setup(&dacs[idac], &preampMCP[MCPHV2], idac - 69,
-                    &preampMCP[MCPHV2], 2, &preampMCP[MCPHV2], 1);
-        else
-            LTC2634_setup(&dacs[idac], &preampMCP[MCPHV3], idac - 85,
-                    &preampMCP[MCPHV2], 2, &preampMCP[MCPHV2], 1);
-    }
-
-    LTC2634_setup(&caldac0, &preampMCP[MCPCAL1], 12, &preampMCP[MCPCAL0], 2,
-            &preampMCP[MCPCAL0], 1);
-    LTC2634_setup(&caldac1, &preampMCP[MCPCAL1], 13, &preampMCP[MCPCAL0], 2,
-            &preampMCP[MCPCAL0], 1);
-
-    // Set default thresholds and gains
-    for (uint8_t i = 0; i < 96; i++) {
-        strawsCal[i]._ltc = &dacs[i / 2];
-        strawsHV[i]._ltc = &dacs[48 + i / 2];
-        if (i % 2 == 1) {
-            strawsCal[i]._thresh = 1;
-            strawsCal[i]._gain = 2;
-            strawsHV[i]._thresh = 0;
-            strawsHV[i]._gain = 2;
-        } else {
-            strawsCal[i]._thresh = 0;
-            strawsCal[i]._gain = 3;
-            strawsHV[i]._thresh = 1;
-            strawsHV[i]._gain = 3;
-        }
-        LTC2634_write(strawsCal[i]._ltc, strawsCal[i]._gain,
-                default_gains_cal[i]);
-        LTC2634_write(strawsCal[i]._ltc, strawsCal[i]._thresh,
-                default_threshs_cal[i]);
-        LTC2634_write(strawsHV[i]._ltc, strawsHV[i]._gain, default_gains_hv[i]);
-        LTC2634_write(strawsHV[i]._ltc, strawsHV[i]._thresh,
-                default_threshs_hv[i]);
-    }
-
-    //set default caldac
-    for (uint8_t i = 0; i < 4; i++) {
-        LTC2634_write(&caldac0, i, default_caldac[i]);
-        LTC2634_write(&caldac1, i, default_caldac[i + 4]);
-    }
 
 
     //are we still using those?
@@ -301,11 +307,13 @@ int main() {
 
 //try a single reset
     if (digierror) {
-        digi_write(DG_DEVICE_RESET, 0, HVANDCAL);
-        digi_write(DG_DEVICE_RESET, 1, HVANDCAL);
+        *(registers_0_addr + DG_DEVICE_RESET) = 0;
+        *(registers_0_addr + DG_DEVICE_RESET) = 1;
+
+        init_DIGIs();
     }
 
-    init_DIGIs();
+
 
 
     UART_polled_tx_string(&g_uart, "Initialization completed");
