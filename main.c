@@ -103,12 +103,19 @@ int main() {
     *(registers_0_addr + REG_TIMERENABLE) = 1;
     *(registers_0_addr + REG_TIMERRESET) = 0;
 
+
+    /*Initialize the CoreSysService_PF driver*/
+     SYS_init(CSS_PF_BASE_ADDRESS);
+
+
     // make sure DIGIs are powered up
     for (int i = 0; i < 1000; i++) {
         digi_write(DG_ADDR_EWS, 0xDEAD, 1);
         uint32_t read_value = digi_read(DG_ADDR_EWS, 1);
         if (read_value != 0xDEAD) {
             delayUs(1000);
+            digi_write(DG_DEVICE_RESET, 0, 1);
+                   digi_write(DG_DEVICE_RESET, 1, 1);
         } else {
             UART_polled_tx_string(&g_uart, "CAL OK\n");
             break;
@@ -118,6 +125,8 @@ int main() {
         digi_write(DG_ADDR_EWS, 0xDEAD, 2);
         uint32_t read_value = digi_read(DG_ADDR_EWS, 2);
         if (read_value != 0xDEAD) {
+            digi_write(DG_DEVICE_RESET, 0, 2);
+                              digi_write(DG_DEVICE_RESET, 1, 2);
             delayUs(1000);
         } else {
             UART_polled_tx_string(&g_uart, "HV OK\n");
@@ -125,8 +134,6 @@ int main() {
         }
     }
 
-    /*Initialize the CoreSysService_PF driver*/
-    SYS_init(CSS_PF_BASE_ADDRESS);
 
 
     //initialize the ADCs
