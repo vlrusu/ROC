@@ -176,7 +176,9 @@
 // RS485 commands: can be from 0 to 255
 #define RS485_MAX_SPI 28
 #define RS485_TVS 12
+#define RS485_ILP 3
 #define RS485_TEST_CMD 254
+#define RS485_MAX_CMD 255
 //******************************************************************************
 //                             Registers & Addresses
 //******************************************************************************
