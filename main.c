@@ -1895,10 +1895,10 @@ int main() {
                      *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
                      *(registers_1_addr + CRDCS_WRITE_TX) = 4;
                      *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
-                     *(registers_1_addr + CRDCS_WRITE_TX) = default_gains_hv[chan_num];
-                     *(registers_1_addr + CRDCS_WRITE_TX) = default_threshs_hv[chan_num];
                      *(registers_1_addr + CRDCS_WRITE_TX) = default_gains_cal[chan_num];
+                     *(registers_1_addr + CRDCS_WRITE_TX) = default_gains_hv[chan_num];
                      *(registers_1_addr + CRDCS_WRITE_TX) = default_threshs_cal[chan_num];
+                     *(registers_1_addr + CRDCS_WRITE_TX) = default_threshs_hv[chan_num];
                      *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
                  }
 
@@ -1909,10 +1909,10 @@ int main() {
                      *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
 
                      for (uint8_t ic = 0; ic < 96; ic++) {
-                         *(registers_1_addr + CRDCS_WRITE_TX) = default_gains_hv[ic];
-                         *(registers_1_addr + CRDCS_WRITE_TX) = default_threshs_hv[ic];
                          *(registers_1_addr + CRDCS_WRITE_TX) = default_gains_cal[ic];
+                         *(registers_1_addr + CRDCS_WRITE_TX) = default_gains_hv[ic];
                          *(registers_1_addr + CRDCS_WRITE_TX) = default_threshs_cal[ic];
+                         *(registers_1_addr + CRDCS_WRITE_TX) = default_threshs_hv[ic];
                      }
                      *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
                  }
