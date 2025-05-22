@@ -1463,9 +1463,9 @@ int main() {
              preamp_type = 1;
              */
 
-            chan_num    = dtcbuffer[0];     // -c
-            fiber_value = dtcbuffer[1];     // -d
-            preamp_type = dtcbuffer[2];     // -hv
+            chan_num    = (uint8_t) dtcbuffer[0];     // -c
+            fiber_value =           dtcbuffer[1];     // -d
+            preamp_type =           dtcbuffer[2];     // -hv
 
             if (preamp_type == 1)
                 chan_num = chan_num + 96;
@@ -1498,9 +1498,9 @@ int main() {
              preamp_type = 1;
              */
 
-            chan_num    = dtcbuffer[0];     // -c
-            fiber_value = dtcbuffer[1];     // -d
-            preamp_type = dtcbuffer[2];     // -hv
+            chan_num    = (uint8_t) dtcbuffer[0];     // -c
+            fiber_value =           dtcbuffer[1];     // -d
+            preamp_type =           dtcbuffer[2];     // -hv
 
             if (preamp_type == 1)
                 chan_num = chan_num + 96;
@@ -1881,6 +1881,81 @@ int main() {
 
                  break;
 
+
+             case READPREAMP:
+
+                 // update CMD_STATUS
+                 *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
+
+                 // pass channel number
+                 chan_num   = (uint8_t) dtcbuffer[0];   // -c
+
+                 if (chan_num >= 0 && chan_num < 96) {
+
+                     *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
+                     *(registers_1_addr + CRDCS_WRITE_TX) = 4;
+                     *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
+                     *(registers_1_addr + CRDCS_WRITE_TX) = default_gains_hv[chan_num];
+                     *(registers_1_addr + CRDCS_WRITE_TX) = default_threshs_hv[chan_num];
+                     *(registers_1_addr + CRDCS_WRITE_TX) = default_gains_cal[chan_num];
+                     *(registers_1_addr + CRDCS_WRITE_TX) = default_threshs_cal[chan_num];
+                     *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
+                 }
+
+                 else {
+
+                     *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
+                     *(registers_1_addr + CRDCS_WRITE_TX) = 384;
+                     *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
+
+                     for (uint8_t ic = 0; ic < 96; ic++) {
+                         *(registers_1_addr + CRDCS_WRITE_TX) = default_gains_hv[ic];
+                         *(registers_1_addr + CRDCS_WRITE_TX) = default_threshs_hv[ic];
+                         *(registers_1_addr + CRDCS_WRITE_TX) = default_gains_cal[ic];
+                         *(registers_1_addr + CRDCS_WRITE_TX) = default_threshs_cal[ic];
+                     }
+                     *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
+                 }
+
+                 // update CMD_STATUS
+                 *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
+
+                 break;
+
+
+             case INITBYFIBER:
+
+                 // update CMD_STATUS
+                 *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
+
+                 uint16_t calerr = 0;
+                 uint16_t hverr = 0;
+
+                 // make sure DIGIs are powered up
+                 digi_write(DG_ADDR_EWS, 0xDEAD, 1);
+                 uint32_t read_value = digi_read(DG_ADDR_EWS, 1);
+                 if (read_value != 0xDEAD) {
+                     calerr |= 0x1;
+                 }
+                 digi_write(DG_ADDR_EWS, 0xDEAD, 2);
+                 read_value = digi_read(DG_ADDR_EWS, 2);
+                 if (read_value != 0xDEAD) {
+                     hverr |= 0x1;
+                 }
+
+                 init_DIGIs();
+
+                 *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
+                 *(registers_1_addr + CRDCS_WRITE_TX) = 2;
+                 *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
+                 *(registers_1_addr + CRDCS_WRITE_TX) = calerr;
+                 *(registers_1_addr + CRDCS_WRITE_TX) = hverr;
+                 *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
+
+                 // update CMD_STATUS
+                 *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
+
+                 break;
 
 
         // read assorted diagnostic registers

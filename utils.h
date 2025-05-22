@@ -169,9 +169,11 @@
 #define READGITREV  272 // 0x110 - fiber version of GETGITREV: execute with Single DCS_WRITE of any value (ignored) followed by DCS_BLOCK_READ of size returned by reg 129
 #define READILP     273 // 0x111 - fiber version of GETILP: execute with Single DCS_WRITE of any value (ignored) followed by DCS_BLOCK_READ of 4 values
 #define GETKEY      274 // 0x112 - fiber version of READKEY: execute with Single DCS_WRITE of any value (ignored) followed by DCS_BLOCK_READ of of 4 values
-#define DIAGDATA    511 // 0x1FF - Block RD of assorted diagnostics, started by a single WR of any value
 #define WRITEPREAMP 275 // 0x113 - write all gain&thresh via BLOCK_WRITE of 96x4 parameters (96xGain CAL, 96xGain HV, 96xThresh CAL, 96xThres HV)
 #define WRITECALDAC 276 // 0x114 - fiber version of SETCALDAC with passed via BLOCK_WRITE
+#define READPREAMP  277 // 0x115 - fiber version of DUMPSETTINGS: execute with Single DCS_WRITE of channel number followed by DCS_BLOCK_READ of 4 or 384 gain/thresh values
+#define INITBYFIBER 278 // 0x116 - fiber version of INITDIGIS: execute with Single DCS_WRITE of any value (ignored) followed by DCS_BLOCK_READ of 2 cal/hv errors
+#define DIAGDATA    511 // 0x1FF - Block RD of assorted diagnostics, started by a single WR of any value
 
 // RS485 commands: can be from 0 to 255
 #define TEST                255
