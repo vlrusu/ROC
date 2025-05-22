@@ -112,11 +112,12 @@ int main() {
      SPI_configure_master_mode(&g_spi[0]);
      SPI_init(&g_spi[1], SPI1_BASE_ADDR, 8);
      SPI_configure_master_mode(&g_spi[1]);
-     SPI_init(&g_spi[2], HVSPI_BASE_ADDR, 8);
+     SPI_init(&g_spi[2], SPI2_BASE_ADDR, 8);
      SPI_configure_master_mode(&g_spi[2]);
-     SPI_init(&g_spi[3], CALSPI_BASE_ADDR, 8);
+
+     SPI_init(&g_spi[3], HVSPI_BASE_ADDR, 8);
      SPI_configure_master_mode(&g_spi[3]);
-     SPI_init(&g_spi[4], SPI2_BASE_ADDR, 8);
+     SPI_init(&g_spi[4], CALSPI_BASE_ADDR, 8);
      SPI_configure_master_mode(&g_spi[4]);
 
      SPI_init(&g_cal_pro_spi, SPI_CAL_PROG_BASE_ADDR, 8);
@@ -127,13 +128,13 @@ int main() {
      //setup MCPs
      for (int imcp = MCPCAL0; imcp <= MCPFC2; imcp++) {
          if (imcp < MCPHV0)
-             MCP_setup(&preampMCP[imcp], g_spi[3], 0, 0x20 + imcp, 0);
+             MCP_setup(&preampMCP[imcp], g_spi[4], 0, 0x20 + imcp, 0);
          else if (imcp < MCPFC0)
-             MCP_setup(&preampMCP[imcp], g_spi[2], 0, 0x20 + imcp - MCPHV0, 0);
+             MCP_setup(&preampMCP[imcp], g_spi[3], 0, 0x20 + imcp - MCPHV0, 0);
          else
-             MCP_setup(&preampMCP[imcp], g_spi[2], 1, 0x20 + imcp - MCPFC0, 0);
+             MCP_setup(&preampMCP[imcp], g_spi[3], 1, 0x20 + imcp - MCPFC0, 0);
      }
-     MCP_setup(&sensorMCP, g_spi[2], 2, 0x20, 1);
+     MCP_setup(&sensorMCP, g_spi[3], 2, 0x20, 1);
 
      // outputs for calpulse enable
 
@@ -426,134 +427,65 @@ int main() {
 
         volatile uint16_t rs485_tx_busy = 1;
 
-        switch (rs485_rx_cmd) {
-
-        //
-        // READSPI:
-        //  First 24 value are returned by nested loop
-        //          for (uint8_t i = 0 ; i < 2; i++) { -- "i" selecting g_spi[i]
-        //              for (uint8_t j = 0 ; j < 12; j++) {
-        //                 -- "j" selecting SPI_SLAVE_0 if <4; SPI_SLAVE_2 if >=8;  SPI_SLAVE1 others
-        //                  SPI_set_slave_select( &g_spi[i] , SPI_SLAVE(j));
-        //                  uint16_t addr = (j%4 <<11 );
-        //                  SPI_transfer_frame( &g_spi[i], addr);
-        //                  SPI_transfer_frame( &g_spi[i], addr);
-        //                  spi32 = SPI_transfer_frame( &g_spi[i], addr);
-        //                  SPI_clear_slave_select( &g_spi[i] , SPI_SLAVE(j));
-        //              }
-        //          }
-        // Variables read are:
-        //  I3.3 =>    (j=0,i=0);  I2.5 =>   (j=1,i=0);  I1.8HV =>  (j=2,i=0);   IH5.0 => (j=3,i=0);
-        //  VDMBHV5 => (j=4,i=0);  V1.8HV => (j=5,i=0);  V3.3HV =>  (j=6,i=0);   V2.5 =>  (j=7,i=0);
-        //  A0 =>      (j=8,i=0);  A1 =>     (j=9,i=0);  A2 =>      (j=10,i=0);  A3 =>    (j11,i=0);
-        //  I1.8CAL => (j=0,i=1);  I1.2 =>   (j=1,i=1);  ICAL5.0 => (j=2,i=1);   SPARE => (j=3,i=1);
-        //  V3.3 =>    (j=4,i=1);  VCAL5.0 =>(j=5,i=1);  V1.8CAL => (j=6,i=1);   V1.0 =>  (j=7,i=1);
-        //  ROCPCBT => (j=8,i=1);  HVPCBT => (j=9,i=1);  CALPCBT => (j=10,i=1);  RTD =>   (j11,i=1);
-        //
-        //  Next 4 values are from loop over TVS registers
-        //    for (uint8_t i =0; i<4; i++){
-        //      *(registers_0_addr+REG_ROC_TVS_ADDR) = i;
-        //      delayUs(1);
-        //      tvs_val[i] = *(registers_0_addr + REG_ROC_TVS_VAL);
-        //    }
-        // ROC_RAIL_1V(mV) => i=0    ROC_RAIL_1.8V(mV) => i=1;   ROC_RAIL_2.5V(mV) => i=2;  ROC_TEMP(C) => i=3;
-        //
-        // Final 8 values are from nested loop over ADC digitizers chips:
-        //      for (uint8_t hvcal=1; hvcal<3; hvcal++){ -- "ihval" selects CAL vs HV
-        //        for (uint8_t i =0; i<4; i++){  -- "i" selects: 1V vs 1.8V vs 2.5V vs TEMP
-        //            digi_write(DG_ADDR_TVS_ADDR, i, ihvcal);
-        //
-        //            delayUs(1);
-        //            tvs_val[i] = digi_read(DG_ADDR_TVS_VAL, ihvcal);
-        //        }
-        //      }
-        // CAL_RAIL_1V(mV) => (j=1,i=0);  CAL_RAIL_1.8V => (j=1,i=1);  CAL_RAIL_2.5V => (j=1,i=2);  CAL_TEMP(C) => (j=1,i=3);
-        // HV_RAIL_1V(mV)  => (j=2,i=0);  HV_RAIL_1.8V  => (j=2,i=1);  HV_RAIL_2.5V  => (j=2,i=2);  HV_TEMP(C)  => (j=2,i=3);
-
-        case TEST:
-            *(registers_2_addr + CRRS485_TX_WRITE) = 0x1234;
-            //delay_ms(1000);  // 1s delay to wait for "set_rs485_receive()". Now moved to firmware
-            *(registers_2_addr + CRRS485_TX_START) = 1;
-            // old implementation which holds microprocessor
-            // check TX_BUSY before releasing TX_START
-            //while (rs485_tx_busy == 1) {
-            //    rs485_tx_busy = *(registers_2_addr + CRRS485_TX_BUSY);
-            //}
-            *(registers_2_addr + CRRS485_TX_START) = 0;
-            break;
+	// Variables read are:
 
 
-        case READSPI_I33:
+	//	  0: I3.3, 1: I2.5, 2: I1.8HV, 3: IHV5.0, 4: VDMBHV5, 5: V1.8HV, 6: V3.3HV, 7: V2.5,
+	//	  8: A0, 9: A1, 10: A2, 11: A3, 12: I1.8CAL, 13: I1.2, 14: ICAL5.0, 15: SPARE,
+	//	  16: V3.3, 17: VCAL5.0, 18: V1.8CAL, 19: V1.0, 20: ROCPCBT, 21: HVPCBT, 22: CALPCBT, 23: RTD,
+	//	  24: V5KEY, 25: KEYPCBTEMP, 26: DCDCTEMP, 27: V2.5KEY 
+	//        28: ROC_RAIL_1V, 29: ROC_RAIL_1.8V, 30: ROC_RAIL_2.5V, 31: ROC_TEMP
+	//        32: CAL_RAIL_1V, 33: CAL_RAIL_1.8V, 34: CAL_RAIL_2.5V, 35: CAL_TEMP
+	//        36: HV_RAIL_1V, 37: HV_RAIL_1.8V, 38: HV_RAIL_2.5V, 39: HV_TEMP
+	
+	if (rs485_rx_cmd < RS485_MAX_SPI){
+	  //there are three monitoring SPI buses. Each has 3 slaves max. And each ADC124s051 has 4 pins
+	  uint8_t spibus = rs485_rx_cmd / 12;
+	  uint8_t spislave = (rs485_rx_cmd % 12) / 4;
+	  uint8_t adcpin = (rs485_rx_cmd % 4);
 
-            rs485_j = 0;
-            SPI_set_slave_select( &g_spi[0] , SPI_SLAVE_0);
+	  uint16_t adcread = ADC124S051_read(&g_spi[spibus], spislave, adcpin);
+	  *(registers_2_addr + CRRS485_TX_WRITE) = adcread;
+	  *(registers_2_addr + CRRS485_TX_START) = 1;
+	  *(registers_2_addr + CRRS485_TX_START) = 0;
 
-            rs485_addr = (rs485_j%4 <<11 );
-            SPI_transfer_frame( &g_spi[0], rs485_addr);
-            SPI_transfer_frame( &g_spi[0], rs485_addr);
-            rs485_spi32 = SPI_transfer_frame( &g_spi[0], rs485_addr);
-
-            SPI_clear_slave_select( &g_spi[0] , SPI_SLAVE_0);
-
-            *(registers_2_addr + CRRS485_TX_WRITE) = (0x0000FFFF & rs485_spi32);
-            *(registers_2_addr + CRRS485_TX_START) = 1;
-            *(registers_2_addr + CRRS485_TX_START) = 0;
-            break;
-
-
-        case READSPI_I25:
-
-            rs485_j = 1;
-            SPI_set_slave_select( &g_spi[0] , SPI_SLAVE_0);
-
-            rs485_addr = (rs485_j%4 <<11 );
-            SPI_transfer_frame( &g_spi[0], rs485_addr);
-            SPI_transfer_frame( &g_spi[0], rs485_addr);
-            rs485_spi32 = SPI_transfer_frame( &g_spi[0], rs485_addr);
+	}
 
 
-            SPI_clear_slave_select( &g_spi[0] , SPI_SLAVE_0);
+	else if (rs485_rx_cmd <  RS485_MAX_SPI + RS485_TVS){
+	  uint16_t tvscommand = rs485_rx_cmd - RS485_MAX_SPI;
+	  if (tvscommand < 4){
+	    *(registers_0_addr+REG_ROC_TVS_ADDR) = rs485_rx_cmd - RS485_MAX_SPI;
+	    delayUs(1);
+	    *(registers_2_addr + CRRS485_TX_WRITE)    = *(registers_0_addr + REG_ROC_TVS_VAL);
+	    *(registers_2_addr + CRRS485_TX_START) = 1;
+	    *(registers_2_addr + CRRS485_TX_START) = 0;
+	  }
+	  else{
+	    uint8_t ihvcal = tvscommand / 4;
+	    digi_write(DG_ADDR_TVS_ADDR, tvscommand % 4, ihvcal);
+	    delayUs(1);
+	    *(registers_2_addr + CRRS485_TX_WRITE)   = digi_read(DG_ADDR_TVS_VAL, ihvcal);
+	    *(registers_2_addr + CRRS485_TX_START) = 1;
+	    *(registers_2_addr + CRRS485_TX_START) = 0;
+	  }
+	}
 
-            *(registers_2_addr + CRRS485_TX_WRITE) = (0x0000FFFF & rs485_spi32);
-            *(registers_2_addr + CRRS485_TX_START) = 1;
-            *(registers_2_addr + CRRS485_TX_START) = 0;
-            break;
-
-
-        case READSPI_ROCRAIL_1V:
-
-            rs485_i = 0;
-            *(registers_0_addr+REG_ROC_TVS_ADDR) = 0;
-            delayUs(1);
-            rs485_tvs_val[rs485_i] = *(registers_0_addr + REG_ROC_TVS_VAL);
-
-            *(registers_2_addr + CRRS485_TX_WRITE) = rs485_tvs_val[rs485_i];
+		 
+        else if (rs485_rx_cmd == RS485_TEST_CMD){
+            *(registers_2_addr + CRRS485_TX_WRITE) = 0xBEEF;
             *(registers_2_addr + CRRS485_TX_START) = 1;
             *(registers_2_addr + CRRS485_TX_START) = 0;
 
-            break;
+	}
 
-        case READSPI_CALRAIL_1V:
-
-            rs485_hvcal = 1;
-            rs485_i = 0;
-            digi_write(DG_ADDR_TVS_ADDR, rs485_i, rs485_hvcal);
-
-            delayUs(1);
-            rs485_tvs_val[rs485_i] = digi_read(DG_ADDR_TVS_VAL, rs485_hvcal);
-
-            *(registers_2_addr + CRRS485_TX_WRITE) = rs485_tvs_val[rs485_i];
+	else {
+            *(registers_2_addr + CRRS485_TX_WRITE) = 0xDEAD;
             *(registers_2_addr + CRRS485_TX_START) = 1;
             *(registers_2_addr + CRRS485_TX_START) = 0;
+	}
 
-            break;
-
-        default:
-            break;
-        }
-
-        delayUs(1);
-
+	
 #endif  //RS485PROGRAM
 
 // this is an example of a DCS WR/RD of addr 64 for a "static" register
@@ -1808,10 +1740,10 @@ int main() {
             *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
             // payload of diagnostic data
 
-            uint16_t key_temp = ADC124S051_read(&g_spi[4], 0, 1);
-            uint16_t v2p5 = ADC124S051_read(&g_spi[4], 0, 3);
-            uint16_t v5p1 = ADC124S051_read(&g_spi[4], 0, 0);
-            uint16_t dcdctemp = ADC124S051_read(&g_spi[4], 0, 2);
+            uint16_t key_temp = ADC124S051_read(&g_spi[2], 0, 1);
+            uint16_t v2p5 = ADC124S051_read(&g_spi[2], 0, 3);
+            uint16_t v5p1 = ADC124S051_read(&g_spi[2], 0, 0);
+            uint16_t dcdctemp = ADC124S051_read(&g_spi[2], 0, 2);
 
             *(registers_1_addr + CRDCS_WRITE_TX) = key_temp;
             *(registers_1_addr + CRDCS_WRITE_TX) = v2p5;
@@ -2405,10 +2337,10 @@ int main() {
                     outBuffer[bufcount++] = READKEY;
                     bufWrite(outBuffer, &bufcount, 8, 2);
 
-                    uint16_t key_temp = ADC124S051_read(&g_spi[4], 0, 1);
-                    uint16_t v2p5 = ADC124S051_read(&g_spi[4], 0, 3);
-                    uint16_t v5p1 = ADC124S051_read(&g_spi[4], 0, 0);
-                    uint16_t dcdctemp = ADC124S051_read(&g_spi[4], 0, 2);
+                    uint16_t key_temp = ADC124S051_read(&g_spi[2], 0, 1);
+                    uint16_t v2p5 = ADC124S051_read(&g_spi[2], 0, 3);
+                    uint16_t v5p1 = ADC124S051_read(&g_spi[2], 0, 0);
+                    uint16_t dcdctemp = ADC124S051_read(&g_spi[2], 0, 2);
 
                     bufWrite(outBuffer, &bufcount, key_temp, 2);
                     bufWrite(outBuffer, &bufcount, v2p5, 2);
