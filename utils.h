@@ -176,11 +176,11 @@
 #define DIAGDATA    511 // 0x1FF - Block RD of assorted diagnostics, started by a single WR of any value
 
 // RS485 commands: can be from 0 to 255
-#define TEST                255
-#define READSPI_I33         1
-#define READSPI_I25         2
-#define READSPI_ROCRAIL_1V  25  //(0x19)
-#define READSPI_CALRAIL_1V  29  //(0x1D)
+#define RS485_MAX_SPI 28
+#define RS485_TVS 12
+#define RS485_ILP 3
+#define RS485_TEST_CMD 254
+#define RS485_MAX_CMD 255
 //******************************************************************************
 //                             Registers & Addresses
 //******************************************************************************
