@@ -506,6 +506,9 @@ int main() {
 
             }
 
+	    else if (rs485_rx_cmd == RS485_HB_CMD){
+	      *(registers_2_addr + CRRS485_TX_WRITE) = loopcount & 0xFFFF;
+	    }
 
             *(registers_2_addr + CRRS485_TX_START) = 1;
             *(registers_2_addr + CRRS485_TX_START) = 0;
@@ -3865,7 +3868,9 @@ int main() {
                         digi_write(DG_ADDR_MASK3,
                                 (uint16_t) ((mapped_channel_mask[2] & 0xFFFF0000)
                                         >> 16), 2);
-                        digi_write(DG_ADDR_TRIGGER_MODE, tdc_mode, 0);
+
+			if (tdc_mode < 3)
+			  digi_write(DG_ADDR_TRIGGER_MODE, tdc_mode, 0);
                         digi_write(DG_ADDR_ENABLE_PULSER, enable_pulser, 0);
 
                         *(registers_0_addr + REG_ROC_EWW_PULSER) = 0;

@@ -179,6 +179,7 @@
 #define RS485_MAX_SPI 28
 #define RS485_TVS 12
 #define RS485_ILP 3
+#define RS485_HB_CMD 253
 #define RS485_TEST_CMD 254
 #define RS485_MAX_CMD 255
 //******************************************************************************
