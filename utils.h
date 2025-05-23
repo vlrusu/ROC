@@ -173,6 +173,8 @@
 #define WRITECALDAC 276 // 0x114 - fiber version of SETCALDAC with passed via BLOCK_WRITE
 #define READPREAMP  277 // 0x115 - fiber version of DUMPSETTINGS: execute with Single DCS_WRITE of channel number followed by DCS_BLOCK_READ of 4 or 384 gain/thresh values
 #define INITBYFIBER 278 // 0x116 - fiber version of INITDIGIS: execute with Single DCS_WRITE of any value (ignored) followed by DCS_BLOCK_READ of 2 cal/hv errors
+#define REMOTEPROG  384 // 0x280 - fiber version of IAPROC: execute with BLOCK WRITE of 32 parameters, with first parameter specifying the action to take
+                        //       - if action=7, follow with a BLOCK_READ of N words as specified by (param[4]<<16)+param[3]
 #define DIAGDATA    511 // 0x1FF - Block RD of assorted diagnostics, started by a single WR of any value
 
 // RS485 commands: can be from 0 to 255
@@ -202,6 +204,7 @@
 #define CRDCS_READ_RX       0x2
 #define CRDCS_WRITE_TX      0x3
 #define CRDCS_DIAG_DATA     0x4
+#define CRCDS_PROG_RETURN   0x5
 
 //***********************DG_ADDR_* are the DIGI addresses
 #define DG_ADDR_SAMPLE 0x03

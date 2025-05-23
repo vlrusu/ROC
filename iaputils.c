@@ -29,11 +29,14 @@ uint32_t g_src_image_target_address =0;
 uint32_t g_flash_address = 0;
 uint32_t g_file_size = 0;
 uint32_t g_fail = 0;
+uint32_t g16_fail = 0;
 
 
 uint8_t iap_data_buffer [1024];
 
-
+// MT adds to service FLASH_READ and FLASH_PROGRAM request from fiber
+uint16_t flash_to_fiber[512];
+uint16_t fiber_to_flash[512];
 
 
 static const uint8_t g_separator[] =
@@ -336,6 +339,32 @@ void list_flash_dir(uint32_t start, uint32_t length){
 
 }
 
+// same as serial function above but return requested FLASH data via FLASH_TO_FIBER for block read
+void list_flash_dir_fiber(uint32_t start_addr, uint32_t length, uint16_t* flash_to_fiber){
+
+    uint8_t  manufacturer_id;
+    uint8_t  device_id;
+
+    FLASH_init();
+
+    FLASH_global_unprotect();
+    FLASH_read_device_id
+    (
+            &manufacturer_id,
+            &device_id
+    );
+    FLASH_read(start_addr,g_read_buf,length);
+
+
+// fill FLASH_TO_FIBER buffer to send back to the DTC
+    uint8_t ieven = 0;
+    for(uint8_t i=0;i<length;i+=2){
+        flash_to_fiber[ieven] = (g_read_buf[i+1]<<8) + g_read_buf[i];
+        ieven++;
+   }
+
+}
+
 void write_flash_directory(uint16_t nImages,uint32_t* addresses)
 {
 
@@ -373,6 +402,51 @@ void write_flash_directory(uint16_t nImages,uint32_t* addresses)
     programming_done();
 
 }
+
+
+// same as serial version above but skip call to PROGRAMMING_DONE
+void write_flash_directory_fiber(uint16_t nImages, uint32_t* addresses, uint16_t g16_fail)
+{
+
+    g16_fail = 0;
+
+    FLASH_init();
+
+    FLASH_global_unprotect();
+
+    FLASH_erase_64k_block(0);
+
+    delay1(500);
+
+    for (uint8_t i_image = 0 ; i_image < nImages;){
+
+        uint32_t address1 = addresses[i_image];
+        uint8_t buf[4];
+
+        buf[3] = (uint8_t)((address1 >> 24) & 0xFF);
+        buf[2] = (uint8_t)((address1 >> 16) & 0xFF);
+        buf[1] = (uint8_t)((address1 >> 8) & 0xFF);
+        buf[0] = (uint8_t)(address1 & 0xFF);
+
+        FLASH_program(4*i_image , buf, 4);
+        delay1(5000);
+
+        FLASH_read(4*i_image,g_read_buf,4);
+
+        // when written vs read-back word comparison fails
+        if (memcmp(buf,g_read_buf,4)) {
+            FLASH_erase_64k_block(address1);
+            delay1(100000);
+            g16_fail++;
+            if (g16_fail < MAXFAIL)
+                continue; //this will get stuck here until MAXFAIL reached
+           }
+
+        i_image++;
+    }
+
+}
+
 void copy_to_flash(uint8_t * g_buffer)
 {
     uint32_t i=0;
@@ -710,8 +784,29 @@ void load_spi_flash_at_address(uint32_t index_address)
     programming_done();
 }
 
+void load_spi_flash_at_address_fiber(uint32_t index_address, uint8_t* fiber_to_flash, uint16_t fail_mask)
+{
+    volatile uint32_t erase_address = 0;
+    volatile uint32_t erase_count=0;
+    uint8_t  manufacturer_id;
+    uint8_t  device_id;
+    uint32_t readback_address = index_address;
+    uint16_t BLOCK = 128;
 
-uint8_t iap_data_buffer [1024];
+    // mimic COPY_TO_FLASH for a 1kB block of data, in miniblocks of 128 words
+    for (int  i=0; i<1024/BLOCK; i++) {
+        FLASH_program(index_address+i*BLOCK , &fiber_to_flash[i*BLOCK], BLOCK);
+
+        //readback what I just wrote
+        delay1(5000); //increase the delay
+        FLASH_read(readback_address+i*BLOCK,&g_read_buf[i*BLOCK],BLOCK);
+
+        if (memcmp(&fiber_to_flash[i*BLOCK],&g_read_buf[i*BLOCK],BLOCK)) {  //this will get stuck here until MAXFAIL reached
+            fail_mask += (i<<1);
+        }
+    }
+
+}
 
 void execute_usercode_service(void)
 {

@@ -564,6 +564,7 @@ int main() {
 
         while (dtc_cmd_ready == 1) {
 
+            *(registers_1_addr + CRDCS_CMD_STATUS) = 0x1000 + cmd_fail;																	   
             // starts reading DCS_RX_BUFFER contents
             get_cmd_rx = *(registers_1_addr + CRDCS_READ_RX);
 
@@ -609,7 +610,6 @@ int main() {
                     *(registers_1_addr + CRDCS_CMD_STATUS) = 0x2000 + cmd_fail;
                 } else {
                     cmd_fail = cmd_fail + 16;
-                    *(registers_1_addr + CRDCS_CMD_STATUS) = 0x1000 + cmd_fail;
                 }
 
             } else {  // must be payload => start filling DTCBUFFER
@@ -630,11 +630,17 @@ int main() {
         }
         delayUs(1);
 
-        uint8_t  fiber_rw = 0;        // 0 for read, 1 for write
-        uint8_t  adc_num = 0;
-        uint8_t  chan_num = 0;
-        uint16_t fiber_value = 0;
-        uint16_t preamp_type = 0;
+
+        uint8_t  fiber_rw   = 0;        // 0 for read, 1 for write
+        uint8_t  adc_num    = 0;
+        uint8_t  chan_num   = 0;
+        uint8_t  status     = 0xFF;
+        uint16_t fiber_value= 0;
+        uint16_t preamp_type= 0;
+        uint8_t  chan_mask  = 16;
+        uint16_t progr_action  = 0;
+        uint32_t progr_param_1 = 0;
+        uint32_t progr_param_2 = 0;
 
         switch (proc_commandID) {
 
@@ -677,70 +683,70 @@ int main() {
 
             break;
 
-            // write to DCS_TX Buffer data as in READMONADCS
+        // write to DCS_TX Buffer data as in READMONADCS
         case READSPI:
 
             // update CMD_STATUS
             *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
 
-            // write header
-            *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
-            *(registers_1_addr + CRDCS_WRITE_TX) = 36;
-            *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
+             // write header
+             *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
+             *(registers_1_addr + CRDCS_WRITE_TX) = 36;
+             *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
 
-            // fill up payload with 16-bit words. NB: use only LBS 16-bit of 32 bits APB bus
-            uint32_t spi32;
-            for (uint8_t i = 0 ; i < 2; i++) {
-                for (uint8_t j = 0 ; j < 12; j++) {
-                    SPI_set_slave_select( &g_spi[i] , ((j>=8)?SPI_SLAVE_2:(j<4?SPI_SLAVE_0:SPI_SLAVE_1)));
+             // fill up payload with 16-bit words. NB: use only LBS 16-bit of 32 bits APB bus
+             uint32_t spi32;
+             for (uint8_t i = 0 ; i < 2; i++) {
+                 for (uint8_t j = 0 ; j < 12; j++) {
+                     SPI_set_slave_select( &g_spi[i] , ((j>=8)?SPI_SLAVE_2:(j<4?SPI_SLAVE_0:SPI_SLAVE_1)));
 
-                    uint16_t addr = (j%4 <<11 );
-                    SPI_transfer_frame( &g_spi[i], addr);
-                    SPI_transfer_frame( &g_spi[i], addr);
-                    spi32 = SPI_transfer_frame( &g_spi[i], addr);
+                     uint16_t addr = (j%4 <<11 );
+                     SPI_transfer_frame( &g_spi[i], addr);
+                     SPI_transfer_frame( &g_spi[i], addr);
+                     spi32 = SPI_transfer_frame( &g_spi[i], addr);
 
-                    SPI_clear_slave_select( &g_spi[i] , ((j>=8)?SPI_SLAVE_2:(j<4?SPI_SLAVE_0:SPI_SLAVE_1)));
+                     SPI_clear_slave_select( &g_spi[i] , ((j>=8)?SPI_SLAVE_2:(j<4?SPI_SLAVE_0:SPI_SLAVE_1)));
 
-                    *(registers_1_addr + CRDCS_WRITE_TX) = (0x0000FFFF & spi32);
-                }
-            }
+                     *(registers_1_addr + CRDCS_WRITE_TX) = (0x0000FFFF & spi32);
+                 }
+             }
 
-            uint16_t tvs_val[4] = {0};
-            for (uint8_t i =0; i<4; i++){
-                *(registers_0_addr+REG_ROC_TVS_ADDR) = i;
-                delayUs(1);
-                tvs_val[i] = *(registers_0_addr + REG_ROC_TVS_VAL);
+             uint16_t tvs_val[4] = {0};
+             for (uint8_t i =0; i<4; i++){
+                 *(registers_0_addr+REG_ROC_TVS_ADDR) = i;
+                 delayUs(1);
+                 tvs_val[i] = *(registers_0_addr + REG_ROC_TVS_VAL);
 
-                *(registers_1_addr + CRDCS_WRITE_TX) = tvs_val[i];
-                delayUs(1);
-            }
+                 *(registers_1_addr + CRDCS_WRITE_TX) = tvs_val[i];
+                 delayUs(1);
+             }
 
-            // give TWI control to uProc before calling DIGI_READ/WRITE
-            //*(registers_0_addr + REG_DIGIRW_SEL) = 1;
+             // give TWI control to uProc before calling DIGI_READ/WRITE
+             //*(registers_0_addr + REG_DIGIRW_SEL) = 1;
 
-            for (uint8_t ihvcal=1; ihvcal<3; ihvcal++){
-                for (uint8_t i =0; i<4; i++){
-                    digi_write(DG_ADDR_TVS_ADDR, i, ihvcal);
+             for (uint8_t ihvcal=1; ihvcal<3; ihvcal++){
+                 for (uint8_t i =0; i<4; i++){
+                         digi_write(DG_ADDR_TVS_ADDR, i, ihvcal);
 
-                    delayUs(1);
-                    tvs_val[i] = digi_read(DG_ADDR_TVS_VAL, ihvcal);
+                         delayUs(1);
+                         tvs_val[i] = digi_read(DG_ADDR_TVS_VAL, ihvcal);
 
-                    *(registers_1_addr + CRDCS_WRITE_TX) = tvs_val[i];
-                    delayUs(1);
-                }
-            }
-            // return TWI control to fiber
-            //*(registers_0_addr + REG_DIGIRW_SEL) = 0;
-            // write trailer
-            *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
+                         *(registers_1_addr + CRDCS_WRITE_TX) = tvs_val[i];
+                         delayUs(1);
+                 }
+             }
+             // return TWI control to fiber
+             //*(registers_0_addr + REG_DIGIRW_SEL) = 0;
+             // write trailer
+             *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
 
             // update CMD_STATUS
             *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
 
             break;
 
-            // read back payload from DCS BLOCK WR
-        case READBACKBLK:
+        // read back payload from DCS BLOCK WR
+       case READBACKBLK:
 
             // update CMD_STATUS
             *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
@@ -760,7 +766,7 @@ int main() {
 
             break;
 
-            // write to DCS_TX Buffer data as in GETDEVICEID
+        // write to DCS_TX Buffer data as in GETDEVICEID
         case READDEVICE:
 
             // update CMD_STATUS
@@ -775,7 +781,6 @@ int main() {
             // fill payload with 16-bit words
             uint8_t data_buffer[16];
             uint8_t dinfo_buffer[36];
-            uint8_t status;
 
             status = SYS_get_serial_number(data_buffer, 0);
             status = SYS_get_design_info(dinfo_buffer, 0);
@@ -854,9 +859,9 @@ int main() {
             // defaults from Python
             fiber_rw = 0;                // (0 for RD, 1 for WR)
             uint8_t digi_hvcal = 0; // for DIGI selection:
-            //  0 -> both CAL and HV, 1-> CAL only, 2 -> HV only)
-            //  3 for specific register RW
-            //  4-15 for ADC R/W to ADC channel 0-11
+                                    //  0 -> both CAL and HV, 1-> CAL only, 2 -> HV only)
+                                    //  3 for specific register RW
+                                    //  4-15 for ADC R/W to ADC channel 0-11
             uint16_t digi_addr = 16;
             uint32_t digi_data = 16;
             uint16_t data_low = 0;
@@ -1380,42 +1385,42 @@ int main() {
                           bufWrite(outBuffer, &bufcount, channel, 2);
                           bufWrite(outBuffer, &bufcount, fiber_value, 2);
                           outBufSend(g_uart, outBuffer, bufcount);
-             */
-            // return TWI control to fiber
-            //*(registers_0_addr + REG_DIGIRW_SEL) = 0;
+              */
+             // return TWI control to fiber
+             //*(registers_0_addr + REG_DIGIRW_SEL) = 0;
 
-            *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
-            *(registers_1_addr + CRDCS_WRITE_TX) = 20;
-            *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
-            *(registers_1_addr + CRDCS_WRITE_TX) = adc_mode;
-            *(registers_1_addr + CRDCS_WRITE_TX) = tdc_mode;
-            *(registers_1_addr + CRDCS_WRITE_TX) = num_lookback;
-            *(registers_1_addr + CRDCS_WRITE_TX) = num_samples;
-            *(registers_1_addr + CRDCS_WRITE_TX) = (num_triggers & 0xFFFF);
-            *(registers_1_addr + CRDCS_WRITE_TX) = (num_triggers & 0xFFFF0000)>>16;
-            *(registers_1_addr + CRDCS_WRITE_TX) = (channel_mask[0] & 0xFFFF);
-            *(registers_1_addr + CRDCS_WRITE_TX) = (channel_mask[0] & 0xFFFF0000)>>16;
-            *(registers_1_addr + CRDCS_WRITE_TX) = (channel_mask[1] & 0xFFFF);
-            *(registers_1_addr + CRDCS_WRITE_TX) = (channel_mask[1] & 0xFFFF0000)>>16;
-            *(registers_1_addr + CRDCS_WRITE_TX) = (channel_mask[2] & 0xFFFF);
-            *(registers_1_addr + CRDCS_WRITE_TX) = (channel_mask[2] & 0xFFFF0000)>>16;
-            *(registers_1_addr + CRDCS_WRITE_TX) = enable_pulser;
-            *(registers_1_addr + CRDCS_WRITE_TX) = marker_clock;
-            *(registers_1_addr + CRDCS_WRITE_TX) = mode;
-            *(registers_1_addr + CRDCS_WRITE_TX) = clock;
-            *(registers_1_addr + CRDCS_WRITE_TX) = digi_read(DG_ADDR_MASK1,hvcal);
-            *(registers_1_addr + CRDCS_WRITE_TX) = digi_read(DG_ADDR_MASK2,hvcal);
-            *(registers_1_addr + CRDCS_WRITE_TX) = digi_read(DG_ADDR_MASK3,hvcal);
-            *(registers_1_addr + CRDCS_WRITE_TX) = digi_read(DG_ADDR_ENABLE_PULSER,hvcal);
-            *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
+             *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
+             *(registers_1_addr + CRDCS_WRITE_TX) = 20;
+             *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
+             *(registers_1_addr + CRDCS_WRITE_TX) = adc_mode;
+             *(registers_1_addr + CRDCS_WRITE_TX) = tdc_mode;
+             *(registers_1_addr + CRDCS_WRITE_TX) = num_lookback;
+             *(registers_1_addr + CRDCS_WRITE_TX) = num_samples;
+             *(registers_1_addr + CRDCS_WRITE_TX) = (num_triggers & 0xFFFF);
+             *(registers_1_addr + CRDCS_WRITE_TX) = (num_triggers & 0xFFFF0000)>>16;
+             *(registers_1_addr + CRDCS_WRITE_TX) = (channel_mask[0] & 0xFFFF);
+             *(registers_1_addr + CRDCS_WRITE_TX) = (channel_mask[0] & 0xFFFF0000)>>16;
+             *(registers_1_addr + CRDCS_WRITE_TX) = (channel_mask[1] & 0xFFFF);
+             *(registers_1_addr + CRDCS_WRITE_TX) = (channel_mask[1] & 0xFFFF0000)>>16;
+             *(registers_1_addr + CRDCS_WRITE_TX) = (channel_mask[2] & 0xFFFF);
+             *(registers_1_addr + CRDCS_WRITE_TX) = (channel_mask[2] & 0xFFFF0000)>>16;
+             *(registers_1_addr + CRDCS_WRITE_TX) = enable_pulser;
+             *(registers_1_addr + CRDCS_WRITE_TX) = marker_clock;
+             *(registers_1_addr + CRDCS_WRITE_TX) = mode;
+             *(registers_1_addr + CRDCS_WRITE_TX) = clock;
+             *(registers_1_addr + CRDCS_WRITE_TX) = digi_read(DG_ADDR_MASK1,hvcal);
+             *(registers_1_addr + CRDCS_WRITE_TX) = digi_read(DG_ADDR_MASK2,hvcal);
+             *(registers_1_addr + CRDCS_WRITE_TX) = digi_read(DG_ADDR_MASK3,hvcal);
+             *(registers_1_addr + CRDCS_WRITE_TX) = digi_read(DG_ADDR_ENABLE_PULSER,hvcal);
+             *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
 
-            // update CMD_STATUS
-            *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
+              // update CMD_STATUS
+             *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
 
-            break;
+              break;
 
 
-            // set PREAMP GAINS
+        // set PREAMP GAINS
         case PREAMPGAIN:
 
             // update CMD_STATUS
@@ -1450,7 +1455,7 @@ int main() {
 
             break;
 
-            // set PREAMP THRESHOLD
+        // set PREAMP THRESHOLD
         case PREAMPTHRESH:
 
             // update CMD_STATUS
@@ -1654,12 +1659,12 @@ int main() {
             uint32_t timecounts;
 
             // give TWI control to uProc before calling DIGI_READ/WRITE or ADC/READ_WRITE
-            *(registers_0_addr + REG_DIGIRW_SEL) = 1;
+            //*(registers_0_addr + REG_DIGIRW_SEL) = 1;
 
             get_rates(lookback_number,samples_number,0, &timecounts, total_hv, total_cal, total_coinc, total_time_counts);
 
             // return TWI control to fiber
-            *(registers_0_addr + REG_DIGIRW_SEL) = 0;
+            //*(registers_0_addr + REG_DIGIRW_SEL) = 0;
 
             // write output for BLOCK_READ
             *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
@@ -1793,58 +1798,58 @@ int main() {
 
             // set gains and thresholds for all 96 CAL&HV channels
             // expected order is: 96xgain CAL, 96xgain HV, 96xthres CAL, 96xthres HV
-        case WRITEPREAMP:
+            case WRITEPREAMP:
 
-            // update CMD_STATUS
-            *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
+                // update CMD_STATUS
+                *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
 
-            for (uint8_t i=0;i<96;i++) {
-                setPreampGain(i, dtcbuffer[i]);
-                setPreampGain(i+96,dtcbuffer[i+96]);
-                setPreampThreshold(i,dtcbuffer[i+2*96]);
-                setPreampThreshold(i+96,dtcbuffer[i+3*96]);
-            }
-
-            // returns only 0x8000 from reg=128 and 0x1000 from reg=129
-
-            // update CMD_STATUS
-            *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
-
-            break;
-
-
-        case WRITECALDAC:
-
-            // update CMD_STATUS
-            *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
-
-            // assume that CHAN_MASK and FIBER_VALUE parameters are derived from other Python command parameters as:
-            // 1) if (channel >=0) chan_mask |= (0x1 << channel); where "channel" is passed by -c option
-            // 2) if (fvalue >=0)  fiber_value = fvalue/3.3 * 1023; where "fvalue" is passed by  -v option
-            chan_mask      = (uint8_t) dtcbuffer[0];   // -C
-            fiber_value    =           dtcbuffer[1];   // -d
-
-            for (uint8_t i = 0; i < 8; i++) {
-                if (chan_mask & (0x1 << i)) {
-                    if (i < 4)
-                        LTC2634_write(&caldac0, i, fiber_value);
-                    else
-                        LTC2634_write(&caldac1, i - 4, fiber_value);
+                for (uint8_t i=0;i<96;i++) {
+                    setPreampGain(i, dtcbuffer[i]);
+                    setPreampGain(i+96,dtcbuffer[i+96]);
+                    setPreampThreshold(i,dtcbuffer[i+2*96]);
+                    setPreampThreshold(i+96,dtcbuffer[i+3*96]);
                 }
-            }
 
-            // write copy of inputs as output for BLOCK_READ
-            *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
-            *(registers_1_addr + CRDCS_WRITE_TX) = 2;
-            *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
-            *(registers_1_addr + CRDCS_WRITE_TX) = chan_mask;
-            *(registers_1_addr + CRDCS_WRITE_TX) = fiber_value;
-            *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
+                // returns only 0x8000 from reg=128 and 0x1000 from reg=129
 
-            // update CMD_STATUS
-            *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
+                // update CMD_STATUS
+                *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
 
-            break;
+                break;
+
+
+             case WRITECALDAC:
+
+                 // update CMD_STATUS
+                 *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
+
+                 // assume that CHAN_MASK and FIBER_VALUE parameters are derived from other Python command parameters as:
+                 // 1) if (channel >=0) chan_mask |= (0x1 << channel); where "channel" is passed by -c option
+                 // 2) if (fvalue >=0)  fiber_value = fvalue/3.3 * 1023; where "fvalue" is passed by  -v option
+                 chan_mask      = (uint8_t) dtcbuffer[0];   // -C
+                 fiber_value    =           dtcbuffer[1];   // -d
+
+                 for (uint8_t i = 0; i < 8; i++) {
+                     if (chan_mask & (0x1 << i)) {
+                         if (i < 4)
+                             LTC2634_write(&caldac0, i, fiber_value);
+                         else
+                             LTC2634_write(&caldac1, i - 4, fiber_value);
+                     }
+                 }
+
+                 // write copy of inputs as output for BLOCK_READ
+                 *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
+                 *(registers_1_addr + CRDCS_WRITE_TX) = 2;
+                 *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
+                 *(registers_1_addr + CRDCS_WRITE_TX) = chan_mask;
+                 *(registers_1_addr + CRDCS_WRITE_TX) = fiber_value;
+                 *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
+
+                 // update CMD_STATUS
+                 *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
+
+                 break;
 
 
              case READPREAMP:
@@ -1923,7 +1928,171 @@ int main() {
                  break;
 
 
-            // read assorted diagnostic registers
+                 // define global parameters for a remote programming function
+                case REMOTEPROG:
+
+                    // update CMD_STATUS
+                    *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;
+
+                    // reset PROG_RETURN variable;
+                    *(registers_1_addr + CRCDS_PROG_RETURN) = 0;
+
+                    // read ACTION from first 16-bit word
+                    progr_action = dtcbuffer[0];
+
+                    // set variable PROGR_PARAM_1 from second and third 16-bit word of BLOCK_WRITE
+                    progr_param_1 = (dtcbuffer[2]<<16) + dtcbuffer[1];
+
+                    // set variable PROGR_PARAM_2 from fourth and fifth 16-bit word of BLOCK_WRITE
+                    progr_param_2 = (dtcbuffer[4]<<16) + dtcbuffer[3];
+
+                    uint32_t startAddr  = 0;
+                    uint32_t nBytes     = 0;
+                    uint32_t nWords     = 0;
+                    uint32_t fileSizeinbyte = 0;
+                    uint16_t failMask   = 0;
+                    uint16_t failCount  = 0;
+                    uint32_t spiaddr_or_idx = 0;
+                    uint16_t nImages    = 0;
+                    uint8_t cmd         = 0;
+                    uint8_t  manufacturer_id;
+                    uint8_t  device_id;
+
+                    uint32_t erase_address = 0;
+                    uint32_t erase_count=0;
+
+                    // FLASH_READ_BUF contains words read from FLASH: max number is 254*2
+                    uint16_t flash_read_buf[512] = {0};
+                    // FLASH_WRITE_BUF contains words to write to FLASH as uint8_t: max number is 1024 (1KB)
+                    uint8_t flash_write_buf[1024] = {0};
+                    // DIR_BUFFER contains starting address for up to 16 images written to FLASH (see FLASH_MAP file)
+                    // Is is filled starting with the sixth word of BLOCK_WRITE
+                    uint32_t dir_buffer[16] = {0};
+
+                    //clear_iap_data_buffer();
+
+                    // start responding to Remote Programming ACTIONS
+                    switch (progr_action) {
+                        case 1:
+                            //execute_bitstream_authenticate(rindex);
+                            break;
+
+                        case 2:
+                            //execute_iap_image_authenticate(rindex);
+                            break;
+
+                        case 3:
+                            startAddr       = progr_param_1;
+                            fileSizeinbyte  = progr_param_2;
+
+                            FLASH_init();
+
+                            FLASH_global_unprotect();
+                            FLASH_read_device_id
+                            (
+                                    &manufacturer_id,
+                                    &device_id
+                            );
+
+                            uint32_t file_size_in_blocks = 1 + fileSizeinbyte / 65536;
+                            erase_address = startAddr; //only erase starting at  address
+                            for(erase_count = 0;erase_count<file_size_in_blocks;erase_count++)
+                            {
+
+                                FLASH_erase_64k_block(erase_address);
+                                delay1(50000);
+                                erase_address+=0x10000;
+                            }
+                            break;
+
+                        case 4:
+                            cmd             = IAP_PROGRAM_BY_SPIIDX_CMD;
+                            spiaddr_or_idx  = progr_param_1;
+
+                            status = SYS_iap_service(cmd, spiaddr_or_idx);
+
+                            // see CoreSysServices_PF/core_sysservices_pf.h  for meaning of STATUS word
+                            *(registers_1_addr + CRCDS_PROG_RETURN) = status;
+                            break;
+
+                        case 5:
+                            cmd             = IAP_PROGRAM_BY_SPIADDR_CMD;
+                            spiaddr_or_idx  = progr_param_1;
+
+                            status = SYS_iap_service(cmd, spiaddr_or_idx);
+
+                            // see CoreSysServices_PF/core_sysservices_pf.h  for meaning of STATUS word
+                            *(registers_1_addr + CRCDS_PROG_RETURN) = status;
+                            break;
+
+                        case 6:
+                            cmd = IAP_AUTOUPDATE_CMD;
+
+                            status = SYS_iap_service(cmd, spiaddr_or_idx);
+
+                            // see CoreSysServices_PF/core_sysservices_pf.h  for meaning of STATUS word
+                            *(registers_1_addr + CRCDS_PROG_RETURN) = status;
+                            break;
+
+                        case 7:
+                            startAddr   = progr_param_1;    // start reading address
+                            nBytes      = progr_param_2;    // no. of bytes to read from SPI
+                            if (nWords>=255) nWords = 254;  // maximum allowed number of words to be read from FLASH
+
+                            list_flash_dir_fiber(startAddr, nBytes, flash_read_buf);
+
+                            // fill up payload
+                            *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
+                            *(registers_1_addr + CRDCS_WRITE_TX) = nBytes/2;  // two consecutive 8-bit words from FLASH are packed in one 16-bit word
+                            *(registers_1_addr + CRDCS_WRITE_TX) = 0xC000 + proc_commandID;
+                            for (uint16_t i = 0; i < nBytes/2; i++) {
+                                *(registers_1_addr + CRDCS_WRITE_TX) = flash_read_buf[i];
+                            }
+                            *(registers_1_addr + CRDCS_WRITE_TX) = CMDTRAILER;
+
+                            break;
+
+                        case 8:
+                            startAddr = progr_param_1;  // start writing address
+                            nWords    = progr_param_2;  // no. of payload programming words: each encodes two 8-bit for the FLASH
+                            for (int i=0;i<nWords;i++) {
+                                flash_write_buf[i*2]    = (uint8_t) (dtcbuffer[i+5] & 0XFF);
+                                flash_write_buf[i*2+1]  = (uint8_t) (dtcbuffer[i+5] >>8);
+                            }
+
+                            *(registers_1_addr + CRCDS_PROG_RETURN) = 0;
+
+                            load_spi_flash_at_address_fiber(startAddr, flash_write_buf, failMask); //this loads a single image at address index
+
+                            // "failMask" is an 8-bit mask returning 1 if the Nth subblock written to FLASH fails verification
+                            // A sub-block is a write of 128B to FLASH
+                            *(registers_1_addr + CRCDS_PROG_RETURN) = failMask;
+                            break;
+
+                        case 9:
+                            nImages = (uint16_t) progr_param_1;  // no of images pointer to write to SPI directory
+                            // each image pointer (max 16) is a 32-bit word
+                            for (int i=0;i<16;i++) {
+                                dir_buffer[i] = (dtcbuffer[2*i+6]<<16) + dtcbuffer[2*i+5];
+                            }
+
+                            write_flash_directory_fiber(nImages, dir_buffer, failCount);
+
+                            // failCount increases by 1 for every DIR_BUFFER word that is not validated
+                            *(registers_1_addr + CRCDS_PROG_RETURN) = failCount;
+                            break;
+
+                        default:
+                            break;
+                    }
+
+                    // update CMD_STATUS
+                    *(registers_1_addr + CRDCS_CMD_STATUS) = 0x8000 + cmd_fail;
+
+                    break;
+
+
+        // read assorted diagnostic registers
         case DIAGDATA:
             // update CMD_STATUS
             *(registers_1_addr + CRDCS_CMD_STATUS) = 0x4000 + cmd_fail;

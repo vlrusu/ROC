@@ -77,13 +77,10 @@ void load_spi_flash_at_address(uint32_t index_address);
 void programming_done(void);
 
 
-
-
-
-
-
-
-
+// MT add
+void list_flash_dir_fiber(uint32_t start_addr, uint32_t length, uint16_t* flash_read_buf);
+void write_flash_directory_fiber(uint16_t nImages, uint32_t* addresses, uint16_t g16_fail);
+void load_spi_flash_at_address_fiber(uint32_t index_address, uint8_t* flash_write_buf, uint16_t fail_mask);
 
 
 #endif /* IAPUTILS_H_ */
