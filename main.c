@@ -507,7 +507,7 @@ int main() {
             }
 
 	    else if (rs485_rx_cmd == RS485_HB_CMD){
-	      *(registers_2_addr + CRRS485_TX_WRITE) = loopcount & 0xFFFF;
+	      *(registers_2_addr + CRRS485_TX_WRITE) = loopCount & 0xFFFF;
 	    }
 
             *(registers_2_addr + CRRS485_TX_START) = 1;
