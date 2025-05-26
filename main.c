@@ -4038,7 +4038,7 @@ int main() {
                                 (uint16_t) ((mapped_channel_mask[2] & 0xFFFF0000)
                                         >> 16), 2);
 
-			if (tdc_mode < 3)
+			if (tdc_mode < 4)
 			  digi_write(DG_ADDR_TRIGGER_MODE, tdc_mode, 0);
                         digi_write(DG_ADDR_ENABLE_PULSER, enable_pulser, 0);
 
