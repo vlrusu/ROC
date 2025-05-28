@@ -1659,12 +1659,12 @@ int main() {
             uint32_t timecounts;
 
             // give TWI control to uProc before calling DIGI_READ/WRITE or ADC/READ_WRITE
-            //*(registers_0_addr + REG_DIGIRW_SEL) = 1;
+            *(registers_0_addr + REG_DIGIRW_SEL) = 1;
 
             get_rates(lookback_number,samples_number,0, &timecounts, total_hv, total_cal, total_coinc, total_time_counts);
 
             // return TWI control to fiber
-            //*(registers_0_addr + REG_DIGIRW_SEL) = 0;
+            *(registers_0_addr + REG_DIGIRW_SEL) = 0;
 
             // write output for BLOCK_READ
             *(registers_1_addr + CRDCS_WRITE_TX) = CMDHEADER;
