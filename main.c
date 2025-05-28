@@ -258,7 +258,7 @@ int main() {
 
 
     adc_write(0x100, 0x71, 0xFFF); // set to 10 bit, 40 MSPS
-    adc_write(ADC_ADDR_SRCTRL, 0xC3, 0xFFF); //set to LSB first
+//    adc_write(ADC_ADDR_SRCTRL, 0xC3, 0xFFF); //set to LSB first
     adc_write(0xFF, 0x01, 0xFFF); // latch the above change
     adc_write(0x14, 0x00, 0xFFF); // set to offset binary
 
