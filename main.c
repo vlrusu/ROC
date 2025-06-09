@@ -510,6 +510,18 @@ int main() {
 	      *(registers_2_addr + CRRS485_TX_WRITE) = loopCount & 0xFFFF;
 	    }
 
+        else if (rs485_rx_cmd == RS485_ID_CMD){
+            uint8_t nvmadmin[4] = {0x00};
+             uint8_t text[280] = {0x0};
+            SYS_secure_nvm_read(PANELNVMADDRESS, 0, &nvmadmin[0], text, 252u, 0);
+            uint16_t reply = (text[1] << 8) | text[0];
+          *(registers_2_addr + CRRS485_TX_WRITE) = reply;
+        }
+
+        else {
+            *(registers_2_addr + CRRS485_TX_WRITE) = 0xDEAD;
+        }
+
             *(registers_2_addr + CRRS485_TX_START) = 1;
             *(registers_2_addr + CRRS485_TX_START) = 0;
 
